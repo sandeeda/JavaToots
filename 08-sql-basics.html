@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Basics — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#070A12; --surface:#0E1420; --surface2:#141B2B; --border:#1C2740; --border2:#283655;
+  --accent:#3B82F6; --accent2:#60A5FA; --accent3:#93C5FD; --glow:rgba(59,130,246,0.18);
+  --text:#E6EBF5; --muted:#7C8AA8; --muted2:#54607D;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(59,130,246,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(96,165,250,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(59,130,246,.1);
+  border:1px solid rgba(59,130,246,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#DBEAFE 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(7,10,18,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(59,130,246,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(59,130,246,.12),0 0 16px rgba(59,130,246,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(59,130,246,.35); box-shadow:0 0 0 1px rgba(59,130,246,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(59,130,246,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#0A0D16; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#79B8FF; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(59,130,246,.1); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(59,130,246,.06); border:1px solid rgba(59,130,246,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* VENN */
+.venn-wrap { display:flex; gap:22px; justify-content:center; flex-wrap:wrap;
+  margin-bottom:20px; padding:20px 16px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:14px; }
+.venn-card { text-align:center; }
+.venn-card svg { display:block; }
+.venn-caption { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); margin-top:8px; letter-spacing:.01em; }
+.venn-caption strong { color:var(--accent2); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#05070D; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; white-space:pre; overflow-x:auto; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(59,130,246,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(59,130,246,.2); border:1px solid rgba(59,130,246,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(59,130,246,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(59,130,246,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> SQL — Visual Guide</div>
+  <h1>Master<br><em>SQL Basics</em><br>Visually</h1>
+  <p class="hero-sub">16 concepts. From zero to confident. Postgres syntax, every example runnable, paste straight into a SQL client.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">16</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">16</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 16</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">The Relational Model</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A relational database stores data in <strong>tables</strong> (rows &amp; columns). Each row is one record. Each column is one attribute. A <strong>primary key</strong> uniquely identifies every row — no two rows can share one.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4D2;</div><p><strong>Spreadsheet analogy:</strong> A table is a sheet. Each row is one entry. The primary key is like a row number that&apos;s guaranteed never to repeat or change.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- A "users" table: each row = one person</span>
+<span class="cm">-- id is the PRIMARY KEY — unique, never reused</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">users</span>;
+
+<span class="cm">-- id | username  | email                | created_at</span>
+<span class="cm">-- ---+-----------+----------------------+------------</span>
+<span class="cm">-- 1  | sandeep   | sandeep@email.com    | 2026-01-04</span>
+<span class="cm">-- 2  | priya     | priya@email.com      | 2026-02-11</span>
+
+<span class="cm">-- A "orders" table: each row = one order, LINKED to a user via user_id</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">orders</span>;
+
+<span class="cm">-- id | user_id | total  | status</span>
+<span class="cm">-- ---+---------+--------+--------</span>
+<span class="cm">-- 101| 1       | 49.99  | SHIPPED</span>
+<span class="cm">-- 102| 1       | 12.50  | PENDING</span>
+<span class="cm">-- 103| 2       | 99.00  | SHIPPED</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Tables are connected by <strong>shared key values</strong> — <code>orders.user_id</code> matches <code>users.id</code>. This relationship is the entire point of "relational" databases, and is what JOINs (concept 5) exploit.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Sketch the model</span></div>
+            <div class="practice-body">
+              <p class="practice-q">On paper, design tables for a small library system: <strong>books</strong> and <strong>members</strong> and <strong>loans</strong>. Decide which columns each needs and which column links loans back to books and members.</p>
+              <div class="practice-hints"><span class="hint-chip">primary key per table</span><span class="hint-chip">loans needs 2 foreign keys</span><span class="hint-chip">one row = one fact</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">CREATE TABLE</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Before you can store anything, you declare the table&apos;s <strong>shape</strong>: column names, data types, and constraints (rules the database enforces for you, always, on every write).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">CREATE TABLE</span> <span class="cl">users</span> (
+  <span class="cl">id</span>         <span class="kw">SERIAL</span> <span class="kw">PRIMARY KEY</span>,           <span class="cm">-- auto-incrementing integer</span>
+  <span class="cl">username</span>   <span class="kw">VARCHAR</span>(<span class="nm">50</span>) <span class="kw">NOT NULL UNIQUE</span>,  <span class="cm">-- required, no duplicates</span>
+  <span class="cl">email</span>      <span class="kw">VARCHAR</span>(<span class="nm">255</span>) <span class="kw">NOT NULL UNIQUE</span>,
+  <span class="cl">created_at</span> <span class="kw">TIMESTAMP NOT NULL DEFAULT</span> <span class="fn">NOW</span>()  <span class="cm">-- auto-filled if omitted</span>
+);
+
+<span class="kw">CREATE TABLE</span> <span class="cl">orders</span> (
+  <span class="cl">id</span>      <span class="kw">SERIAL PRIMARY KEY</span>,
+  <span class="cl">user_id</span> <span class="kw">INTEGER NOT NULL REFERENCES</span> <span class="cl">users</span>(<span class="cl">id</span>), <span class="cm">-- foreign key, see concept 4</span>
+  <span class="cl">total</span>   <span class="kw">NUMERIC</span>(<span class="nm">10</span>,<span class="nm">2</span>) <span class="kw">NOT NULL DEFAULT</span> <span class="nm">0.00</span>,
+  <span class="cl">status</span>  <span class="kw">VARCHAR</span>(<span class="nm">20</span>) <span class="kw">NOT NULL DEFAULT</span> <span class="st">'PENDING'</span>
+);
+
+<span class="cm">-- inserting a row that violates NOT NULL UNIQUE fails immediately —</span>
+<span class="cm">-- the database is enforcing the rule for you, every single time</span>
+<span class="kw">INSERT INTO</span> <span class="cl">users</span> (<span class="cl">username</span>, <span class="cl">email</span>) <span class="kw">VALUES</span> (<span class="st">'sandeep'</span>, <span class="st">'sandeep@email.com'</span>);
+<span class="kw">INSERT INTO</span> <span class="cl">users</span> (<span class="cl">username</span>, <span class="cl">email</span>) <span class="kw">VALUES</span> (<span class="st">'sandeep'</span>, <span class="st">'x@email.com'</span>);
+<span class="cm">-- ERROR: duplicate key value violates unique constraint "users_username_key"</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Constraints (<code>NOT NULL</code>, <code>UNIQUE</code>, <code>REFERENCES</code>) are not "nice to have" documentation — the database physically <strong>refuses</strong> any write that breaks them, even from buggy application code.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Build the library tables</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write the actual <code>CREATE TABLE</code> statements for the <strong>books</strong>, <strong>members</strong>, and <strong>loans</strong> tables you sketched in Q1. Give <code>loans</code> a <code>returned_at TIMESTAMP</code> column that allows <code>NULL</code> (not yet returned).</p>
+              <div class="practice-hints"><span class="hint-chip">SERIAL PRIMARY KEY</span><span class="hint-chip">NOT NULL where required</span><span class="hint-chip">nullable returned_at</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">INSERT, SELECT, WHERE, ORDER BY, LIMIT</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The four verbs you&apos;ll type 1000 times a day: write a row in, then read rows back out, filtered and sorted exactly how you want.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">CREATE TABLE</span> <span class="cl">products</span> (
+  <span class="cl">id</span>    <span class="kw">SERIAL PRIMARY KEY</span>,
+  <span class="cl">name</span>  <span class="kw">VARCHAR</span>(<span class="nm">100</span>) <span class="kw">NOT NULL</span>,
+  <span class="cl">price</span> <span class="kw">NUMERIC</span>(<span class="nm">10</span>,<span class="nm">2</span>) <span class="kw">NOT NULL</span>,
+  <span class="cl">stock</span> <span class="kw">INTEGER NOT NULL DEFAULT</span> <span class="nm">0</span>
+);
+
+<span class="kw">INSERT INTO</span> <span class="cl">products</span> (<span class="cl">name</span>, <span class="cl">price</span>, <span class="cl">stock</span>) <span class="kw">VALUES</span>
+  (<span class="st">'Keyboard'</span>, <span class="nm">49.99</span>, <span class="nm">120</span>),
+  (<span class="st">'Monitor'</span>,  <span class="nm">219.00</span>, <span class="nm">35</span>),
+  (<span class="st">'Mouse'</span>,    <span class="nm">19.99</span>, <span class="nm">300</span>),
+  (<span class="st">'Webcam'</span>,   <span class="nm">59.50</span>, <span class="nm">0</span>);
+
+<span class="cm">-- filter + sort + limit, all in one query</span>
+<span class="kw">SELECT</span> <span class="cl">name</span>, <span class="cl">price</span>, <span class="cl">stock</span>
+<span class="kw">FROM</span> <span class="cl">products</span>
+<span class="kw">WHERE</span> <span class="cl">stock</span> &gt; <span class="nm">0</span>
+<span class="kw">ORDER BY</span> <span class="cl">price</span> <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="nm">2</span>;</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">   name    | price  | stock
+----------+--------+-------
+ Monitor  | 219.00 |    35
+ Webcam   |  59.50 |     0   -- wait, stock=0 so this is EXCLUDED
+ Keyboard |  49.99 |   120</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>WHERE</code> filters rows <strong>before</strong> sorting/limiting. The Webcam (stock 0) never makes it into the result — <code>WHERE stock &gt; 0</code> excluded it before <code>ORDER BY</code> even ran.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Top 3 cheapest in stock</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Using the <code>products</code> table above, write a query for the <strong>3 cheapest products that still have stock</strong>, cheapest first.</p>
+              <div class="practice-hints"><span class="hint-chip">WHERE stock &gt; 0</span><span class="hint-chip">ORDER BY price ASC</span><span class="hint-chip">LIMIT 3</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Add <code>OFFSET 1</code> after the <code>LIMIT</code> — this is how you&apos;d build "page 2" of search results.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Foreign Keys &amp; Referential Integrity</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>foreign key</strong> says "this column must match a real row in another table." It stops orphaned data — an order pointing at a user that doesn&apos;t exist — before it can ever be written.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F517;</div><p><strong>Coat-check ticket:</strong> Your ticket number is meaningless unless a coat with that exact number is hanging on the rack. A foreign key is the database refusing to hand you a ticket for a coat that was never checked in.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">CREATE TABLE</span> <span class="cl">users</span> (
+  <span class="cl">id</span>       <span class="kw">SERIAL PRIMARY KEY</span>,
+  <span class="cl">username</span> <span class="kw">VARCHAR</span>(<span class="nm">50</span>) <span class="kw">NOT NULL</span>
+);
+
+<span class="kw">CREATE TABLE</span> <span class="cl">orders</span> (
+  <span class="cl">id</span>      <span class="kw">SERIAL PRIMARY KEY</span>,
+<span class="hl">  <span class="cl">user_id</span> <span class="kw">INTEGER NOT NULL REFERENCES</span> <span class="cl">users</span>(<span class="cl">id</span>) <span class="kw">ON DELETE CASCADE</span>,</span>
+  <span class="cl">total</span>   <span class="kw">NUMERIC</span>(<span class="nm">10</span>,<span class="nm">2</span>) <span class="kw">NOT NULL</span>
+);
+
+<span class="kw">INSERT INTO</span> <span class="cl">users</span> (<span class="cl">username</span>) <span class="kw">VALUES</span> (<span class="st">'sandeep'</span>); <span class="cm">-- id = 1</span>
+<span class="kw">INSERT INTO</span> <span class="cl">orders</span> (<span class="cl">user_id</span>, <span class="cl">total</span>) <span class="kw">VALUES</span> (<span class="nm">1</span>, <span class="nm">49.99</span>); <span class="cm">-- fine, user 1 exists</span>
+
+<span class="kw">INSERT INTO</span> <span class="cl">orders</span> (<span class="cl">user_id</span>, <span class="cl">total</span>) <span class="kw">VALUES</span> (<span class="nm">999</span>, <span class="nm">10.00</span>);
+<span class="cm">-- ERROR: insert or update on table "orders" violates foreign key constraint</span>
+<span class="cm">-- DETAIL: Key (user_id)=(999) is not present in table "users".</span>
+
+<span class="cm">-- ON DELETE CASCADE: deleting the user auto-deletes their orders too</span>
+<span class="kw">DELETE FROM</span> <span class="cl">users</span> <span class="kw">WHERE</span> <span class="cl">id</span> = <span class="nm">1</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">orders</span>; <span class="cm">-- empty — the order for user 1 is gone too</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>ON DELETE CASCADE</code> auto-deletes children. <code>ON DELETE RESTRICT</code> (often the default) instead <strong>blocks</strong> the delete while children exist — pick CASCADE only when "delete the parent, delete everything under it" is genuinely what you want.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Wire up the library FKs</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Add foreign keys to your <code>loans</code> table from Q2, referencing both <code>books</code> and <code>members</code>. Use <code>ON DELETE RESTRICT</code> for both — a book or member with active loans shouldn&apos;t be deletable.</p>
+              <div class="practice-hints"><span class="hint-chip">REFERENCES books(id)</span><span class="hint-chip">REFERENCES members(id)</span><span class="hint-chip">ON DELETE RESTRICT</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">INNER JOIN</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A JOIN stitches rows from two tables together where a key matches. <code>INNER JOIN</code> keeps only rows that have a match on <strong>both</strong> sides.</div>
+          <div class="venn-wrap">
+            <div class="venn-card">
+              <svg viewBox="0 0 260 150" width="220" height="127" role="img" aria-label="Venn diagram of users and orders with only the overlapping region shaded, representing INNER JOIN">
+                <circle cx="95" cy="75" r="62" fill="none" stroke="#60A5FA" stroke-width="1.5" opacity=".6"></circle>
+                <circle cx="165" cy="75" r="62" fill="none" stroke="#4ADE80" stroke-width="1.5" opacity=".6"></circle>
+                <defs><clipPath id="venn5clip"><circle cx="95" cy="75" r="62"></circle></clipPath></defs>
+                <circle cx="165" cy="75" r="62" fill="#3B82F6" clip-path="url(#venn5clip)"></circle>
+                <text x="58" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#7C8AA8">users</text>
+                <text x="203" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#7C8AA8">orders</text>
+              </svg>
+              <div class="venn-caption"><strong>INNER JOIN</strong> — only the overlap</div>
+            </div>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">CREATE TABLE</span> <span class="cl">users</span> (<span class="cl">id</span> <span class="kw">SERIAL PRIMARY KEY</span>, <span class="cl">username</span> <span class="kw">VARCHAR</span>(<span class="nm">50</span>));
+<span class="kw">CREATE TABLE</span> <span class="cl">orders</span> (
+  <span class="cl">id</span> <span class="kw">SERIAL PRIMARY KEY</span>, <span class="cl">user_id</span> <span class="kw">INTEGER REFERENCES</span> <span class="cl">users</span>(<span class="cl">id</span>), <span class="cl">total</span> <span class="kw">NUMERIC</span>(<span class="nm">10</span>,<span class="nm">2</span>)
+);
+
+<span class="kw">INSERT INTO</span> <span class="cl">users</span> (<span class="cl">username</span>) <span class="kw">VALUES</span> (<span class="st">'sandeep'</span>), (<span class="st">'priya'</span>), (<span class="st">'amir'</span>); <span class="cm">-- ids 1,2,3 — amir has NO orders</span>
+<span class="kw">INSERT INTO</span> <span class="cl">orders</span> (<span class="cl">user_id</span>, <span class="cl">total</span>) <span class="kw">VALUES</span> (<span class="nm">1</span>, <span class="nm">49.99</span>), (<span class="nm">1</span>, <span class="nm">12.50</span>), (<span class="nm">2</span>, <span class="nm">99.00</span>);
+
+<span class="kw">SELECT</span> <span class="cl">u</span>.<span class="cl">username</span>, <span class="cl">o</span>.<span class="cl">total</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="hl"><span class="kw">INNER JOIN</span> <span class="cl">orders</span> <span class="cl">o</span> <span class="kw">ON</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>;</span></code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output — amir is MISSING entirely</div>
+            <div class="output-box"><span class="ok"> username | total
+----------+-------
+ sandeep  | 49.99
+ sandeep  | 12.50
+ priya    | 99.00</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>INNER JOIN</code> = "give me rows that exist on BOTH sides." <strong>amir</strong> has zero orders, so he produces zero output rows — not a row with NULLs, no row at all. For that you need <code>LEFT JOIN</code> (concept 6).</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Member borrowing history</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a query joining <code>members</code>, <code>loans</code>, and <code>books</code> to list every member&apos;s name next to the title of every book they&apos;ve borrowed.</p>
+              <div class="practice-hints"><span class="hint-chip">two INNER JOINs chained</span><span class="hint-chip">members.id = loans.member_id</span><span class="hint-chip">loans.book_id = books.id</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">LEFT JOIN / RIGHT JOIN</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>LEFT JOIN</code> keeps <strong>every</strong> row from the left table, even with no match on the right — filling the right side&apos;s columns with <code>NULL</code> when there&apos;s nothing to join.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F465;</div><p><strong>Attendance sheet:</strong> Every registered student appears on the sheet (left table) whether or not they showed up to class (right table). A no-show isn&apos;t omitted — they&apos;re listed with a blank attendance column.</p></div>
+          <div class="venn-wrap">
+            <div class="venn-card">
+              <svg viewBox="0 0 260 150" width="200" height="115" role="img" aria-label="Venn diagram with the entire users circle shaded, including the overlap, representing LEFT JOIN">
+                <circle cx="95" cy="75" r="62" fill="#3B82F6"></circle>
+                <circle cx="165" cy="75" r="62" fill="none" stroke="#4ADE80" stroke-width="1.5" opacity=".6"></circle>
+                <text x="58" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#E6EBF5">users</text>
+                <text x="203" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#7C8AA8">orders</text>
+              </svg>
+              <div class="venn-caption"><strong>LEFT JOIN</strong> — all of users</div>
+            </div>
+            <div class="venn-card">
+              <svg viewBox="0 0 260 150" width="200" height="115" role="img" aria-label="Venn diagram with the entire orders circle shaded, including the overlap, representing RIGHT JOIN">
+                <circle cx="95" cy="75" r="62" fill="none" stroke="#60A5FA" stroke-width="1.5" opacity=".6"></circle>
+                <circle cx="165" cy="75" r="62" fill="#4ADE80"></circle>
+                <text x="58" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#7C8AA8">users</text>
+                <text x="203" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#0E1420">orders</text>
+              </svg>
+              <div class="venn-caption"><strong>RIGHT JOIN</strong> — all of orders</div>
+            </div>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- same users/orders tables as concept 5 — amir (id 3) still has zero orders</span>
+
+<span class="kw">SELECT</span> <span class="cl">u</span>.<span class="cl">username</span>, <span class="cl">o</span>.<span class="cl">total</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="hl"><span class="kw">LEFT JOIN</span> <span class="cl">orders</span> <span class="cl">o</span> <span class="kw">ON</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>;</span>
+
+<span class="cm">-- "find users with NO orders" — the classic LEFT JOIN use case</span>
+<span class="kw">SELECT</span> <span class="cl">u</span>.<span class="cl">username</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="kw">LEFT JOIN</span> <span class="cl">orders</span> <span class="cl">o</span> <span class="kw">ON</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>
+<span class="hl"><span class="kw">WHERE</span> <span class="cl">o</span>.<span class="cl">id</span> <span class="kw">IS NULL</span>;</span></code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">First query output — amir now appears, with NULLs</div>
+            <div class="output-box"><span class="ok"> username | total
+----------+-------
+ sandeep  | 49.99
+ sandeep  | 12.50
+ priya    | 99.00
+ amir     | NULL</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>WHERE o.id IS NULL</code> after a <code>LEFT JOIN</code> is the standard trick for "find left-side rows with no match" — exactly the opposite of what <code>INNER JOIN</code> gives you. <code>RIGHT JOIN</code> is identical but flips which side is kept in full.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Books never borrowed</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a query that lists every book in your <code>books</code> table that has <strong>never</strong> appeared in <code>loans</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">LEFT JOIN books to loans</span><span class="hint-chip">WHERE loans.id IS NULL</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Rewrite it using <code>NOT EXISTS</code> instead of <code>LEFT JOIN ... IS NULL</code> — both are standard, and interviewers like seeing you know both.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">FULL OUTER, CROSS, and Self Joins</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Three less-common joins worth knowing cold: <code>FULL OUTER JOIN</code> keeps unmatched rows from <strong>both</strong> sides, <code>CROSS JOIN</code> pairs every row with every row, and a <strong>self join</strong> joins a table to itself.</div>
+          <div class="venn-wrap">
+            <div class="venn-card">
+              <svg viewBox="0 0 260 150" width="220" height="127" role="img" aria-label="Venn diagram with both the users and orders circles fully shaded, representing FULL OUTER JOIN">
+                <circle cx="95" cy="75" r="62" fill="#3B82F6" opacity=".85"></circle>
+                <circle cx="165" cy="75" r="62" fill="#4ADE80" opacity=".85"></circle>
+                <text x="58" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#0E1420">users</text>
+                <text x="203" y="79" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#0E1420">orders</text>
+              </svg>
+              <div class="venn-caption"><strong>FULL OUTER JOIN</strong> — everything, both sides</div>
+            </div>
+          </div>
+          <div class="analogy"><div class="analogy-icon">&#x1F500;</div><p><code>CROSS JOIN</code> and a self join aren&apos;t about matching at all, so there&apos;s no Venn diagram for them — <code>CROSS JOIN</code> is every row of A paired with every row of B (a Cartesian product, no overlap concept), and a self join is just an ordinary join where circle A and circle B happen to be the <strong>same</strong> table.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- FULL OUTER JOIN: every user (even with no orders) AND every order</span>
+<span class="cm">-- (even one with a bad/missing user_id) all appear, NULLs where unmatched</span>
+<span class="kw">SELECT</span> <span class="cl">u</span>.<span class="cl">username</span>, <span class="cl">o</span>.<span class="cl">total</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="kw">FULL OUTER JOIN</span> <span class="cl">orders</span> <span class="cl">o</span> <span class="kw">ON</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>;
+
+<span class="cm">-- CROSS JOIN: every size paired with every color — 3 x 2 = 6 combinations</span>
+<span class="kw">SELECT</span> <span class="cl">s</span>.<span class="cl">size</span>, <span class="cl">c</span>.<span class="cl">color</span>
+<span class="kw">FROM</span> (<span class="kw">VALUES</span> (<span class="st">'S'</span>),(<span class="st">'M'</span>),(<span class="st">'L'</span>)) <span class="cl">s</span>(<span class="cl">size</span>)
+<span class="kw">CROSS JOIN</span> (<span class="kw">VALUES</span> (<span class="st">'Red'</span>),(<span class="st">'Blue'</span>)) <span class="cl">c</span>(<span class="cl">color</span>);
+
+<span class="cm">-- SELF JOIN: employees table referencing its own manager_id</span>
+<span class="kw">CREATE TABLE</span> <span class="cl">employees</span> (
+  <span class="cl">id</span>         <span class="kw">SERIAL PRIMARY KEY</span>,
+  <span class="cl">name</span>       <span class="kw">VARCHAR</span>(<span class="nm">50</span>),
+  <span class="cl">manager_id</span> <span class="kw">INTEGER REFERENCES</span> <span class="cl">employees</span>(<span class="cl">id</span>) <span class="cm">-- points back at THIS table</span>
+);
+<span class="kw">INSERT INTO</span> <span class="cl">employees</span> (<span class="cl">name</span>, <span class="cl">manager_id</span>) <span class="kw">VALUES</span>
+  (<span class="st">'Aisha'</span>, <span class="kw">NULL</span>),     <span class="cm">-- id 1, the CEO, no manager</span>
+  (<span class="st">'Bilal'</span>, <span class="nm">1</span>),       <span class="cm">-- id 2, reports to Aisha</span>
+  (<span class="st">'Chen'</span>,  <span class="nm">1</span>);       <span class="cm">-- id 3, reports to Aisha</span>
+
+<span class="hl"><span class="kw">SELECT</span> <span class="cl">e</span>.<span class="cl">name</span> <span class="kw">AS</span> employee, <span class="cl">m</span>.<span class="cl">name</span> <span class="kw">AS</span> manager</span>
+<span class="kw">FROM</span> <span class="cl">employees</span> <span class="cl">e</span>
+<span class="kw">LEFT JOIN</span> <span class="cl">employees</span> <span class="cl">m</span> <span class="kw">ON</span> <span class="cl">e</span>.<span class="cl">manager_id</span> = <span class="cl">m</span>.<span class="cl">id</span>;</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Self join output</div>
+            <div class="output-box"><span class="ok"> employee | manager
+----------+---------
+ Aisha    | NULL
+ Bilal    | Aisha
+ Chen     | Aisha</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A self join is just a normal join where both "tables" happen to be the same table given two different aliases (<code>e</code> and <code>m</code>) — that&apos;s the whole trick.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Org chart depth 2</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Using the <code>employees</code> table above, write a self join that lists every employee alongside their <strong>manager's manager</strong> (skip-level).</p>
+              <div class="practice-hints"><span class="hint-chip">join employees to itself TWICE</span><span class="hint-chip">e -&gt; m -&gt; gm aliases</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">GROUP BY &amp; Aggregates</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>GROUP BY</code> collapses many rows into one row per group, so you can run <code>COUNT/SUM/AVG/MAX/MIN</code> per group. <code>HAVING</code> filters <strong>groups</strong> after aggregation — <code>WHERE</code> filters <strong>rows</strong> before it.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- orders(id, user_id, total) — same data as concept 5</span>
+<span class="kw">SELECT</span> <span class="cl">user_id</span>,
+       <span class="fn">COUNT</span>(*)       <span class="kw">AS</span> order_count,
+       <span class="fn">SUM</span>(<span class="cl">total</span>)    <span class="kw">AS</span> total_spent,
+       <span class="fn">AVG</span>(<span class="cl">total</span>)    <span class="kw">AS</span> avg_order
+<span class="kw">FROM</span> <span class="cl">orders</span>
+<span class="hl"><span class="kw">GROUP BY</span> <span class="cl">user_id</span></span>
+<span class="hl"><span class="kw">HAVING</span> <span class="fn">SUM</span>(<span class="cl">total</span>) &gt; <span class="nm">50</span>          <span class="cm">-- only groups whose TOTAL exceeds 50</span></span>
+<span class="kw">ORDER BY</span> total_spent <span class="kw">DESC</span>;
+
+<span class="cm">-- the classic interview trap — this is INVALID SQL and will not run:</span>
+<span class="cm">-- SELECT user_id, SUM(total) FROM orders WHERE SUM(total) > 50 GROUP BY user_id;</span>
+<span class="cm">-- ERROR: aggregate functions are not allowed in WHERE</span>
+<span class="cm">-- WHERE runs BEFORE grouping happens, so SUM() doesn't exist yet — use HAVING</span></code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output (user 1 = sandeep: orders 49.99 + 12.50 = 62.49)</div>
+            <div class="output-box"><span class="ok"> user_id | order_count | total_spent | avg_order
+---------+-------------+-------------+-----------
+       1 |           2 |       62.49 |     31.25</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Order of operations: <code>FROM</code> &#x2192; <code>WHERE</code> &#x2192; <code>GROUP BY</code> &#x2192; <code>HAVING</code> &#x2192; <code>SELECT</code> &#x2192; <code>ORDER BY</code> &#x2192; <code>LIMIT</code>. <code>WHERE</code> can&apos;t see aggregates because they don&apos;t exist yet at that stage — that&apos;s exactly why <code>HAVING</code> exists.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Members who&apos;ve borrowed 3+ books</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Using <code>loans</code>, write a query that returns every <code>member_id</code> with a <code>COUNT(*) &gt;= 3</code>, ordered by count descending.</p>
+              <div class="practice-hints"><span class="hint-chip">GROUP BY member_id</span><span class="hint-chip">HAVING COUNT(*) &gt;= 3</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Subqueries</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A query nested inside another query. Can sit in <code>WHERE</code> (filter by a computed value), in <code>SELECT</code> (a scalar per-row value), or be <strong>correlated</strong> — re-run once per outer row, referencing the outer row&apos;s columns.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- 1. Subquery in WHERE — users who spent above the overall average order</span>
+<span class="kw">SELECT</span> <span class="kw">DISTINCT</span> <span class="cl">u</span>.<span class="cl">username</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="kw">JOIN</span> <span class="cl">orders</span> <span class="cl">o</span> <span class="kw">ON</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>
+<span class="hl"><span class="kw">WHERE</span> <span class="cl">o</span>.<span class="cl">total</span> &gt; (<span class="kw">SELECT</span> <span class="fn">AVG</span>(<span class="cl">total</span>) <span class="kw">FROM</span> <span class="cl">orders</span>);</span>
+
+<span class="cm">-- 2. Scalar subquery in SELECT — each user's order count, inline</span>
+<span class="kw">SELECT</span> <span class="cl">u</span>.<span class="cl">username</span>,
+<span class="hl">       (<span class="kw">SELECT</span> <span class="fn">COUNT</span>(*) <span class="kw">FROM</span> <span class="cl">orders</span> <span class="cl">o</span> <span class="kw">WHERE</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>) <span class="kw">AS</span> order_count</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>;
+
+<span class="cm">-- 3. CORRELATED subquery — re-evaluated per outer row (slow if unindexed!)</span>
+<span class="cm">-- "users whose most recent order was over $50"</span>
+<span class="kw">SELECT</span> <span class="cl">u</span>.<span class="cl">username</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="kw">WHERE</span> <span class="nm">50</span> &lt; (
+  <span class="kw">SELECT</span> <span class="cl">o</span>.<span class="cl">total</span> <span class="kw">FROM</span> <span class="cl">orders</span> <span class="cl">o</span>
+  <span class="kw">WHERE</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>   <span class="cm">-- references the OUTER row "u"</span>
+  <span class="kw">ORDER BY</span> <span class="cl">o</span>.<span class="cl">id</span> <span class="kw">DESC LIMIT</span> <span class="nm">1</span>
+);</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Most subqueries CAN be rewritten as a JOIN, and a JOIN is often faster because the optimizer plans it as one pass — but a correlated subquery is sometimes clearer to read, and the optimizer is usually smart enough to flatten simple ones anyway.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Most-borrowed book</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a query using a subquery in <code>WHERE</code> to find the book(s) in <code>loans</code> with the highest borrow count (hint: compare against a subquery computing the max count per book).</p>
+              <div class="practice-hints"><span class="hint-chip">subquery: MAX(GROUP BY counts)</span><span class="hint-chip">compare in outer WHERE</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Common Table Expressions (WITH)</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <code>WITH</code> clause names a subquery so you can reference it like a temporary table — turning deeply nested subqueries into a readable, top-to-bottom sequence of steps. <code>WITH RECURSIVE</code> lets a CTE reference <strong>itself</strong>, perfect for tree traversal.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- plain CTE — readable alternative to nesting concept 9's avg subquery</span>
+<span class="hl"><span class="kw">WITH</span> <span class="cl">order_stats</span> <span class="kw">AS</span> (</span>
+  <span class="kw">SELECT</span> <span class="cl">user_id</span>, <span class="fn">SUM</span>(<span class="cl">total</span>) <span class="kw">AS</span> total_spent
+  <span class="kw">FROM</span> <span class="cl">orders</span>
+  <span class="kw">GROUP BY</span> <span class="cl">user_id</span>
+)
+<span class="kw">SELECT</span> <span class="cl">u</span>.<span class="cl">username</span>, <span class="cl">os</span>.<span class="cl">total_spent</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="kw">JOIN</span> <span class="cl">order_stats</span> <span class="cl">os</span> <span class="kw">ON</span> <span class="cl">os</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>
+<span class="kw">WHERE</span> <span class="cl">os</span>.<span class="cl">total_spent</span> &gt; <span class="nm">50</span>;
+
+<span class="cm">-- RECURSIVE CTE — walk the whole org chart from employees (concept 7)</span>
+<span class="hl"><span class="kw">WITH RECURSIVE</span> <span class="cl">org_chart</span> <span class="kw">AS</span> (</span>
+  <span class="cm">-- base case: the CEO (no manager)</span>
+  <span class="kw">SELECT</span> <span class="cl">id</span>, <span class="cl">name</span>, <span class="cl">manager_id</span>, <span class="nm">0</span> <span class="kw">AS</span> depth
+  <span class="kw">FROM</span> <span class="cl">employees</span>
+  <span class="kw">WHERE</span> <span class="cl">manager_id</span> <span class="kw">IS NULL</span>
+
+  <span class="kw">UNION ALL</span>
+
+  <span class="cm">-- recursive case: join the NEXT level down using the CTE itself</span>
+  <span class="kw">SELECT</span> <span class="cl">e</span>.<span class="cl">id</span>, <span class="cl">e</span>.<span class="cl">name</span>, <span class="cl">e</span>.<span class="cl">manager_id</span>, <span class="cl">oc</span>.<span class="cl">depth</span> + <span class="nm">1</span>
+  <span class="kw">FROM</span> <span class="cl">employees</span> <span class="cl">e</span>
+  <span class="kw">JOIN</span> <span class="cl">org_chart</span> <span class="cl">oc</span> <span class="kw">ON</span> <span class="cl">e</span>.<span class="cl">manager_id</span> = <span class="cl">oc</span>.<span class="cl">id</span>
+)
+<span class="kw">SELECT</span> <span class="cl">name</span>, depth <span class="kw">FROM</span> <span class="cl">org_chart</span> <span class="kw">ORDER BY</span> depth;</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Recursive CTE output</div>
+            <div class="output-box"><span class="ok"> name  | depth
+-------+-------
+ Aisha |     0
+ Bilal |     1
+ Chen  |     1</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A recursive CTE has exactly two halves joined by <code>UNION ALL</code>: a <strong>base case</strong> (where to start) and a <strong>recursive case</strong> (how to step to the next level), referencing the CTE&apos;s own name. It stops automatically once a step produces zero new rows.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Category tree</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a <code>categories(id, name, parent_id)</code> table (e.g. Electronics &#x2192; Laptops &#x2192; Gaming Laptops), write a recursive CTE that lists every category with its full depth from the root.</p>
+              <div class="practice-hints"><span class="hint-chip">base: parent_id IS NULL</span><span class="hint-chip">recursive: join on parent_id</span><span class="hint-chip">UNION ALL</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="concept" data-id="11">
+    <div class="concept-node">11</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Indexes</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">An index is a separate, sorted data structure (a <strong>B-tree</strong> by default) that lets the database jump straight to matching rows instead of scanning the whole table. The cost: every <code>INSERT</code>/<code>UPDATE</code> must also update the index.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4D6;</div><p><strong>Book index:</strong> Finding "foreign keys" via the index at the back takes seconds. Reading every page until you stumble on it (a sequential scan) takes forever. The index itself costs a few extra pages — and updating it every time the book changes.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- single-column index — speeds up lookups/joins/sorts on this column</span>
+<span class="kw">CREATE INDEX</span> <span class="cl">idx_orders_user_id</span> <span class="kw">ON</span> <span class="cl">orders</span> (<span class="cl">user_id</span>);
+
+<span class="cm">-- composite index — column ORDER matters!</span>
+<span class="cm">-- this index helps "WHERE user_id = ? AND status = ?"</span>
+<span class="cm">-- and "WHERE user_id = ?" alone (leftmost prefix)</span>
+<span class="cm">-- but does NOT help "WHERE status = ?" alone</span>
+<span class="hl"><span class="kw">CREATE INDEX</span> <span class="cl">idx_orders_user_status</span> <span class="kw">ON</span> <span class="cl">orders</span> (<span class="cl">user_id</span>, <span class="cl">status</span>);</span>
+
+<span class="cm">-- UNIQUE index — enforces uniqueness AND speeds up lookups</span>
+<span class="kw">CREATE UNIQUE INDEX</span> <span class="cl">idx_users_email</span> <span class="kw">ON</span> <span class="cl">users</span> (<span class="cl">email</span>);
+
+<span class="cm">-- removing an index — every write to this table just got slightly cheaper,</span>
+<span class="cm">-- and every read filtering on user_id just got slightly more expensive</span>
+<span class="kw">DROP INDEX</span> <span class="cl">idx_orders_user_id</span>;</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Index the columns you actually filter/join/sort by — not every column. Each extra index makes every <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code> on that table slightly slower, since the index has to be kept in sync too.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q11 — Index the hot paths</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Your app constantly runs <code>WHERE member_id = ? AND returned_at IS NULL</code> on <code>loans</code> (checking a member&apos;s currently-borrowed books). Write the <code>CREATE INDEX</code> statement that best serves this exact query.</p>
+              <div class="practice-hints"><span class="hint-chip">composite index</span><span class="hint-chip">member_id first (equality)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="concept" data-id="12">
+    <div class="concept-node">12</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">EXPLAIN / EXPLAIN ANALYZE</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>EXPLAIN</code> shows the query <strong>plan</strong> the optimizer chose, without running it. <code>EXPLAIN ANALYZE</code> actually runs the query and reports real timings — this is how you confirm an index is actually being used.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="hl"><span class="kw">EXPLAIN ANALYZE</span></span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">orders</span> <span class="kw">WHERE</span> <span class="cl">user_id</span> = <span class="nm">42</span>;
+
+<span class="cm">-- WITHOUT an index on user_id:</span>
+<span class="cm">-- Seq Scan on orders  (cost=0.00..2334.00 rows=12 width=24)</span>
+<span class="cm">--                     (actual time=8.220..8.225 rows=12 loops=1)</span>
+<span class="cm">--   Filter: (user_id = 42)</span>
+<span class="cm">--   Rows Removed by Filter: 99988      &lt;-- scanned EVERY row, kept 12</span>
+<span class="cm">-- Planning Time: 0.082 ms</span>
+<span class="cm">-- Execution Time: 8.241 ms</span>
+
+<span class="kw">CREATE INDEX</span> <span class="cl">idx_orders_user_id</span> <span class="kw">ON</span> <span class="cl">orders</span> (<span class="cl">user_id</span>);
+
+<span class="cm">-- run the SAME query again — WITH the index:</span>
+<span class="cm">-- Index Scan using idx_orders_user_id on orders  (cost=0.29..8.31 rows=12)</span>
+<span class="cm">--                     (actual time=0.015..0.018 rows=12 loops=1)</span>
+<span class="cm">--   Index Cond: (user_id = 42)         &lt;-- jumped straight to the rows</span>
+<span class="cm">-- Planning Time: 0.110 ms</span>
+<span class="cm">-- Execution Time: 0.034 ms          &lt;-- ~240x faster on this dataset</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><strong>Seq Scan</strong> = read every row, filter in memory. <strong>Index Scan</strong> = jump straight to matches via the B-tree. If a query feels slow, <code>EXPLAIN ANALYZE</code> it first — never guess at the fix.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q12 — Diagnose a slow query</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Run <code>EXPLAIN ANALYZE</code> on a query filtering <code>loans</code> by <code>member_id</code> before and after adding an index on that column. Compare the "Execution Time" lines and note whether the plan switched from Seq Scan to Index Scan.</p>
+              <div class="practice-hints"><span class="hint-chip">EXPLAIN ANALYZE</span><span class="hint-chip">compare before/after CREATE INDEX</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="concept" data-id="13">
+    <div class="concept-node">13</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Transactions &amp; ACID</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A transaction groups multiple statements so they all succeed together (<code>COMMIT</code>) or all fail together (<code>ROLLBACK</code>) — never half-applied. <strong>Isolation level</strong> controls what one transaction is allowed to see of another transaction's in-flight changes.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- transfer $50 from account 1 to account 2 — must be all-or-nothing</span>
+<span class="hl"><span class="kw">BEGIN</span>;</span>
+
+<span class="kw">UPDATE</span> <span class="cl">accounts</span> <span class="kw">SET</span> <span class="cl">balance</span> = <span class="cl">balance</span> - <span class="nm">50</span> <span class="kw">WHERE</span> <span class="cl">id</span> = <span class="nm">1</span>;
+<span class="kw">UPDATE</span> <span class="cl">accounts</span> <span class="kw">SET</span> <span class="cl">balance</span> = <span class="cl">balance</span> + <span class="nm">50</span> <span class="kw">WHERE</span> <span class="cl">id</span> = <span class="nm">2</span>;
+
+<span class="cm">-- if account 1's balance would go negative, abort BEFORE committing:</span>
+<span class="cm">-- SELECT balance FROM accounts WHERE id = 1;  -- check it's >= 0</span>
+<span class="cm">-- if bad: ROLLBACK;   -- undoes BOTH updates, as if neither ran</span>
+
+<span class="hl"><span class="kw">COMMIT</span>;</span> <span class="cm">-- both updates become permanent together, atomically</span></code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Isolation levels — what each PREVENTS</div>
+            <div class="output-box"><span class="ok">Level             | Dirty Read | Non-Repeatable Read | Phantom Read
+------------------+------------+---------------------+--------------
+READ UNCOMMITTED  | possible   | possible            | possible
+READ COMMITTED    | prevented  | possible            | possible    (Postgres default)
+REPEATABLE READ   | prevented  | prevented           | possible*
+SERIALIZABLE      | prevented  | prevented           | prevented
+
+* Postgres's REPEATABLE READ actually also prevents phantoms via snapshot isolation</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><strong>ACID</strong> = Atomicity (all-or-nothing), Consistency (constraints always hold), Isolation (concurrent transactions don&apos;t corrupt each other), Durability (once committed, survives a crash). For a money transfer, use at least <code>REPEATABLE READ</code> — losing money to a race condition is not an acceptable tradeoff for speed.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q13 — Borrow a book, transactionally</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a transaction that inserts a new row into <code>loans</code> AND decrements an <code>available_copies</code> column on <code>books</code> — wrapped so a crash between the two statements can never leave one without the other.</p>
+              <div class="practice-hints"><span class="hint-chip">BEGIN ... COMMIT</span><span class="hint-chip">check available_copies &gt; 0 first</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Two members try to borrow the last copy at the exact same moment. Explain how <code>SELECT ... FOR UPDATE</code> (row locking) prevents both transactions from succeeding.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="concept" data-id="14">
+    <div class="concept-node">14</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Normalization (1NF / 2NF / 3NF)</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Normalization removes <strong>redundant</strong> data by splitting one messy table into several clean, linked ones — so updating a fact in one place doesn&apos;t require hunting down every duplicate copy of it.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- ❌ BEFORE — one denormalized table, customer info repeated per order</span>
+<span class="kw">CREATE TABLE</span> <span class="cl">orders_denormalized</span> (
+  <span class="cl">order_id</span>       <span class="kw">SERIAL PRIMARY KEY</span>,
+  <span class="cl">customer_name</span>  <span class="kw">VARCHAR</span>(<span class="nm">100</span>),   <span class="cm">-- repeated on EVERY order by this customer</span>
+  <span class="cl">customer_email</span> <span class="kw">VARCHAR</span>(<span class="nm">255</span>),  <span class="cm">-- if it changes, must UPDATE every single row</span>
+  <span class="cl">product_name</span>   <span class="kw">VARCHAR</span>(<span class="nm">100</span>),
+  <span class="cl">product_price</span>  <span class="kw">NUMERIC</span>(<span class="nm">10</span>,<span class="nm">2</span>)   <span class="cm">-- stale if the real price changes later</span>
+);
+
+<span class="cm">-- ✅ AFTER — normalized into 3 tables, each fact lives in exactly ONE place</span>
+<span class="kw">CREATE TABLE</span> <span class="cl">customers</span> (<span class="cl">id</span> <span class="kw">SERIAL PRIMARY KEY</span>, <span class="cl">name</span> <span class="kw">VARCHAR</span>(<span class="nm">100</span>), <span class="cl">email</span> <span class="kw">VARCHAR</span>(<span class="nm">255</span>));
+<span class="kw">CREATE TABLE</span> <span class="cl">products</span>  (<span class="cl">id</span> <span class="kw">SERIAL PRIMARY KEY</span>, <span class="cl">name</span> <span class="kw">VARCHAR</span>(<span class="nm">100</span>), <span class="cl">price</span> <span class="kw">NUMERIC</span>(<span class="nm">10</span>,<span class="nm">2</span>));
+<span class="kw">CREATE TABLE</span> <span class="cl">orders</span> (
+  <span class="cl">id</span>          <span class="kw">SERIAL PRIMARY KEY</span>,
+  <span class="cl">customer_id</span> <span class="kw">INTEGER REFERENCES</span> <span class="cl">customers</span>(<span class="cl">id</span>),
+  <span class="cl">product_id</span>  <span class="kw">INTEGER REFERENCES</span> <span class="cl">products</span>(<span class="cl">id</span>),
+  <span class="cl">price_paid</span>  <span class="kw">NUMERIC</span>(<span class="nm">10</span>,<span class="nm">2</span>) <span class="cm">-- snapshot of price AT TIME of order, intentionally kept</span>
+);</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>1NF = no repeating groups in a cell (atomic values). 2NF = every column depends on the <strong>whole</strong> primary key, not part of it. 3NF = no column depends on another <strong>non-key</strong> column. In practice: "one fact, one place" — that&apos;s the whole spirit of all three.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q14 — Normalize this</span></div>
+            <div class="practice-body">
+              <p class="practice-q">You&apos;re given one table: <code>bookings(id, guest_name, guest_phone, hotel_name, hotel_city, room_number, nights)</code>. Redesign it into 3NF — identify which columns repeat together and split them into separate tables.</p>
+              <div class="practice-hints"><span class="hint-chip">guests table</span><span class="hint-chip">hotels table</span><span class="hint-chip">bookings keeps only FKs + nights</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15 -->
+  <div class="concept" data-id="15">
+    <div class="concept-node">15</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">The N+1 Query Problem</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">An ORM (Hibernate, JPA) silently runs <strong>1 query to fetch a list, then 1 more query PER ROW</strong> to fetch each row&apos;s related data. 100 users = 101 round trips to the database, when 1 JOIN would have done it.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">-- ❌ What a lazy-loading ORM actually sends for "list users with their orders":</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">users</span>;                          <span class="cm">-- query #1 — gets 100 users</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">orders</span> <span class="kw">WHERE</span> <span class="cl">user_id</span> = <span class="nm">1</span>;    <span class="cm">-- query #2  &#x2190; one per user!</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">orders</span> <span class="kw">WHERE</span> <span class="cl">user_id</span> = <span class="nm">2</span>;    <span class="cm">-- query #3</span>
+<span class="cm">-- ... 97 more identical-shaped queries ...</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="cl">orders</span> <span class="kw">WHERE</span> <span class="cl">user_id</span> = <span class="nm">100</span>;  <span class="cm">-- query #101 — 101 total round trips!</span>
+
+<span class="cm">-- ✅ FIX — one JOIN instead of 101 round trips</span>
+<span class="hl"><span class="kw">SELECT</span> <span class="cl">u</span>.*, <span class="cl">o</span>.*</span>
+<span class="kw">FROM</span> <span class="cl">users</span> <span class="cl">u</span>
+<span class="kw">LEFT JOIN</span> <span class="cl">orders</span> <span class="cl">o</span> <span class="kw">ON</span> <span class="cl">o</span>.<span class="cl">user_id</span> = <span class="cl">u</span>.<span class="cl">id</span>;
+<span class="cm">-- ONE query, ONE round trip — the app groups rows by user in memory</span>
+
+<span class="cm">-- In JPA/Hibernate, this is the actual fix:</span>
+<span class="cm">-- @Query("SELECT u FROM User u LEFT JOIN FETCH u.orders")  -- JOIN FETCH</span>
+<span class="cm">-- forces eager loading of the association IN the same query</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>N+1 is invisible in dev with 5 test rows and brutal in production with 10,000. Always check the actual SQL your ORM generates (enable query logging) — don&apos;t assume lazy loading is free.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q15 — Spot the N+1</span></div>
+            <div class="practice-body">
+              <p class="practice-q">A Spring Boot endpoint loops over <code>List&lt;Member&gt;</code> and calls <code>member.getLoans().size()</code> inside the loop, where <code>loans</code> is a lazy <code>@OneToMany</code>. Explain exactly how many queries run for 50 members, and rewrite the repository method to fix it.</p>
+              <div class="practice-hints"><span class="hint-chip">1 + 50 queries</span><span class="hint-chip">JOIN FETCH in the repository query</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16 -->
+  <div class="concept" data-id="16">
+    <div class="concept-node">16</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Four questions that come up constantly in senior backend interviews, with the one-line answer interviewers are actually listening for.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">PostgreSQL</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "What's the difference between WHERE and HAVING?"</span>
+<span class="cm">// A: WHERE filters individual ROWS before grouping happens. HAVING filters</span>
+<span class="cm">//    GROUPS after aggregation — it's the only place you can reference</span>
+<span class="cm">//    SUM()/COUNT()/AVG() in a filter condition (concept 8).</span>
+
+<span class="cm">// Q: "Difference between a clustered and non-clustered index?"</span>
+<span class="cm">// A: A clustered index determines the PHYSICAL order rows are stored on</span>
+<span class="cm">//    disk — a table can have at most one (it usually IS the primary key).</span>
+<span class="cm">//    A non-clustered index is a separate structure that points BACK at the</span>
+<span class="cm">//    table's rows — you can have many of these (concept 11).</span>
+
+<span class="cm">// Q: "How would you find duplicate rows in a table?"</span>
+<span class="kw">SELECT</span> <span class="cl">email</span>, <span class="fn">COUNT</span>(*)
+<span class="kw">FROM</span> <span class="cl">users</span>
+<span class="kw">GROUP BY</span> <span class="cl">email</span>
+<span class="kw">HAVING</span> <span class="fn">COUNT</span>(*) &gt; <span class="nm">1</span>;  <span class="cm">-- any email appearing more than once</span>
+
+<span class="cm">// Q: "Explain isolation levels — which would you pick for a bank transfer?"</span>
+<span class="cm">// A: At least REPEATABLE READ, often paired with SELECT ... FOR UPDATE to</span>
+<span class="cm">//    lock the specific account rows — losing money to a race condition is</span>
+<span class="cm">//    never an acceptable tradeoff for the small extra latency (concept 13).</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Senior interviews rarely test SQL syntax recall — they test whether you can explain <strong>why</strong> the database behaves a certain way (ordering of clauses, what an index physically is, what a transaction guarantees) and connect it to a real production tradeoff.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q16 — Final boss: design + defend</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Design the full schema for a library system (books, members, loans) from scratch: tables, keys, indexes, and the exact transaction you&apos;d use for "borrow a book." Be ready to defend every index choice and isolation level out loud.</p>
+              <div class="practice-hints"><span class="hint-chip">tables + FKs</span><span class="hint-chip">indexes on hot WHERE columns</span><span class="hint-chip">BEGIN/COMMIT + FOR UPDATE</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Actually run every query in this tutorial against a real Postgres instance (<code>docker run -p 5432:5432 -e POSTGRES_PASSWORD=pw postgres</code>) and check the <code>EXPLAIN ANALYZE</code> output for yourself.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; You did it!</h2>
+    <p>From zero SQL to interview-ready — joins, indexes, transactions, and the gotchas senior interviewers actually probe for.</p>
+    <div class="concept-grid" id="completionGrid"></div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+var TOTAL = 16;
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / TOTAL) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / ' + TOTAL;
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  var grid = document.getElementById('completionGrid');
+  document.querySelectorAll('.card-title').forEach(function(t, i) {
+    var item = document.createElement('div');
+    item.className = 'grid-item';
+    var num = document.createElement('span');
+    num.className = 'grid-num';
+    num.textContent = String(i + 1).padStart(2, '0');
+    item.appendChild(num);
+    item.appendChild(document.createTextNode(t.textContent));
+    grid.appendChild(item);
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@Async — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0C0913; --surface:#161022; --surface2:#1E162E; --border:#31234A; --border2:#402F60;
+  --accent:#8B5CF6; --accent2:#A78BFA; --accent3:#C4B5FD; --glow:rgba(139,92,246,0.18);
+  --text:#EDE9F8; --muted:#9384AC; --muted2:#635279;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(139,92,246,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(167,139,250,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(139,92,246,.1);
+  border:1px solid rgba(139,92,246,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#F5F3FF 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(12,9,19,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(139,92,246,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(139,92,246,.12),0 0 16px rgba(139,92,246,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(139,92,246,.35); box-shadow:0 0 0 1px rgba(139,92,246,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(139,92,246,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#0A0810; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(139,92,246,.1); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(139,92,246,.06); border:1px solid rgba(139,92,246,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#060309; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(139,92,246,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(139,92,246,.2); border:1px solid rgba(139,92,246,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(139,92,246,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(139,92,246,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Spring @Async — Visual Guide</div>
+  <h1>Master<br><em>@Async</em><br>Visually</h1>
+  <p class="hero-sub">8 concepts. From "what does @Async actually do?" to composing fan-out calls with CompletableFuture. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">8</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">8</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 8</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">What @Async Does</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Annotating a method on a Spring-managed bean with <strong>@Async</strong> makes calls to it run on a <strong>separate thread</strong> pulled from a task executor, so the caller doesn't block waiting for it. For a <code>void</code> method the caller returns almost <strong>instantly</strong>; for a <code>Future</code>/<code>CompletableFuture</code> return type, the caller gets a handle back immediately while the real work happens in the background.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4EE;</div><p><strong>Dropping a letter in a mailbox:</strong> you don't stand at the counter waiting for it to be delivered — you drop it in, walk away immediately, and the postal system handles delivery on its own timeline, on its own thread of work entirely separate from you.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">EmailService</span> {
+
+  <span class="cm">// synchronous — caller waits for the full 2 seconds</span>
+  <span class="kw">public void</span> <span class="fn">sendWelcomeEmailSync</span>(String to) {
+    <span class="fn">simulateSlowSend</span>();
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"[" </span>+ <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>() + <span class="st">"] sent (sync) to "</span> + to);
+  }
+
+<span class="hl">  <span class="ann">@Async</span> <span class="cm">// runs on a task-executor thread, NOT the caller's thread</span></span>
+  <span class="kw">public void</span> <span class="fn">sendWelcomeEmailAsync</span>(String to) {
+    <span class="fn">simulateSlowSend</span>();
+<span class="hl">    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"[" </span>+ <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>() + <span class="st">"] sent (async) to "</span> + to);</span>
+  }
+
+  <span class="kw">private void</span> <span class="fn">simulateSlowSend</span>() {
+    <span class="kw">try</span> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">2000</span>); } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) { <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>(); }
+  }
+}
+
+<span class="cm">// Caller</span>
+<span class="kw">long</span> start = <span class="cl">System</span>.<span class="fn">currentTimeMillis</span>();
+emailService.<span class="fn">sendWelcomeEmailAsync</span>(<span class="st">"a@b.com"</span>);
+<span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"[" </span>+ <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>() + <span class="st">"] returned to caller after "</span>
+    + (<span class="cl">System</span>.<span class="fn">currentTimeMillis</span>() - start) + <span class="st">"ms"</span>);</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">[main] returned to caller after 3ms</span>
+<span class="ok">[task-1] sent (async) to a@b.com   &#x2190; printed ~2s later, on a DIFFERENT thread</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>@Async</code> is for genuinely <strong>fire-and-forget</strong> or parallelizable work — it doesn't make the underlying work faster, it just gets it off the caller's thread so the caller isn't stuck waiting for it.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Prove it runs off-thread</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Convert a synchronous <code>notifyUser(String message)</code> method to <code>@Async</code>. Log <code>Thread.currentThread().getName()</code> both in the caller right before/after the call and inside the method itself — confirm the two thread names differ.</p>
+              <div class="practice-hints"><span class="hint-chip">@Async</span><span class="hint-chip">Thread.currentThread().getName()</span><span class="hint-chip">compare thread names</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Enabling It with @EnableAsync</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>@Async</code> is a <strong>no-op</strong> until you add <code>@EnableAsync</code> to a <code>@Configuration</code> (or your main <code>@SpringBootApplication</code>) class. That's the switch that registers the <code>AsyncAnnotationBeanPostProcessor</code>, which wraps eligible beans in the proxy that actually intercepts <code>@Async</code> calls and dispatches them to an executor.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.boot.SpringApplication;
+<span class="kw">import</span> org.springframework.boot.autoconfigure.SpringBootApplication;
+<span class="kw">import</span> org.springframework.scheduling.annotation.EnableAsync;
+
+<span class="ann">@SpringBootApplication</span>
+<span class="hl"><span class="ann">@EnableAsync</span> <span class="cm">// &#x2190; without this, every @Async method just runs SYNCHRONOUSLY,</span></span>
+<span class="cm">//              with zero errors, zero warnings — a silent no-op that's easy to miss in review</span>
+<span class="kw">public class</span> <span class="cl">Application</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">SpringApplication</span>.<span class="fn">run</span>(<span class="cl">Application</span>.<span class="kw">class</span>, args);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>If an <code>@Async</code> method mysteriously isn't running asynchronously — no exception, no log, it just... runs on the caller's thread — check for <code>@EnableAsync</code> first. It's the single most common reason <code>@Async</code> "doesn't work."</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Diagnose the missing switch</span></div>
+            <div class="practice-body">
+              <p class="practice-q">You're told: "our <code>@Async</code> methods are running on the request thread — no errors, they just aren't async." Given a <code>@SpringBootApplication</code> class with no <code>@EnableAsync</code>, diagnose and fix it. Confirm the thread name changes once fixed.</p>
+              <div class="practice-hints"><span class="hint-chip">missing @EnableAsync</span><span class="hint-chip">silent no-op</span><span class="hint-chip">verify with thread name logging</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Return Types: void vs Future vs CompletableFuture</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Three legal return shapes: <strong>void</strong> (true fire-and-forget — the caller has zero way to know when it finishes or if it failed), <strong>Future&lt;T&gt;</strong> (older style), and <strong>CompletableFuture&lt;T&gt;</strong> (modern, preferred — composable with <code>.thenApply()</code>, <code>.thenAccept()</code>, <code>.exceptionally()</code> on the caller's side).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">ReportService</span> {
+
+  <span class="cm">// 1) void — fire-and-forget, caller can never know the outcome</span>
+  <span class="ann">@Async</span>
+  <span class="kw">public void</span> <span class="fn">logAccess</span>(String userId) {
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"logged access for "</span> + userId);
+  }
+
+  <span class="cm">// 2) Future&lt;T&gt; — older style, still usable but rarely the best choice today</span>
+  <span class="ann">@Async</span>
+  <span class="kw">public</span> <span class="cl">Future</span>&lt;Integer&gt; <span class="fn">countRecordsOld</span>() {
+    <span class="kw">int</span> count = <span class="nm">42</span>; <span class="cm">// pretend this took a while to compute</span>
+    <span class="kw">return new</span> <span class="cl">AsyncResult</span>&lt;&gt;(count);
+  }
+
+  <span class="cm">// 3) CompletableFuture&lt;T&gt; — modern default: composable, has a failure channel</span>
+<span class="hl">  <span class="ann">@Async</span></span>
+<span class="hl">  <span class="kw">public</span> <span class="cl">CompletableFuture</span>&lt;Integer&gt; <span class="fn">countRecords</span>() {</span>
+    <span class="kw">int</span> count = <span class="nm">42</span>;
+<span class="hl">    <span class="kw">return</span> <span class="cl">CompletableFuture</span>.<span class="fn">completedFuture</span>(count);</span>
+  }
+}
+
+<span class="cm">// Caller — reacts once the async work finishes, without ever blocking</span>
+reportService.<span class="fn">countRecords</span>()
+    .<span class="fn">thenAccept</span>(count -&gt; <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"got count: "</span> + count));
+<span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"caller kept going immediately"</span>);</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">caller kept going immediately</span>
+<span class="ok">got count: 42   &#x2190; printed slightly later, from the .thenAccept() callback</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Default to <code>CompletableFuture&lt;T&gt;</code> for anything the caller needs a result or failure signal from. Reserve <code>void</code> for true fire-and-forget work (e.g. audit logging) where nobody downstream cares about the outcome.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Add a failure channel</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Rewrite a <code>void @Async</code> method that could silently fail into a <code>CompletableFuture&lt;Boolean&gt;</code> version. Handle the failure case on the caller's side with <code>.exceptionally(ex -&gt; ...)</code> instead of losing it.</p>
+              <div class="practice-hints"><span class="hint-chip">CompletableFuture&lt;Boolean&gt;</span><span class="hint-chip">.exceptionally()</span><span class="hint-chip">no more silent failure</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Custom Thread Pools</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Without configuration, Spring falls back to <code>SimpleAsyncTaskExecutor</code> — which spins up a <strong>brand-new thread for every single call</strong>, with no pooling, no reuse, and no cap. Under real load that's a thread-exhaustion time bomb. Always define a bounded <code>ThreadPoolTaskExecutor</code> instead.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Configuration</span>
+<span class="kw">public class</span> <span class="cl">AsyncConfig</span> {
+
+<span class="hl">  <span class="ann">@Bean</span>(name = <span class="st">"taskExecutor"</span>) <span class="cm">// "taskExecutor" is Spring's default lookup name for @Async</span></span>
+  <span class="kw">public</span> <span class="cl">ThreadPoolTaskExecutor</span> <span class="fn">taskExecutor</span>() {
+    <span class="cl">ThreadPoolTaskExecutor</span> executor = <span class="kw">new</span> <span class="cl">ThreadPoolTaskExecutor</span>();
+    executor.<span class="fn">setCorePoolSize</span>(<span class="nm">8</span>);
+    executor.<span class="fn">setMaxPoolSize</span>(<span class="nm">16</span>);
+    executor.<span class="fn">setQueueCapacity</span>(<span class="nm">100</span>);
+    executor.<span class="fn">setThreadNamePrefix</span>(<span class="st">"async-exec-"</span>);
+    executor.<span class="fn">initialize</span>();
+    <span class="kw">return</span> executor;
+  }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">ReportService</span> {
+<span class="hl">  <span class="ann">@Async</span>(<span class="st">"taskExecutor"</span>) <span class="cm">// explicit name — or omit it to use the "taskExecutor" bean by default</span></span>
+  <span class="kw">public void</span> <span class="fn">generate</span>() { <span class="cm">/* ... */</span> }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Always define an explicit bounded executor in any real application — the default <code>SimpleAsyncTaskExecutor</code> is essentially a thread-leak generator under sustained load.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Size a pool for real traffic</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Configure a <code>ThreadPoolTaskExecutor</code> for a service expecting up to 50 concurrent async jobs. Choose <code>corePoolSize</code>, <code>maxPoolSize</code>, and <code>queueCapacity</code>, set a <code>CallerRunsPolicy</code> rejection handler, and explain in a comment what happens to the 51st concurrent request.</p>
+              <div class="practice-hints"><span class="hint-chip">corePoolSize / maxPoolSize</span><span class="hint-chip">queueCapacity</span><span class="hint-chip">CallerRunsPolicy</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Exception Handling in Async Methods</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">An exception thrown inside a <strong>void</strong> <code>@Async</code> method is <strong>not propagated to the caller</strong> — there's no return channel for it to travel through. By default it's just logged (or lost) unless you configure an <code>AsyncUncaughtExceptionHandler</code>. For <code>Future</code>/<code>CompletableFuture</code>, the exception <strong>is</strong> captured and surfaces via <code>.get()</code> or <code>.exceptionally()</code>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Configuration</span>
+<span class="ann">@EnableAsync</span>
+<span class="kw">public class</span> <span class="cl">AsyncConfig</span> <span class="kw">implements</span> <span class="cl">AsyncConfigurer</span> {
+
+  <span class="ann">@Override</span>
+  <span class="kw">public</span> <span class="cl">AsyncUncaughtExceptionHandler</span> <span class="fn">getAsyncUncaughtExceptionHandler</span>() {
+<span class="hl">    <span class="kw">return</span> (ex, method, params) -&gt;</span>
+<span class="hl">        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Async void method failed: "</span> + method.<span class="fn">getName</span>() + <span class="st">" — "</span> + ex.<span class="fn">getMessage</span>());</span>
+  }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">NotificationService</span> {
+
+  <span class="ann">@Async</span>
+  <span class="kw">public void</span> <span class="fn">notifyUser</span>(String userId) {
+    <span class="kw">throw new</span> <span class="cl">IllegalStateException</span>(<span class="st">"push token missing for "</span> + userId); <span class="cm">// caught by the handler above</span>
+  }
+
+  <span class="ann">@Async</span>
+  <span class="kw">public</span> <span class="cl">CompletableFuture</span>&lt;Void&gt; <span class="fn">notifyUserSafely</span>(String userId) {
+    <span class="kw">if</span> (userId == <span class="kw">null</span>) {
+      <span class="cl">CompletableFuture</span>&lt;Void&gt; failed = <span class="kw">new</span> <span class="cl">CompletableFuture</span>&lt;&gt;();
+      failed.<span class="fn">completeExceptionally</span>(<span class="kw">new</span> <span class="cl">IllegalArgumentException</span>(<span class="st">"userId required"</span>));
+      <span class="kw">return</span> failed;
+    }
+    <span class="kw">return</span> <span class="cl">CompletableFuture</span>.<span class="fn">completedFuture</span>(<span class="kw">null</span>);
+  }
+}
+
+<span class="cm">// Caller of the CompletableFuture version — sees the failure, doesn't lose it</span>
+notificationService.<span class="fn">notifyUserSafely</span>(<span class="kw">null</span>)
+    .<span class="fn">exceptionally</span>(ex -&gt; { <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"caught: "</span> + ex.<span class="fn">getMessage</span>()); <span class="kw">return null</span>; });</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Async void method failed: notifyUser — push token missing for u123</span>
+<span class="ok">caught: java.lang.IllegalArgumentException: userId required</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Never put business-critical logic that can fail into a <code>void @Async</code> method without a custom <code>AsyncUncaughtExceptionHandler</code> — otherwise you get silent failures in production that are painful to trace back to a root cause.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Catch what would otherwise vanish</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Implement an <code>AsyncConfigurer</code> with a custom <code>AsyncUncaughtExceptionHandler</code>. Deliberately throw inside a <code>void @Async</code> method and confirm your handler logs it — then remove the handler and confirm the exception disappears with no trace.</p>
+              <div class="practice-hints"><span class="hint-chip">AsyncConfigurer</span><span class="hint-chip">AsyncUncaughtExceptionHandler</span><span class="hint-chip">compare with/without</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">The Self-Invocation Pitfall</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>@Async</code> works via a <strong>proxy</strong> wrapping the Spring bean. Calling an <code>@Async</code> method from <strong>another method in the same class</strong> via <code>this.otherMethod()</code> bypasses that proxy entirely — the call runs synchronously on the caller's thread with zero warning. This is the exact same root cause as the <code>@Transactional</code> self-invocation pitfall.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// &#x274C; BROKEN — self-invocation bypasses the @Async proxy</span>
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">OrderService</span> {
+
+  <span class="kw">public void</span> <span class="fn">doWork</span>() {
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"doWork on "</span> + <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>());
+<span class="hl">    <span class="kw">this</span>.<span class="fn">asyncStep</span>(); <span class="cm">// &#x26A0;&#xFE0F; internal call — the proxy is NEVER involved</span></span>
+  }
+
+  <span class="ann">@Async</span>
+  <span class="kw">public void</span> <span class="fn">asyncStep</span>() {
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"asyncStep on "</span> + <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>()); <span class="cm">// SAME thread as doWork() — proxy skipped</span>
+  }
+}
+
+<span class="cm">// &#x2705; FIX — extract the async step into a separate collaborator bean</span>
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">OrderService</span> {
+  <span class="kw">private final</span> <span class="cl">AsyncSteps</span> asyncSteps;
+  <span class="kw">public</span> <span class="cl">OrderService</span>(<span class="cl">AsyncSteps</span> asyncSteps) { <span class="kw">this</span>.asyncSteps = asyncSteps; }
+
+  <span class="kw">public void</span> <span class="fn">doWork</span>() {
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"doWork on "</span> + <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>());
+<span class="hl">    asyncSteps.<span class="fn">asyncStep</span>(); <span class="cm">// goes through the real proxy this time</span></span>
+  }
+}
+
+<span class="ann">@Component</span>
+<span class="kw">public class</span> <span class="cl">AsyncSteps</span> {
+  <span class="ann">@Async</span>
+  <span class="kw">public void</span> <span class="fn">asyncStep</span>() {
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"asyncStep on "</span> + <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>()); <span class="cm">// now a DIFFERENT thread</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="er">doWork on http-nio-8080-exec-1</span>
+<span class="er">asyncStep on http-nio-8080-exec-1   &#x2190; broken version: SAME thread, proxy bypassed</span>
+<span class="ok">doWork on http-nio-8080-exec-2</span>
+<span class="ok">asyncStep on async-exec-1           &#x2190; fixed version: real proxy, different thread</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Any Spring proxy-based annotation — <code>@Async</code>, <code>@Transactional</code>, <code>@Cacheable</code>, <code>@Retryable</code> — silently no-ops on internal self-calls. Always split the annotated method into a separate bean when this matters.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Reproduce, then fix</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Reproduce the self-invocation bug with thread-name logging exactly as above, confirming both methods run on the same thread. Then fix it by extracting the <code>@Async</code> method into a separate <code>@Component</code> and confirm the thread names now differ.</p>
+              <div class="practice-hints"><span class="hint-chip">this.method() bypasses proxy</span><span class="hint-chip">extract collaborator bean</span><span class="hint-chip">compare thread names</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Composing Async Calls with CompletableFuture</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Run multiple independent <code>@Async</code> calls <strong>in parallel</strong> and join their results once all complete with <code>CompletableFuture.allOf()</code> (or <code>.thenCombine()</code> for exactly two). This is the core technique for fanning out independent I/O and cutting total latency to roughly the <strong>slowest single call</strong> instead of the sum of all of them.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">ProductService</span> {
+
+  <span class="ann">@Async</span>
+  <span class="kw">public</span> <span class="cl">CompletableFuture</span>&lt;Integer&gt; <span class="fn">fetchInventory</span>(String sku) {
+    <span class="fn">simulateDelay</span>(<span class="nm">800</span>); <span class="cm">// e.g. a downstream microservice call</span>
+    <span class="kw">return</span> <span class="cl">CompletableFuture</span>.<span class="fn">completedFuture</span>(<span class="nm">17</span>);
+  }
+
+  <span class="ann">@Async</span>
+  <span class="kw">public</span> <span class="cl">CompletableFuture</span>&lt;Double&gt; <span class="fn">fetchPricing</span>(String sku) {
+    <span class="fn">simulateDelay</span>(<span class="nm">600</span>);
+    <span class="kw">return</span> <span class="cl">CompletableFuture</span>.<span class="fn">completedFuture</span>(<span class="nm">29.99</span>);
+  }
+
+  <span class="kw">private void</span> <span class="fn">simulateDelay</span>(<span class="kw">long</span> ms) {
+    <span class="kw">try</span> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(ms); } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) { <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>(); }
+  }
+}
+
+<span class="cm">// Caller — fires BOTH calls at once, then waits only for the slower of the two</span>
+<span class="kw">long</span> start = <span class="cl">System</span>.<span class="fn">currentTimeMillis</span>();
+<span class="cl">CompletableFuture</span>&lt;Integer&gt; inventory = productService.<span class="fn">fetchInventory</span>(<span class="st">"SKU-1"</span>);
+<span class="cl">CompletableFuture</span>&lt;Double&gt; pricing = productService.<span class="fn">fetchPricing</span>(<span class="st">"SKU-1"</span>);
+
+<span class="hl"><span class="cl">CompletableFuture</span>.<span class="fn">allOf</span>(inventory, pricing).<span class="fn">thenRun</span>(() -&gt; {</span>
+<span class="hl">  <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"both done after "</span> + (<span class="cl">System</span>.<span class="fn">currentTimeMillis</span>() - start) + <span class="st">"ms"</span>);</span>
+}).<span class="fn">join</span>();</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">both done after ~810ms   &#x2190; roughly max(800,600), NOT 800+600=1400</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Sequential calls sum their latencies; independent calls fanned out with <code>allOf()</code> run concurrently and finish in roughly the time of the <strong>slowest</strong> one. Use this whenever a request needs several unrelated pieces of downstream data.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Fan out three calls</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Fan out 3 independent <code>@Async CompletableFuture</code> calls and join them with <code>CompletableFuture.allOf()</code>. Time it, then time calling the same 3 methods sequentially (calling <code>.join()</code> after each), and compare the two totals.</p>
+              <div class="practice-hints"><span class="hint-chip">CompletableFuture.allOf()</span><span class="hint-chip">parallel vs sequential timing</span><span class="hint-chip">System.currentTimeMillis()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Five questions interviewers love, with the answer a senior candidate is expected to give.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "What actually makes an @Async method run on a different thread?"</span>
+<span class="cm">// A: A Spring AOP proxy (JDK dynamic proxy or CGLIB) wraps the bean once @EnableAsync is</span>
+<span class="cm">//    present. Calls through the proxy are intercepted and submitted to a TaskExecutor —</span>
+<span class="cm">//    the proxy is what does the thread hand-off, not the method body itself.</span>
+
+<span class="cm">// Q: "Why doesn't @Async work when called from within the same class?"</span>
+<span class="cm">// A: this.method() calls the real object directly, never going through the proxy that</span>
+<span class="cm">//    wraps it. No proxy involvement means no interception, so the call just runs</span>
+<span class="cm">//    synchronously on the caller's own thread — the exact same root cause as the</span>
+<span class="cm">//    @Transactional self-invocation pitfall (concept 6).</span>
+
+<span class="cm">// Q: "What's the default executor if you don't configure one, and why is that dangerous?"</span>
+<span class="cm">// A: SimpleAsyncTaskExecutor — it creates a brand-new thread per invocation with no pool,</span>
+<span class="cm">//    no cap, no reuse. Under sustained load it can exhaust OS threads and crash the JVM;</span>
+<span class="cm">//    always define an explicit bounded ThreadPoolTaskExecutor instead (concept 4).</span>
+
+<span class="cm">// Q: "How do you actually surface an exception from a void @Async method?"</span>
+<span class="cm">// A: You can't, on the caller's side — there's no return channel. Configure an</span>
+<span class="cm">//    AsyncUncaughtExceptionHandler via AsyncConfigurer so it's at least logged instead of</span>
+<span class="cm">//    silently lost. If the caller needs to react, use CompletableFuture instead of void.</span>
+
+<span class="cm">// Q: "When would you choose CompletableFuture.allOf() over sequential await-style calls?"</span>
+<span class="cm">// A: Whenever the calls are independent of each other — no call needs the result of</span>
+<span class="cm">//    another. Fanning them out in parallel cuts total latency to roughly the slowest</span>
+<span class="cm">//    single call instead of the sum of all of them (concept 7).</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Senior interviews aren't testing whether you can recite what <code>@Async</code> does — they're testing whether you've been burned by the default executor, a self-invocation bug, or a silently swallowed exception, and changed how you write async code because of it.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Final boss: design the async strategy</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Design the async strategy for an order-confirmation flow that needs to send an email, update analytics, and call a shipping-partner API — three independent side effects the caller shouldn't have to wait on serially. Decide: executor configuration, return types per side effect, and exception handling per side effect. Write it as actual code, not just a description.</p>
+              <div class="practice-hints"><span class="hint-chip">bounded ThreadPoolTaskExecutor</span><span class="hint-chip">CompletableFuture per side effect</span><span class="hint-chip">AsyncUncaughtExceptionHandler</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Add a timeout to the shipping-partner API call (e.g. via <code>CompletableFuture.orTimeout()</code>) so one slow partner can't hold a thread from your bounded pool indefinitely — and explain what should happen to the order confirmation if that call times out.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; @Async mastered!</h2>
+    <p>From "what does @Async actually do?" to fanning out parallel calls like a senior engineer.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> What @Async Does</div>
+      <div class="grid-item"><span class="grid-num">02</span> @EnableAsync</div>
+      <div class="grid-item"><span class="grid-num">03</span> Return Types</div>
+      <div class="grid-item"><span class="grid-num">04</span> Custom Thread Pools</div>
+      <div class="grid-item"><span class="grid-num">05</span> Exception Handling</div>
+      <div class="grid-item"><span class="grid-num">06</span> Self-Invocation Pitfall</div>
+      <div class="grid-item"><span class="grid-num">07</span> Composing with CompletableFuture</div>
+      <div class="grid-item"><span class="grid-num">08</span> Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 8) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 8';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

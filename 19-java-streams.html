@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Streams API — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#080911; --surface:#11131F; --surface2:#171A2A; --border:#252A42; --border2:#333A58;
+  --accent:#6366F1; --accent2:#818CF8; --accent3:#A5B4FC; --glow:rgba(99,102,241,0.18);
+  --text:#E9EAF7; --muted:#8790B0; --muted2:#565E80;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(99,102,241,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(129,140,248,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(99,102,241,.1);
+  border:1px solid rgba(99,102,241,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#E0E7FF 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(8,9,17,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(99,102,241,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(99,102,241,.12),0 0 16px rgba(99,102,241,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(99,102,241,.35); box-shadow:0 0 0 1px rgba(99,102,241,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(99,102,241,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#0A0B12; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(99,102,241,.12); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(99,102,241,.06); border:1px solid rgba(99,102,241,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#050609; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(99,102,241,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(99,102,241,.2); border:1px solid rgba(99,102,241,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* PHENOMENA TABLE (used in concept 4/5 style content, kept generic) */
+.hd-table-wrap { overflow-x:auto; margin-bottom:20px; border:1px solid var(--border); border-radius:12px; }
+.hd-table { width:100%; border-collapse:collapse; font-size:13px; background:var(--surface2); }
+.hd-table th, .hd-table td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+.hd-table th { font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted2); background:rgba(255,255,255,.02); }
+.hd-table td { color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12.5px; }
+.hd-table tr:last-child td { border-bottom:none; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(99,102,241,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(99,102,241,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Java Streams API — Visual Guide</div>
+  <h1>Master<br><em>Java Streams</em><br>Visually</h1>
+  <p class="hero-sub">10 concepts. From "what's a lazy pipeline?" to grouping, reducing, and parallelizing like a senior engineer. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">10</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">10</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 10</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Stream Basics &amp; Laziness</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>Stream</strong> is a pipeline: a <strong>source</strong> (<code>Collection.stream()</code>, <code>Stream.of()</code>, <code>Arrays.stream()</code>, <code>IntStream.range()</code>), zero or more <strong>lazy intermediate operations</strong> (<code>map</code>, <code>filter</code>, ...) that just build up the pipeline without running anything, and exactly one <strong>terminal operation</strong> (<code>collect</code>, <code>forEach</code>, <code>reduce</code>, <code>count</code>...) that actually triggers execution, element by element, through the whole chain.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3ED;</div><p><strong>Assembly line:</strong> stations for cutting, painting, and packing don't do anything until someone at the very end presses "start". Intermediate operations are the stations; the terminal operation is the button.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    List&lt;String&gt; names = List.<span class="fn">of</span>(<span class="st">"amy"</span>, <span class="st">"bob"</span>, <span class="st">"cara"</span>);
+
+<span class="hl">    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Building pipeline... (nothing runs yet)"</span>);</span>
+    var pipeline = names.<span class="fn">stream</span>()
+        .<span class="fn">map</span>(n -&gt; { <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"map: "</span> + n); <span class="kw">return</span> n.<span class="fn">toUpperCase</span>(); })
+        .<span class="fn">filter</span>(n -&gt; { <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"filter: "</span> + n); <span class="kw">return</span> n.<span class="fn">length</span>() &gt; <span class="nm">3</span>; });
+
+<span class="hl">    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Pipeline built. Calling terminal op now:"</span>);</span>
+    List&lt;String&gt; result = pipeline.<span class="fn">collect</span>(java.util.stream.Collectors.<span class="fn">toList</span>());
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Result: "</span> + result);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Building pipeline... (nothing runs yet)</span>
+<span class="ok">Pipeline built. Calling terminal op now:</span>
+<span class="ok">map: amy</span>
+<span class="ok">filter: AMY</span>
+<span class="ok">map: bob</span>
+<span class="ok">filter: BOB</span>
+<span class="ok">map: cara</span>
+<span class="ok">filter: CARA</span>
+<span class="ok">Result: [CARA]</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Notice <code>map</code> and <code>filter</code> run <strong>per element</strong>, not per stage — that's laziness in action. A Stream is also <strong>single-use</strong>: once a terminal operation runs, calling another operation on the same stream throws <code>IllegalStateException: stream has already been operated upon or closed</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Predict before you run</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Build a pipeline with <code>System.out.println</code> side effects inside both <code>map()</code> and <code>filter()</code> over a list of 4 elements. <strong>Write down your predicted output order</strong> before running it, then run it and compare.</p>
+              <div class="practice-hints"><span class="hint-chip">lazy intermediate ops</span><span class="hint-chip">per-element execution</span><span class="hint-chip">terminal op triggers all</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Store the pipeline in a variable, call <code>.collect()</code> on it twice, and confirm the second call throws <code>IllegalStateException</code>.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">map vs flatMap</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>map()</code> transforms each element <strong>1-to-1</strong> (<code>T -&gt; R</code>). <code>flatMap()</code> transforms each element into its <strong>own stream</strong> and then <strong>flattens</strong> all of those streams into one (<code>T -&gt; Stream&lt;R&gt;</code>) — essential whenever you're holding a collection of collections.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.stream.Collectors;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    List&lt;List&lt;String&gt;&gt; sentences = List.<span class="fn">of</span>(
+        List.<span class="fn">of</span>(<span class="st">"the"</span>, <span class="st">"quick"</span>, <span class="st">"fox"</span>),
+        List.<span class="fn">of</span>(<span class="st">"lazy"</span>, <span class="st">"dog"</span>)
+    );
+
+    <span class="cm">// &#x274C; map() gives you a Stream&lt;List&lt;String&gt;&gt; — a stream of lists, NOT what you wanted</span>
+    List&lt;List&lt;String&gt;&gt; wrong = sentences.<span class="fn">stream</span>()
+        .<span class="fn">map</span>(sentence -&gt; sentence)
+        .<span class="fn">collect</span>(Collectors.<span class="fn">toList</span>());
+
+    <span class="cm">// &#x2705; flatMap() gives you a flat Stream&lt;String&gt; of every word</span>
+<span class="hl">    List&lt;String&gt; words = sentences.<span class="fn">stream</span>()</span>
+<span class="hl">        .<span class="fn">flatMap</span>(List::<span class="fn">stream</span>)</span>
+        .<span class="fn">collect</span>(Collectors.<span class="fn">toList</span>());
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"map()     -&gt; "</span> + wrong);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"flatMap() -&gt; "</span> + words);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">map()     -&gt; [[the, quick, fox], [lazy, dog]]</span>
+<span class="ok">flatMap() -&gt; [the, quick, fox, lazy, dog]</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>The classic tell: if your <code>map()</code> would produce a return type like <code>Stream&lt;List&lt;X&gt;&gt;</code> instead of a flat result, you wanted <code>flatMap()</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Flatten orders into line items</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a <code>List&lt;Order&gt;</code> where each <code>Order</code> has a <code>List&lt;LineItem&gt;</code>, use <code>flatMap</code> to produce one flat <code>Stream&lt;LineItem&gt;</code> of every line item across <strong>all</strong> orders.</p>
+              <div class="practice-hints"><span class="hint-chip">Order::getLineItems</span><span class="hint-chip">.flatMap(o -&gt; o.getLineItems().stream())</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">filter, sorted, distinct, limit/skip</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>filter(Predicate)</code> keeps matching elements. <code>sorted()</code> / <code>sorted(Comparator)</code> orders them — chain with <code>.thenComparing()</code> for tie-breakers. <code>distinct()</code> removes duplicates using <code>equals()</code>/<code>hashCode()</code>. <code>limit(n)</code> / <code>skip(n)</code> slice the stream, perfect for pagination or "top N" queries.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.Comparator;
+<span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.stream.Collectors;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">record</span> <span class="cl">Employee</span>(String name, String dept, <span class="kw">double</span> salary) {}
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    List&lt;Employee&gt; employees = List.<span class="fn">of</span>(
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Amy"</span>, <span class="st">"Eng"</span>, <span class="nm">142_000</span>),
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Bo"</span>, <span class="st">"Eng"</span>, <span class="nm">168_000</span>),
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Cara"</span>, <span class="st">"Sales"</span>, <span class="nm">98_000</span>),
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Deja"</span>, <span class="st">"Eng"</span>, <span class="nm">201_000</span>)
+    );
+
+<span class="hl">    List&lt;Employee&gt; top3Engineers = employees.<span class="fn">stream</span>()</span>
+<span class="hl">        .<span class="fn">filter</span>(e -&gt; e.<span class="fn">dept</span>().<span class="fn">equals</span>(<span class="st">"Eng"</span>))         <span class="cm">// filter BEFORE sorting — less to sort</span></span>
+        .<span class="fn">sorted</span>(Comparator.<span class="fn">comparing</span>(Employee::<span class="fn">salary</span>).<span class="fn">reversed</span>())
+        .<span class="fn">limit</span>(<span class="nm">3</span>)
+        .<span class="fn">collect</span>(Collectors.<span class="fn">toList</span>());
+
+    top3Engineers.<span class="fn">forEach</span>(e -&gt; <span class="cl">System</span>.out.<span class="fn">println</span>(e.<span class="fn">name</span>() + <span class="st">" - $"</span> + e.<span class="fn">salary</span>()));
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Deja - $201000.0</span>
+<span class="ok">Bo - $168000.0</span>
+<span class="ok">Amy - $142000.0</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Order matters for performance: <code>filter()</code> before <code>sorted()</code> when possible, so you're not paying to sort elements you're about to discard anyway.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Top 5 recent orders</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Build a "top 5 most recent orders over $100" pipeline combining <code>filter</code>, <code>sorted</code> (by date descending), and <code>limit</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">filter(o -&gt; o.total() &gt; 100)</span><span class="hint-chip">Comparator.comparing(Order::date).reversed()</span><span class="hint-chip">limit(5)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">collect() and Collectors</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>collect()</code> is the general-purpose terminal operation: it reduces a stream into a container or summary value via a <strong>Collector</strong>. The most-used <code>java.util.stream.Collectors</code> factories: <code>toList()</code>, <code>toSet()</code>, <code>toMap(keyFn, valueFn)</code> (plus a merge-function overload), and <code>joining(delimiter, prefix, suffix)</code>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.Map;
+<span class="kw">import</span> java.util.stream.Collectors;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">record</span> <span class="cl">Product</span>(String name, <span class="kw">double</span> price) {}
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    List&lt;Product&gt; products = List.<span class="fn">of</span>(
+        <span class="kw">new</span> <span class="cl">Product</span>(<span class="st">"Mug"</span>, <span class="nm">9.99</span>),
+        <span class="kw">new</span> <span class="cl">Product</span>(<span class="st">"Mug"</span>, <span class="nm">12.50</span>), <span class="cm">// duplicate name, different price</span>
+        <span class="kw">new</span> <span class="cl">Product</span>(<span class="st">"Pen"</span>, <span class="nm">1.20</span>)
+    );
+
+    <span class="cm">// &#x274C; toMap(keyFn, valueFn) without a merge function throws on duplicate keys</span>
+    <span class="cm">// Map&lt;String, Double&gt; broken = products.stream()</span>
+    <span class="cm">//     .collect(Collectors.toMap(Product::name, Product::price)); // IllegalStateException!</span>
+
+<span class="hl">    Map&lt;String, Double&gt; prices = products.<span class="fn">stream</span>()</span>
+<span class="hl">        .<span class="fn">collect</span>(Collectors.<span class="fn">toMap</span>(Product::<span class="fn">name</span>, Product::<span class="fn">price</span>, Double::<span class="fn">max</span>)); <span class="cm">// keep the higher price</span></span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(prices);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">{Pen=1.2, Mug=12.5}</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>toMap()</code> without a merge function throws <code>IllegalStateException: Duplicate key</code> — always add the 3-argument merge function unless you're certain keys are unique.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Join names into one string</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Collect a <code>List&lt;String&gt;</code> of names into a single comma-joined <code>String</code> using <code>Collectors.joining(", ", "[", "]")</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">Collectors.joining</span><span class="hint-chip">delimiter, prefix, suffix</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">groupingBy &amp; partitioningBy</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>Collectors.groupingBy(classifierFn)</code> buckets elements into a <code>Map&lt;K, List&lt;T&gt;&gt;</code>. Pass a <strong>downstream collector</strong> — <code>counting()</code>, <code>summingInt()</code>, <code>mapping()</code> — to summarize each bucket instead of just listing elements. <code>partitioningBy(predicate)</code> always produces exactly a <code>Map&lt;Boolean, List&lt;T&gt;&gt;</code> (true/false buckets).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.Map;
+<span class="kw">import</span> java.util.stream.Collectors;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">record</span> <span class="cl">Employee</span>(String name, String dept, <span class="kw">double</span> salary) {}
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    List&lt;Employee&gt; employees = List.<span class="fn">of</span>(
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Amy"</span>, <span class="st">"Eng"</span>, <span class="nm">142_000</span>),
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Bo"</span>, <span class="st">"Eng"</span>, <span class="nm">168_000</span>),
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Cara"</span>, <span class="st">"Sales"</span>, <span class="nm">98_000</span>)
+    );
+
+    Map&lt;String, List&lt;Employee&gt;&gt; byDept = employees.<span class="fn">stream</span>()
+        .<span class="fn">collect</span>(Collectors.<span class="fn">groupingBy</span>(Employee::<span class="fn">dept</span>));
+
+<span class="hl">    Map&lt;String, Long&gt; countByDept = employees.<span class="fn">stream</span>()</span>
+<span class="hl">        .<span class="fn">collect</span>(Collectors.<span class="fn">groupingBy</span>(Employee::<span class="fn">dept</span>, Collectors.<span class="fn">counting</span>()));</span>
+
+    Map&lt;Boolean, List&lt;Employee&gt;&gt; highEarners = employees.<span class="fn">stream</span>()
+        .<span class="fn">collect</span>(Collectors.<span class="fn">partitioningBy</span>(e -&gt; e.<span class="fn">salary</span>() &gt; <span class="nm">100_000</span>));
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"byDept keys:      "</span> + byDept.<span class="fn">keySet</span>());
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"countByDept:      "</span> + countByDept);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"highEarners[true]: "</span> + highEarners.<span class="fn">get</span>(<span class="kw">true</span>).<span class="fn">size</span>() + <span class="st">" people"</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">byDept keys:      [Eng, Sales]</span>
+<span class="ok">countByDept:      {Eng=2, Sales=1}</span>
+<span class="ok">highEarners[true]: 2 people</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Reach for <code>partitioningBy</code> only when the split is truly binary. <code>groupingBy</code> handles both binary and multi-way splits, so it's the more generally useful tool by default.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Total value per status</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Group a <code>List&lt;Order&gt;</code> by <code>status</code> into a <code>Map&lt;Status, Double&gt;</code> of total order value per status using <code>groupingBy</code> + <code>summingDouble</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">groupingBy(Order::status, ...)</span><span class="hint-chip">Collectors.summingDouble(Order::total)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">reduce()</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Three overloads: <code>reduce(BinaryOperator)</code> returns <code>Optional&lt;T&gt;</code>, <code>reduce(identity, BinaryOperator)</code> returns <code>T</code> directly, and the 3-arg <code>reduce(identity, accumulator, combiner)</code> is mainly for <strong>parallel</strong> streams where per-thread partial results need to be combined.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.Optional;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    List&lt;Integer&gt; nums = List.<span class="fn">of</span>(<span class="nm">3</span>, <span class="nm">8</span>, <span class="nm">1</span>, <span class="nm">9</span>, <span class="nm">4</span>);
+
+    <span class="cm">// Simple numeric aggregation — prefer IntStream.sum() / Collectors.summingInt() over this</span>
+    <span class="kw">int</span> sum = nums.<span class="fn">stream</span>().<span class="fn">reduce</span>(<span class="nm">0</span>, Integer::<span class="fn">sum</span>);
+
+    <span class="cm">// reduce() shines for custom combining logic that has no built-in collector</span>
+    List&lt;String&gt; words = List.<span class="fn">of</span>(<span class="st">"go"</span>, <span class="st">"stream"</span>, <span class="st">"reducing"</span>, <span class="st">"it"</span>);
+<span class="hl">    Optional&lt;String&gt; longest = words.<span class="fn">stream</span>()</span>
+<span class="hl">        .<span class="fn">reduce</span>((a, b) -&gt; a.<span class="fn">length</span>() &gt;= b.<span class="fn">length</span>() ? a : b);</span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"sum = "</span> + sum);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"longest = "</span> + longest.<span class="fn">orElse</span>(<span class="st">"none"</span>));
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">sum = 25</span>
+<span class="ok">longest = reducing</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Don't reach for <code>reduce()</code> for things <code>Collectors</code> or <code>IntStream</code>/<code>DoubleStream</code> already do better (sum, average, min, max) — use it when you have genuinely custom combining logic.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Concatenate without joining()</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Use <code>reduce()</code> to concatenate a <code>List&lt;String&gt;</code> into one <code>String</code> <strong>without</strong> using <code>Collectors.joining</code>. Compare the readability of both approaches.</p>
+              <div class="practice-hints"><span class="hint-chip">reduce("", (a,b) -&gt; a + b)</span><span class="hint-chip">vs Collectors.joining()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Optional + Streams</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>findFirst()</code> is deterministic — it respects encounter order. <code>findAny()</code> may be faster on <strong>parallel</strong> streams since it doesn't need to determine which match came first. Both return <code>Optional&lt;T&gt;</code>, as do <code>min()</code>/<code>max()</code> with a <code>Comparator</code>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.NoSuchElementException;
+<span class="kw">import</span> java.util.Optional;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">record</span> <span class="cl">User</span>(String name, <span class="kw">boolean</span> admin) {}
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    List&lt;User&gt; users = List.<span class="fn">of</span>(<span class="kw">new</span> <span class="cl">User</span>(<span class="st">"amy"</span>, <span class="kw">false</span>), <span class="kw">new</span> <span class="cl">User</span>(<span class="st">"bo"</span>, <span class="kw">true</span>));
+
+    <span class="cm">// &#x274C; .get() with no presence check is a NoSuchElementException risk</span>
+    <span class="cm">// User bad = users.stream().filter(User::admin).findFirst().get();</span>
+
+<span class="hl">    Optional&lt;User&gt; admin = users.<span class="fn">stream</span>().<span class="fn">filter</span>(User::<span class="fn">admin</span>).<span class="fn">findFirst</span>();</span>
+    String label = admin.<span class="fn">map</span>(User::<span class="fn">name</span>).<span class="fn">orElse</span>(<span class="st">"no admin found"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"admin: "</span> + label);
+
+    <span class="cm">// &#x2705; safe unwrap with a meaningful failure</span>
+    User required = users.<span class="fn">stream</span>().<span class="fn">filter</span>(u -&gt; u.<span class="fn">name</span>().<span class="fn">equals</span>(<span class="st">"zzz"</span>)).<span class="fn">findFirst</span>()
+        .<span class="fn">orElseThrow</span>(() -&gt; <span class="kw">new</span> <span class="cl">NoSuchElementException</span>(<span class="st">"no user named zzz"</span>));
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">admin: bo</span>
+<span class="er">Exception in thread "main" java.util.NoSuchElementException: no user named zzz</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>findAny()</code> and <code>findFirst()</code> behave identically on sequential streams — the distinction only matters once you introduce <code>.parallel()</code>, where <code>findAny()</code> can return as soon as <strong>any</strong> match is found instead of waiting to determine which one is first.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Replace the unsafe .get()</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Rewrite a pipeline using <code>.findFirst().get()</code> (unsafe) into a safe version using <code>.orElseThrow(() -&gt; new NoSuchElementException(...))</code> with a meaningful message.</p>
+              <div class="practice-hints"><span class="hint-chip">orElseThrow</span><span class="hint-chip">meaningful exception message</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Parallel Streams</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>.parallelStream()</code> / <code>.stream().parallel()</code> splits work across the common <code>ForkJoinPool</code> and can speed up large, CPU-bound, stateless pipelines. But: shared mutable state causes race conditions, the source needs to split efficiently (arrays/ArrayList split well; <code>LinkedList</code> and I/O-based streams don't), and there's overhead that makes parallel streams <strong>slower</strong> than sequential on small collections.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.ArrayList;
+<span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.stream.Collectors;
+<span class="kw">import</span> java.util.stream.IntStream;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="kw">int</span> n = <span class="nm">100_000</span>;
+
+    <span class="cm">// &#x274C; RACY — a plain ArrayList is not thread-safe; size may not always be n</span>
+    List&lt;Integer&gt; broken = <span class="kw">new</span> <span class="cl">ArrayList</span>&lt;&gt;();
+<span class="hl">    IntStream.<span class="fn">range</span>(<span class="nm">0</span>, n).<span class="fn">parallel</span>().<span class="fn">forEach</span>(broken::add); <span class="cm">// data race on the shared list</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"broken size (should be "</span> + n + <span class="st">"): "</span> + broken.<span class="fn">size</span>());
+
+    <span class="cm">// &#x2705; SAFE — collect() handles thread-safe accumulation internally</span>
+<span class="hl">    List&lt;Integer&gt; fixed = IntStream.<span class="fn">range</span>(<span class="nm">0</span>, n).<span class="fn">parallel</span>().<span class="fn">boxed</span>()</span>
+<span class="hl">        .<span class="fn">collect</span>(Collectors.<span class="fn">toList</span>());</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"fixed size (always "</span> + n + <span class="st">"): "</span> + fixed.<span class="fn">size</span>());
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output (typical — the broken run is non-deterministic)</div>
+            <div class="output-box"><span class="er">broken size (should be 100000): 97431   &#x2190; lost elements to the race!</span>
+<span class="ok">fixed size (always 100000): 100000</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Parallel streams are an easy way to introduce silent, hard-to-reproduce concurrency bugs if you touch any shared mutable state inside the pipeline. Always prefer <code>collect()</code>/<code>reduce()</code> over manual shared-state accumulation, and only reach for <code>.parallel()</code> after profiling shows it actually helps.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Benchmark it yourself</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Sum a large <code>IntStream</code> both sequentially and in parallel using <code>System.nanoTime()</code>. Identify at what collection size parallel actually starts winning on your machine.</p>
+              <div class="practice-hints"><span class="hint-chip">System.nanoTime()</span><span class="hint-chip">try sizes: 100, 10_000, 10_000_000</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Stream Anti-Patterns</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The classics: <strong>stream-itis</strong> (using <code>.stream()</code> for a 3-line loop just because it's available), <strong>side effects in map/filter</strong> (they're supposed to be pure functions — implementations are free to skip calls in ways that break stateful side effects), <strong>reusing a consumed stream</strong> (throws <code>IllegalStateException</code>), and collecting to a list just to immediately loop over it instead of chaining <code>.forEach()</code>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.concurrent.atomic.AtomicInteger;
+<span class="kw">import</span> java.util.stream.Collectors;
+<span class="kw">import</span> java.util.stream.Stream;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cm">// &#x274C; ANTI-PATTERN: side effect inside map() — mutating an outer variable</span>
+    List&lt;Integer&gt; nums = List.<span class="fn">of</span>(<span class="nm">1</span>, <span class="nm">2</span>, <span class="nm">3</span>);
+    AtomicInteger counter = <span class="kw">new</span> <span class="cl">AtomicInteger</span>();
+    List&lt;Integer&gt; doubled = nums.<span class="fn">stream</span>()
+        .<span class="fn">map</span>(x -&gt; { counter.<span class="fn">incrementAndGet</span>(); <span class="kw">return</span> x * <span class="nm">2</span>; }) <span class="cm">// side effect — fragile, avoid</span>
+        .<span class="fn">collect</span>(Collectors.<span class="fn">toList</span>());
+
+    <span class="cm">// &#x2705; FIX: keep map() pure, do side effects in forEach()</span>
+    List&lt;Integer&gt; doubledClean = nums.<span class="fn">stream</span>().<span class="fn">map</span>(x -&gt; x * <span class="nm">2</span>).<span class="fn">collect</span>(Collectors.<span class="fn">toList</span>());
+<span class="hl">    doubledClean.<span class="fn">forEach</span>(x -&gt; <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"processed: "</span> + x)); <span class="cm">// forEach is the right place for side effects</span></span>
+
+    <span class="cm">// &#x274C; ANTI-PATTERN: reusing a consumed stream</span>
+    Stream&lt;Integer&gt; s = nums.<span class="fn">stream</span>();
+    s.<span class="fn">count</span>(); <span class="cm">// terminal op #1 — stream is now consumed</span>
+<span class="hl">    <span class="kw">try</span> { s.<span class="fn">count</span>(); } <span class="kw">catch</span> (<span class="cl">IllegalStateException</span> e) {</span>
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"caught: "</span> + e.<span class="fn">getMessage</span>());
+    }
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">processed: 2</span>
+<span class="ok">processed: 4</span>
+<span class="ok">processed: 6</span>
+<span class="ok">caught: stream has already been operated upon or closed</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Streams describe <strong>what</strong> transformation you want, not a mandatory replacement for every loop. If a plain for-loop is clearer for a given case, use it — streams win when there's real transformation/filtering/aggregation logic worth expressing declaratively.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Refactor the side effect</span></div>
+            <div class="practice-body">
+              <p class="practice-q">You're given a snippet that mutates an external counter variable inside <code>.map()</code> to count how many elements were processed. Refactor it into a correct version using <code>forEach()</code> or a proper <code>Collector</code> — no side effects inside <code>map()</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">move side effect to forEach()</span><span class="hint-chip">or use .count()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Five questions interviewers love, with the answer a senior candidate is expected to give.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "What makes intermediate operations 'lazy', and why does that matter?"</span>
+<span class="cm">// A: They don't execute anything by themselves — they just describe a step and get chained</span>
+<span class="cm">//    onto the pipeline. Nothing runs until a terminal operation is called, and then every</span>
+<span class="cm">//    element flows through the ENTIRE pipeline one at a time. This matters because it means</span>
+<span class="cm">//    you can build a pipeline conditionally without any wasted work if it's never consumed,</span>
+<span class="cm">//    and short-circuiting ops (findFirst, limit, anyMatch) can stop early without processing</span>
+<span class="cm">//    the whole source.</span>
+
+<span class="cm">// Q: "When would you use flatMap instead of map — what's the tell?"</span>
+<span class="cm">// A: The moment your map() function itself returns a stream or collection, meaning map()</span>
+<span class="cm">//    alone would produce a stream-of-streams (e.g. Stream&lt;List&lt;X&gt;&gt;). flatMap flattens that</span>
+<span class="cm">//    extra layer into a single flat stream.</span>
+
+<span class="cm">// Q: "Why does Collectors.toMap() throw on duplicate keys, and how do you fix it?"</span>
+<span class="cm">// A: toMap's 2-arg form has no way to know what to do when two elements produce the same</span>
+<span class="cm">//    key — silently picking one would hide data loss, so it fails fast instead. Fix it with</span>
+<span class="cm">//    the 3-arg overload, supplying a merge function: toMap(keyFn, valFn, (a, b) -&gt; a).</span>
+
+<span class="cm">// Q: "What's the actual risk of using parallelStream() carelessly?"</span>
+<span class="cm">// A: Any shared mutable state touched inside the pipeline (a plain ArrayList, a counter</span>
+<span class="cm">//    variable) becomes a data race, since multiple threads from the common ForkJoinPool run</span>
+<span class="cm">//    segments concurrently. The fix isn't "be careful" — it's structural: use collect() and</span>
+<span class="cm">//    reduce(), which handle thread-safe accumulation for you, instead of manual mutation.</span>
+
+<span class="cm">// Q: "Why can't you reuse a Stream after a terminal operation has run?"</span>
+<span class="cm">// A: A Stream isn't a data structure — it's a one-time description of a computation over a</span>
+<span class="cm">//    source. Once the terminal op consumes it, the underlying spliterator's cursor state is</span>
+<span class="cm">//    spent and Java's implementation deliberately throws IllegalStateException on reuse,</span>
+<span class="cm">//    rather than silently giving you an empty or partial result.</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Senior interviews aren't testing whether you can recite Collector names — they're testing whether you understand streams as a <strong>one-shot lazy pipeline</strong>, not a list-like data structure you can poke at repeatedly.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Final boss: top spenders</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a <code>List&lt;Order&gt;</code> (each with a <code>customerId</code>, <code>status</code>, and <code>List&lt;LineItem&gt;</code> each with <code>price</code>/<code>quantity</code>), write a single well-structured stream pipeline that <strong>groups by customerId</strong>, <strong>sums</strong> each customer's total spend across all their line items, and returns only customers whose total exceeds <strong>$500</strong>. Write it as actual code combining <code>flatMap</code>, <code>groupingBy</code>, and a downstream collector.</p>
+              <div class="practice-hints"><span class="hint-chip">flatMap line items per order</span><span class="hint-chip">groupingBy(customerId, summingDouble(...))</span><span class="hint-chip">filter &gt; 500 on the resulting map</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Do it again using <code>Collectors.groupingBy(Order::customerId, Collectors.summingDouble(order -&gt; order.lineItems().stream().mapToDouble(li -&gt; li.price() * li.quantity()).sum()))</code> in one expression — no intermediate flatMap step — and compare readability.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; Streams mastered!</h2>
+    <p>From "what's a lazy pipeline?" to grouping, reducing, and parallelizing like a senior engineer.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> Stream Basics &amp; Laziness</div>
+      <div class="grid-item"><span class="grid-num">02</span> map vs flatMap</div>
+      <div class="grid-item"><span class="grid-num">03</span> filter/sorted/distinct/limit</div>
+      <div class="grid-item"><span class="grid-num">04</span> collect() and Collectors</div>
+      <div class="grid-item"><span class="grid-num">05</span> groupingBy &amp; partitioningBy</div>
+      <div class="grid-item"><span class="grid-num">06</span> reduce()</div>
+      <div class="grid-item"><span class="grid-num">07</span> Optional + Streams</div>
+      <div class="grid-item"><span class="grid-num">08</span> Parallel Streams</div>
+      <div class="grid-item"><span class="grid-num">09</span> Stream Anti-Patterns</div>
+      <div class="grid-item"><span class="grid-num">10</span> Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 10) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 10';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

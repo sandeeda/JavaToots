@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>String vs StringBuilder — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0D0A06; --surface:#19140C; --surface2:#221B10; --border:#332918; --border2:#4A3B20;
+  --accent:#F5A623; --accent2:#FBBF24; --accent3:#FDE68A; --glow:rgba(245,166,35,0.18);
+  --text:#F0E6D2; --muted:#A89878; --muted2:#6B5D42;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(245,166,35,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(251,191,36,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(245,166,35,.1);
+  border:1px solid rgba(245,166,35,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#FFF7D6 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(13,10,6,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(245,166,35,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(245,166,35,.12),0 0 16px rgba(245,166,35,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(245,166,35,.35); box-shadow:0 0 0 1px rgba(245,166,35,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(245,166,35,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#100D07; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#6B5D42; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(245,166,35,.1); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(245,166,35,.06); border:1px solid rgba(245,166,35,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#0A0805; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(245,166,35,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(245,166,35,.2); border:1px solid rgba(245,166,35,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(245,166,35,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(245,166,35,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Java Core — Visual Guide</div>
+  <h1>Master<br><em>String &amp; StringBuilder</em><br>Visually</h1>
+  <p class="hero-sub">14 concepts. From zero to confident. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">14</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">14</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 14</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">String Immutability</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>String</strong> object can never be changed after it's created. Every method that looks like it "modifies" a String — <code>concat()</code>, <code>toUpperCase()</code>, <code>replace()</code> — actually returns a <strong>brand new</strong> String object.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F5BC;&#xFE0F;</div><p><strong>Printed photograph:</strong> You can't edit a printed photo. To "change" it you print a new photo. The old one still exists exactly as it was, until nobody references it anymore.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cl">String</span> name = <span class="st">"sandeep"</span>;
+    <span class="cl">String</span> upper = name.<span class="fn">toUpperCase</span>(); <span class="cm">// does NOT change "name"</span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(name);  <span class="cm">// sandeep — unchanged</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(upper); <span class="cm">// SANDEEP — a brand new object</span>
+
+<span class="hl">    name.<span class="fn">toUpperCase</span>(); <span class="cm">// return value thrown away — common beginner bug!</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(name);  <span class="cm">// still sandeep — nothing happened</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">sandeep</span>
+<span class="ok">SANDEEP</span>
+<span class="ok">sandeep</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Every "mutating" String method actually <strong>returns a new String</strong>. If you don't capture the return value, your change is silently lost.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Spot the bug</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a method that takes a <code>String</code> and tries to trim and lowercase it <strong>without</strong> reassigning the result. Print before/after to prove nothing changed. Then fix it.</p>
+              <div class="practice-hints"><span class="hint-chip">.trim()</span><span class="hint-chip">.toLowerCase()</span><span class="hint-chip">reassign the result</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Chain 3 String methods together in one line: <code>s.trim().toLowerCase().replace(" ", "_")</code>. Notice each step creates a new intermediate String object.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">The String Constant Pool</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Because Strings are immutable, the JVM can safely <strong>reuse</strong> identical literals. <code>"hi"</code> written twice in your code points to the <strong>same object</strong> in a special memory area called the string pool. <code>new String(...)</code> bypasses the pool and forces a fresh object.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3DB;&#xFE0F;</div><p><strong>Library book:</strong> The pool is like a public library — everyone who asks for <code>"hi"</code> gets handed the SAME copy. <code>new String("hi")</code> is like buying your own personal copy instead of borrowing the shared one.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cl">String</span> a = <span class="st">"hello"</span>;             <span class="cm">// goes into the string pool</span>
+    <span class="cl">String</span> b = <span class="st">"hello"</span>;             <span class="cm">// reuses the SAME pooled object</span>
+<span class="hl">    <span class="cl">String</span> c = <span class="kw">new</span> <span class="cl">String</span>(<span class="st">"hello"</span>); <span class="cm">// forces a NEW object on the heap</span></span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(a == b);          <span class="cm">// true  — same pooled object</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(a == c);          <span class="cm">// false — different objects</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(a.<span class="fn">equals</span>(c));     <span class="cm">// true  — same characters</span>
+
+<span class="hl">    <span class="cl">String</span> d = c.<span class="fn">intern</span>();           <span class="cm">// manually pulls "hello" from the pool</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(a == d);          <span class="cm">// true  — now pointing at the pooled object</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">true</span>
+<span class="er">false</span>
+<span class="ok">true</span>
+<span class="ok">true</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>==</code> compares <strong>identity</strong> (same object?). <code>.equals()</code> compares <strong>value</strong> (same characters?). For Strings, always use <code>.equals()</code> unless you specifically need identity.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Pool vs heap</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Create 4 strings: two identical literals, one via <code>new String()</code>, and one built via <code>StringBuilder.toString()</code> with the same characters. Print all 6 pairwise <code>==</code> comparisons and explain each result.</p>
+              <div class="practice-hints"><span class="hint-chip">String literal</span><span class="hint-chip">new String()</span><span class="hint-chip">.intern()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Why Immutability Matters</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Immutability isn't just a quirk — it's a <strong>deliberate design choice</strong> that buys three big wins: free thread-safety, safe use as <code>HashMap</code> keys (hash code never changes), and protection against tampering after a value is handed to security-sensitive code.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.HashMap;
+<span class="kw">import</span> java.util.Map;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+<span class="hl">    <span class="cl">Map</span>&lt;<span class="cl">String</span>, <span class="cl">Integer</span>&gt; ages = <span class="kw">new</span> <span class="cl">HashMap</span>&lt;&gt;();</span>
+    ages.<span class="fn">put</span>(<span class="st">"sandeep"</span>, <span class="nm">32</span>);
+    <span class="cm">// HashMap caches "sandeep".hashCode() the moment it's inserted.</span>
+    <span class="cm">// If String were mutable and someone changed the key's characters</span>
+    <span class="cm">// AFTER insertion, the cached hash code would no longer match —</span>
+    <span class="cm">// the entry would become permanently unreachable. Immutability</span>
+    <span class="cm">// guarantees that can never happen.</span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(ages.<span class="fn">get</span>(<span class="st">"sandeep"</span>)); <span class="cm">// 32 — always findable</span>
+
+    <span class="cm">// Multiple threads can read the same String with zero locking —</span>
+    <span class="cm">// there is no "in progress" state to see, because it can never change.</span>
+    <span class="cl">String</span> shared = <span class="st">"config-value"</span>;
+    <span class="cl">Runnable</span> reader = () -> <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>() + <span class="st">": "</span> + shared);
+    <span class="kw">new</span> <span class="cl">Thread</span>(reader).<span class="fn">start</span>();
+    <span class="kw">new</span> <span class="cl">Thread</span>(reader).<span class="fn">start</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Immutable objects are <strong>inherently thread-safe</strong> (nothing to corrupt) and make <strong>safe, stable hash keys</strong> (hash code can't drift after insertion).</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Explain the contract</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write 3 short bullet points (as code comments) explaining why a <strong>mutable</strong> key class would break <code>HashMap</code> if its fields changed after insertion. Then show a <code>StringBuilder</code> used (incorrectly) as a map key to prove the point conceptually.</p>
+              <div class="practice-hints"><span class="hint-chip">hashCode() contract</span><span class="hint-chip">bucket placement</span><span class="hint-chip">immutable keys only</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Concatenation Under the Hood</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A single <code>+</code> between strings compiles to a hidden <code>StringBuilder</code> — fine. But <code>+=</code> <strong>inside a loop</strong> creates a brand-new <code>StringBuilder</code> AND a brand-new <code>String</code> on every single iteration. That's <strong>O(n&#xB2;)</strong> work to build one string.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4DD;</div><p><strong>Rewriting the whole essay:</strong> Each loop iteration is like re-copying your entire essay onto a new page just to add one more word at the end. Word 1000 means you've copied the first 999 words 999 times.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cm">// fine — compiler turns this into ONE StringBuilder chain</span>
+    <span class="cl">String</span> greeting = <span class="st">"Hello, "</span> + <span class="st">"Sandeep"</span> + <span class="st">"!"</span>;
+    <span class="cl">System</span>.out.<span class="fn">println</span>(greeting);
+
+    <span class="cm">// &#x274C; O(n&#xB2;) — a NEW String object is allocated every iteration</span>
+<span class="hl">    <span class="cl">String</span> result = <span class="st">""</span>;</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nm">0</span>; i &lt; <span class="nm">5</span>; i++) {
+<span class="hl">      result += i + <span class="st">","</span>; <span class="cm">// builds a new String each time, copying everything before it</span></span>
+    }
+    <span class="cl">System</span>.out.<span class="fn">println</span>(result); <span class="cm">// 0,1,2,3,4,</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Hello, Sandeep!</span>
+<span class="ok">0,1,2,3,4,</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A handful of <code>+</code> concatenations is fine. A <strong>loop</strong> that concatenates is a red flag — reach for <code>StringBuilder</code> instead.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Count the allocations</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a loop from 1 to 10 that builds a comma-separated string using <code>+=</code>. Add a comment above each iteration noting roughly how many characters get copied that iteration. Notice the growth pattern.</p>
+              <div class="practice-hints"><span class="hint-chip">String += in a loop</span><span class="hint-chip">count copied chars</span><span class="hint-chip">O(n&#xB2;)</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Decompile (mentally or with <code>javap -c</code>) a single <code>a + b + c</code> expression and notice it's really <code>new StringBuilder().append(a).append(b).append(c).toString()</code>.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Introducing StringBuilder</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>StringBuilder</code> wraps a <strong>mutable, resizable character array</strong> internally. <code>append()</code> just writes into free space at the end — no copying of existing characters, no new object per call. When the array fills up, it grows (usually doubles) and copies <strong>once</strong>, not every append.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4D2;</div><p><strong>Growing notebook:</strong> Instead of rewriting the whole essay per word, you write into the next blank line of a notebook. When you run out of pages, you get a bigger notebook and copy over once — not after every single word.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+<span class="hl">    <span class="cl">StringBuilder</span> sb = <span class="kw">new</span> <span class="cl">StringBuilder</span>(); <span class="cm">// default capacity: 16 chars</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"capacity: "</span> + sb.<span class="fn">capacity</span>()); <span class="cm">// 16</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nm">0</span>; i &lt; <span class="nm">5</span>; i++) {
+<span class="hl">      sb.<span class="fn">append</span>(i).<span class="fn">append</span>(<span class="st">","</span>); <span class="cm">// writes into the SAME underlying array</span></span>
+    }
+
+    <span class="cl">String</span> result = sb.<span class="fn">toString</span>(); <span class="cm">// ONE final copy into an immutable String</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(result);            <span class="cm">// 0,1,2,3,4,</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"length: "</span> + sb.<span class="fn">length</span>()); <span class="cm">// 10</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">capacity: 16</span>
+<span class="ok">0,1,2,3,4,</span>
+<span class="ok">length: 10</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>StringBuilder</code> only converts to an immutable <code>String</code> once, when you call <code>.toString()</code>. Until then, everything mutates in place.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Watch capacity grow</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Create a <code>StringBuilder</code> with initial capacity 4 (<code>new StringBuilder(4)</code>). Append single characters one at a time in a loop up to 10, printing <code>.capacity()</code> after each append. Observe exactly when and how it grows.</p>
+              <div class="practice-hints"><span class="hint-chip">new StringBuilder(4)</span><span class="hint-chip">.capacity()</span><span class="hint-chip">print every iteration</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">StringBuilder vs StringBuffer</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">They have an <strong>identical API</strong>. The only difference: every method on <code>StringBuffer</code> is <code>synchronized</code> — safe to share across threads, but slower. <code>StringBuilder</code> (added in Java 5) has no locking. Almost all code is single-threaded inside one method, so <code>StringBuilder</code> is the modern default.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cm">// 99% of the time: local variable, one thread, one method — use this</span>
+<span class="hl">    <span class="cl">StringBuilder</span> sb = <span class="kw">new</span> <span class="cl">StringBuilder</span>();</span>
+    sb.<span class="fn">append</span>(<span class="st">"fast, "</span>).<span class="fn">append</span>(<span class="st">"unsynchronized"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sb); <span class="cm">// fast, unsynchronized</span>
+
+    <span class="cm">// rare: the SAME buffer instance genuinely shared & mutated by multiple threads</span>
+<span class="hl">    <span class="cl">StringBuffer</span> buf = <span class="kw">new</span> <span class="cl">StringBuffer</span>();</span>
+    <span class="cl">Runnable</span> appender = () -> buf.<span class="fn">append</span>(<span class="st">"x"</span>); <span class="cm">// each append() call is synchronized</span>
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(appender);
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(appender);
+    t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Default to <code>StringBuilder</code>. Only reach for <code>StringBuffer</code> if the exact same instance is genuinely mutated by multiple threads — and even then, consider redesigning so each thread builds its own <code>StringBuilder</code> instead.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Pick the right tool</span></div>
+            <div class="practice-body">
+              <p class="practice-q">For each scenario, decide <code>StringBuilder</code> or <code>StringBuffer</code> and write one sentence why: (a) building a SQL query string inside one method, (b) a shared audit-log buffer appended to by 10 worker threads, (c) formatting a JSON response in a REST controller.</p>
+              <div class="practice-hints"><span class="hint-chip">thread sharing?</span><span class="hint-chip">synchronized cost</span><span class="hint-chip">local vs shared</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">StringBuilder Method Tour</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Beyond <code>append()</code>, <code>StringBuilder</code> has a full editing toolkit: insert in the middle, delete a range, replace a range, reverse, and set a single character — all <strong>in place</strong>, no new objects until you call <code>toString()</code>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cl">StringBuilder</span> sb = <span class="kw">new</span> <span class="cl">StringBuilder</span>(<span class="st">"Hello World"</span>);
+
+    sb.<span class="fn">insert</span>(<span class="nm">5</span>, <span class="st">","</span>);              <span class="cm">// "Hello, World"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sb);
+
+    sb.<span class="fn">delete</span>(<span class="nm">0</span>, <span class="nm">6</span>);               <span class="cm">// removes "Hello,"  → " World"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sb);
+
+    sb.<span class="fn">deleteCharAt</span>(<span class="nm">0</span>);            <span class="cm">// removes the leading space → "World"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sb);
+
+    sb.<span class="fn">setCharAt</span>(<span class="nm">0</span>, <span class="st">'w'</span>);          <span class="cm">// "world"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sb);
+
+    sb.<span class="fn">replace</span>(<span class="nm">0</span>, <span class="nm">5</span>, <span class="st">"galaxy"</span>);  <span class="cm">// "galaxy"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sb);
+
+    sb.<span class="fn">reverse</span>();                  <span class="cm">// "yxalag"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sb);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Hello, World</span>
+<span class="ok"> World</span>
+<span class="ok">World</span>
+<span class="ok">world</span>
+<span class="ok">galaxy</span>
+<span class="ok">yxalag</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Every method here mutates <code>sb</code> directly and returns <code>this</code>, which is why you can chain calls: <code>sb.append(a).insert(0,b).reverse()</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Build a palindrome checker</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a <code>String</code> input, use <code>StringBuilder.reverse()</code> to check if it's a palindrome (ignore case). Test with <strong>"Racecar"</strong> and <strong>"Hello"</strong>.</p>
+              <div class="practice-hints"><span class="hint-chip">new StringBuilder(input)</span><span class="hint-chip">.reverse().toString()</span><span class="hint-chip">equalsIgnoreCase</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Prove It: A Real Benchmark</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Talk is cheap — this program builds the same 100,000-character string two ways and times each with <code>System.nanoTime()</code>. The gap is not subtle: <code>+=</code> is roughly <strong>100&#xD7;&#x2013;1000&#xD7; slower</strong> at this size, and the gap widens as the string grows.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="kw">int</span> n = <span class="nm">100_000</span>;
+
+    <span class="cm">// ❌ String += in a loop — O(n²)</span>
+    <span class="kw">long</span> start1 = <span class="cl">System</span>.<span class="fn">nanoTime</span>();
+<span class="hl">    <span class="cl">String</span> slow = <span class="st">""</span>;</span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nm">0</span>; i &lt; n; i++) {
+      slow += <span class="st">"x"</span>;
+    }
+    <span class="kw">long</span> slowMs = (<span class="cl">System</span>.<span class="fn">nanoTime</span>() - start1) / <span class="nm">1_000_000</span>;
+
+    <span class="cm">// ✅ StringBuilder.append() in a loop — O(n)</span>
+    <span class="kw">long</span> start2 = <span class="cl">System</span>.<span class="fn">nanoTime</span>();
+<span class="hl">    <span class="cl">StringBuilder</span> fast = <span class="kw">new</span> <span class="cl">StringBuilder</span>(n); <span class="cm">// pre-size to avoid resizing entirely</span></span>
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="nm">0</span>; i &lt; n; i++) {
+      fast.<span class="fn">append</span>(<span class="st">"x"</span>);
+    }
+    <span class="cl">String</span> result = fast.<span class="fn">toString</span>();
+    <span class="kw">long</span> fastMs = (<span class="cl">System</span>.<span class="fn">nanoTime</span>() - start2) / <span class="nm">1_000_000</span>;
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"String +=      : "</span> + slowMs + <span class="st">" ms"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"StringBuilder   : "</span> + fastMs + <span class="st">" ms"</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Sample output (varies by machine)</div>
+            <div class="output-box"><span class="er">String +=      : 4280 ms</span>
+<span class="ok">StringBuilder   : 6 ms</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Pre-sizing the <code>StringBuilder</code> (<code>new StringBuilder(n)</code>) when you know roughly how big the result will be avoids resize-copies entirely — squeezing out even more performance.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Run your own benchmark</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Run the code above with <code>n = 1000</code>, <code>10,000</code>, and <code>100,000</code>. Record both times in a table. Notice how the <code>+=</code> time grows much faster than linearly while <code>StringBuilder</code> stays roughly proportional.</p>
+              <div class="practice-hints"><span class="hint-chip">System.nanoTime()</span><span class="hint-chip">vary n</span><span class="hint-chip">record a table</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Use a proper benchmarking tool like <strong>JMH</strong> for production-grade measurements — <code>System.nanoTime()</code> in a <code>main()</code> method is fine for learning but JIT warm-up skews single-run numbers.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">String.format &amp; Text Blocks</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Neither concatenation nor <code>StringBuilder</code> is the most readable choice for templated output. <code>String.format()</code> (or <code>"%s".formatted(...)</code> since Java 15) handles placeholders cleanly. <strong>Text blocks</strong> (<code>"""</code>, Java 15+) make multi-line strings readable without escape-character soup.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cl">String</span> name = <span class="st">"Sandeep"</span>;
+    <span class="kw">int</span> age = <span class="nm">32</span>;
+
+    <span class="cm">// readable templating instead of "Name: " + name + ", Age: " + age</span>
+<span class="hl">    <span class="cl">String</span> formatted = <span class="cl">String</span>.<span class="fn">format</span>(<span class="st">"Name: %s, Age: %d"</span>, name, age);</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(formatted);
+
+    <span class="cm">// Java 15+ text block — no \n or string concatenation needed</span>
+<span class="hl">    <span class="cl">String</span> json = <span class="st">"""
+        {
+          "name": "%s",
+          "age": %d
+        }"""</span>.<span class="fn">formatted</span>(name, age);</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(json);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Name: Sandeep, Age: 32</span>
+<span class="ok">{</span>
+<span class="ok">  "name": "Sandeep",</span>
+<span class="ok">  "age": 32</span>
+<span class="ok">}</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Use <code>StringBuilder</code> for loops, <code>String.format</code>/text blocks for <strong>one-shot readable templates</strong>. Neither replaces the other — they solve different problems.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Build an invoice line</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Use <code>String.format</code> to print an invoice line: <strong>item name</strong> (left-padded to 20 chars), <strong>quantity</strong>, and <strong>price</strong> formatted to 2 decimal places. Look up the <code>%-20s</code> and <code>%.2f</code> format specifiers.</p>
+              <div class="practice-hints"><span class="hint-chip">%-20s</span><span class="hint-chip">%.2f</span><span class="hint-chip">String.format</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">equals() vs ==</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">This is the single most asked Java interview question about Strings. <code>==</code> asks "<strong>is this the exact same object in memory?</strong>" <code>.equals()</code> asks "<strong>do these have the same characters?</strong>" Because of the string pool, <code>==</code> can accidentally "work" for literals — until it doesn't.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cl">String</span> input = <span class="kw">new</span> <span class="cl">Scanner</span>(<span class="cl">System</span>.in).<span class="fn">nextLine</span>(); <span class="cm">// imagine user typed "admin"</span>
+    <span class="cl">String</span> expected = <span class="st">"admin"</span>;
+
+<span class="hl">    <span class="kw">if</span> (input == expected) { <span class="cm">// &#x274C; DANGEROUS — input is never pool-interned automatically</span></span>
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Access granted (lucky, not correct)"</span>);
+    } <span class="kw">else</span> {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Access denied — even if input WAS \"admin\"!"</span>);
+    }
+
+<span class="hl">    <span class="kw">if</span> (input.<span class="fn">equals</span>(expected)) { <span class="cm">// &#x2705; CORRECT — compares actual characters</span></span>
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Access granted (correctly!)"</span>);
+    }
+  }
+}
+<span class="cm">// note: requires "import java.util.Scanner;" to actually compile and run</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Never use <code>==</code> to compare String <strong>values</strong>. It might pass by accident with literals and silently fail with anything read from user input, a file, or a network call.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Fix the login check</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Take a method <code>boolean login(String input)</code> that incorrectly checks <code>input == "admin"</code>. Fix it to use <code>.equals()</code>, then explain in a comment exactly which inputs would have produced a wrong answer with <code>==</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">.equals() not ==</span><span class="hint-chip">"admin".equals(input)</span><span class="hint-chip">null-safety</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Write <code>"admin".equals(input)</code> instead of <code>input.equals("admin")</code> — the constant-first style avoids a <code>NullPointerException</code> if <code>input</code> happens to be <code>null</code>.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="concept" data-id="11">
+    <div class="concept-node">11</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Core String Methods Cold</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A handful of <code>String</code> methods come up constantly in interviews and real code: <code>compareTo</code> (lexicographic order), <code>equalsIgnoreCase</code>, <code>contains</code>, <code>indexOf</code>, <code>substring</code>, and <code>isBlank()</code> vs <code>isEmpty()</code>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"apple"</span>.<span class="fn">compareTo</span>(<span class="st">"banana"</span>));     <span class="cm">// negative — "apple" < "banana"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Admin"</span>.<span class="fn">equalsIgnoreCase</span>(<span class="st">"admin"</span>)); <span class="cm">// true</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"hello world"</span>.<span class="fn">contains</span>(<span class="st">"wor"</span>));    <span class="cm">// true</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"hello world"</span>.<span class="fn">indexOf</span>(<span class="st">"wor"</span>));     <span class="cm">// 6</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"hello world"</span>.<span class="fn">substring</span>(<span class="nm">6</span>));     <span class="cm">// world</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"hello world"</span>.<span class="fn">substring</span>(<span class="nm">0</span>, <span class="nm">5</span>)); <span class="cm">// hello</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"   "</span>.<span class="fn">isEmpty</span>());          <span class="cm">// false — has 3 spaces</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"   "</span>.<span class="fn">isBlank</span>());          <span class="cm">// true  — only whitespace (Java 11+)</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">-1</span>
+<span class="ok">true</span>
+<span class="ok">true</span>
+<span class="ok">6</span>
+<span class="ok">world</span>
+<span class="ok">hello</span>
+<span class="er">false</span>
+<span class="ok">true</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>isEmpty()</code> only checks length 0. <code>isBlank()</code> (Java 11+) also treats whitespace-only strings as empty — usually the one you actually want for validating user input.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q11 — Validate a username</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write <code>boolean isValidUsername(String s)</code> that rejects <code>null</code>, blank strings, and anything shorter than 3 characters after trimming. Test it with <code>null</code>, <code>"  "</code>, <code>"ab"</code>, and <code>"sandeep"</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">null check first</span><span class="hint-chip">.trim().isBlank()</span><span class="hint-chip">.length()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="concept" data-id="12">
+    <div class="concept-node">12</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">split, join &amp; StringJoiner</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Going from String to pieces: <code>split(regex)</code>. Going from pieces back to a delimited String: <code>String.join(...)</code> for simple cases, or <code>StringJoiner</code> when you need a custom <strong>prefix/suffix</strong> too (it's what powers <code>Collectors.joining()</code> internally).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.Arrays;
+<span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.StringJoiner;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+<span class="hl">    <span class="cl">String</span>[] parts = <span class="st">"sandeep,toronto,32"</span>.<span class="fn">split</span>(<span class="st">","</span>); <span class="cm">// ["sandeep","toronto","32"]</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="cl">Arrays</span>.<span class="fn">toString</span>(parts));
+
+    <span class="cl">List</span>&lt;<span class="cl">String</span>&gt; names = <span class="cl">List</span>.<span class="fn">of</span>(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>);
+<span class="hl">    <span class="cl">String</span> joined = <span class="cl">String</span>.<span class="fn">join</span>(<span class="st">" - "</span>, names); <span class="cm">// "a - b - c"</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(joined);
+
+<span class="hl">    <span class="cl">StringJoiner</span> sj = <span class="kw">new</span> <span class="cl">StringJoiner</span>(<span class="st">", "</span>, <span class="st">"["</span>, <span class="st">"]"</span>); <span class="cm">// delimiter, prefix, suffix</span></span>
+    sj.<span class="fn">add</span>(<span class="st">"a"</span>).<span class="fn">add</span>(<span class="st">"b"</span>).<span class="fn">add</span>(<span class="st">"c"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sj.<span class="fn">toString</span>()); <span class="cm">// [a, b, c]</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">[sandeep, toronto, 32]</span>
+<span class="ok">a - b - c</span>
+<span class="ok">[a, b, c]</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>split()</code> takes a <strong>regex</strong>, not a literal — splitting on <code>"."</code> needs <code>"\\."</code> because <code>.</code> means "any character" in regex.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q12 — Parse a CSV line</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Parse the line <strong>"sandeep,32,toronto"</strong> into 3 variables using <code>split(",")</code>. Then rebuild a JSON-ish string from them using <code>StringJoiner</code> with prefix <code>"{"</code> and suffix <code>"}"</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">.split(",")</span><span class="hint-chip">StringJoiner</span><span class="hint-chip">array indexing</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="concept" data-id="13">
+    <div class="concept-node">13</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">When Immutability Backfires</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Immutability is the right <strong>default</strong> everywhere — except hot loops doing lots of small mutations, where it becomes a measurable cost. The fix is never "make String mutable," it's "use a mutable builder for the lifetime of the loop, then freeze the result."</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="cm">// ❌ called 1 million times in a hot path — each call allocates 2 new Strings</span>
+  <span class="kw">static</span> <span class="cl">String</span> <span class="fn">badNormalize</span>(<span class="cl">String</span> s) {
+    <span class="kw">return</span> s.<span class="fn">trim</span>().<span class="fn">toLowerCase</span>(); <span class="cm">// 2 intermediate Strings per call — fine occasionally, costly at scale</span>
+  }
+
+  <span class="cm">// ✅ same intent, but the caller decides whether to batch it through one builder</span>
+  <span class="kw">static</span> <span class="cl">String</span> <span class="fn">buildReport</span>(<span class="cl">String</span>[] lines) {
+<span class="hl">    <span class="cl">StringBuilder</span> sb = <span class="kw">new</span> <span class="cl">StringBuilder</span>(lines.length * <span class="nm">32</span>); <span class="cm">// pre-size: rough capacity estimate</span></span>
+    <span class="kw">for</span> (<span class="cl">String</span> line : lines) {
+      sb.<span class="fn">append</span>(line.<span class="fn">trim</span>()).<span class="fn">append</span>(<span class="st">'\n'</span>); <span class="cm">// one builder for the WHOLE loop, not one per line</span>
+    }
+    <span class="kw">return</span> sb.<span class="fn">toString</span>(); <span class="cm">// freeze to an immutable String exactly once, at the end</span>
+  }
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">String</span>[] lines = { <span class="st">"  hello  "</span>, <span class="st">"  world  "</span> };
+    <span class="cl">System</span>.out.<span class="fn">print</span>(<span class="fn">buildReport</span>(lines)); <span class="cm">// hello\nworld\n</span>
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>The rule of thumb: <strong>one mutation</strong> → String is fine and clearer. <strong>A loop of mutations</strong> → one shared <code>StringBuilder</code> for the whole loop, frozen to a String once at the end.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q13 — Refactor for scale</span></div>
+            <div class="practice-body">
+              <p class="practice-q">You have a method that builds an HTML table row string per record, called for 50,000 records, concatenating all rows together with <code>+=</code>. Refactor it to use one <code>StringBuilder</code> across all 50,000 records instead.</p>
+              <div class="practice-hints"><span class="hint-chip">one StringBuilder outside the loop</span><span class="hint-chip">pre-size capacity</span><span class="hint-chip">toString() once</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="concept" data-id="14">
+    <div class="concept-node">14</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The questions that come up again and again at the senior level — short, confident answers beat long, vague ones.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3A4;</div><p><strong>Q: Why is String immutable in Java?</strong><br>Security, thread-safety with zero locking, safe hashCode caching for use as HashMap/HashSet keys, and it enables the string pool to safely share objects.</p></div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3A4;</div><p><strong>Q: What is the string pool, and is there a memory leak risk with intern()?</strong><br>It's a special area (part of the heap since Java 7, previously PermGen) where literal Strings are cached and reused. Pre-Java 7, calling <code>.intern()</code> on many unique dynamic strings could fill a fixed-size PermGen and cause OutOfMemoryError. Since Java 7+ the pool lives in the regular garbage-collected heap, so that specific leak risk is gone — but interning huge numbers of unique strings can still bloat memory unnecessarily.</p></div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3A4;</div><p><strong>Q: StringBuilder vs StringBuffer — when would you actually pick StringBuffer?</strong><br>Almost never in new code. Only if the exact same builder instance is mutated directly by multiple threads without any other synchronization — and even then, redesigning to build per-thread and merge results is usually better.</p></div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3A4;</div><p><strong>Q: How would you efficiently build a large CSV string from 1 million records?</strong><br>One <code>StringBuilder</code> (pre-sized with an estimate of total characters) reused across the whole loop, appending each row, calling <code>.toString()</code> once at the end — or even better, stream directly to a <code>BufferedWriter</code> so you never hold the whole 1M-row string in memory at once.</p></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Interviewers care less about memorized definitions and more about whether you immediately reach for the right tool — <code>StringBuilder</code> for loops, immutable <code>String</code> everywhere else.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q14 — Mock interview</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Without looking back at this page, write out your own one-paragraph answer to: <strong>"Walk me through what happens in memory when you write <code>String a = "hi"; String b = new String("hi");</code>"</strong> Then check it against concepts 1 &amp; 2.</p>
+              <div class="practice-hints"><span class="hint-chip">string pool</span><span class="hint-chip">heap allocation</span><span class="hint-chip">== vs equals</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Explain why <code>StringBuilder</code> doesn't override <code>equals()</code> meaningfully (it inherits <code>Object.equals</code> — reference equality) even though <code>String</code> does. Hint: it's about <strong>mutability</strong> — a mutable object's "value" can change, so value-based equality would be unstable.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; You're fluent in String &amp; StringBuilder!</h2>
+    <p>From immutability fundamentals to senior-level performance reasoning — you now know exactly when and why to reach for each tool.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> String Immutability</div>
+      <div class="grid-item"><span class="grid-num">02</span> String Constant Pool</div>
+      <div class="grid-item"><span class="grid-num">03</span> Why Immutability Matters</div>
+      <div class="grid-item"><span class="grid-num">04</span> Concatenation Internals</div>
+      <div class="grid-item"><span class="grid-num">05</span> Introducing StringBuilder</div>
+      <div class="grid-item"><span class="grid-num">06</span> StringBuilder vs StringBuffer</div>
+      <div class="grid-item"><span class="grid-num">07</span> StringBuilder Method Tour</div>
+      <div class="grid-item"><span class="grid-num">08</span> Real Benchmark</div>
+      <div class="grid-item"><span class="grid-num">09</span> String.format &amp; Text Blocks</div>
+      <div class="grid-item"><span class="grid-num">10</span> equals() vs ==</div>
+      <div class="grid-item"><span class="grid-num">11</span> Core String Methods</div>
+      <div class="grid-item"><span class="grid-num">12</span> split / join / StringJoiner</div>
+      <div class="grid-item"><span class="grid-num">13</span> When Immutability Backfires</div>
+      <div class="grid-item"><span class="grid-num">14</span> Senior Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 14) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 14';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

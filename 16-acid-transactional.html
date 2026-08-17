@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACID &amp; @Transactional — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#070B0F; --surface:#0F171E; --surface2:#141F29; --border:#1E2E3A; --border2:#28404F;
+  --accent:#3B82F6; --accent2:#38BDF8; --accent3:#93C5FD; --glow:rgba(59,130,246,0.18);
+  --text:#E8F1F8; --muted:#7C93A3; --muted2:#4F6473;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(59,130,246,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(56,189,248,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(59,130,246,.1);
+  border:1px solid rgba(59,130,246,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#DBEAFE 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(7,11,15,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(59,130,246,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(59,130,246,.12),0 0 16px rgba(59,130,246,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(59,130,246,.35); box-shadow:0 0 0 1px rgba(59,130,246,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(59,130,246,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#080B0E; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(59,130,246,.1); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(59,130,246,.06); border:1px solid rgba(59,130,246,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#040608; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; }
+
+/* TABLE */
+.table-wrap { margin-bottom:20px; overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+table.matrix { width:100%; border-collapse:collapse; font-size:13px; }
+table.matrix th, table.matrix td { padding:10px 14px; text-align:left; border-bottom:1px solid var(--border); white-space:nowrap; }
+table.matrix th { background:var(--surface2); font-family:'JetBrains Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent2); }
+table.matrix tr:last-child td { border-bottom:none; }
+table.matrix td { color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:12.5px; }
+table.matrix td:first-child { color:var(--text); font-family:'Inter',sans-serif; font-size:13px; }
+table.matrix .yes { color:var(--red); }
+table.matrix .no { color:var(--green); }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(59,130,246,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(59,130,246,.2); border:1px solid rgba(59,130,246,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(59,130,246,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(59,130,246,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> ACID &amp; @Transactional — Visual Guide</div>
+  <h1>Master<br><em>Database Transactions</em><br>Visually</h1>
+  <p class="hero-sub">8 concepts. From ACID theory to Spring's transaction proxy internals. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">8</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">8</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 8</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">ACID Properties Overview</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><strong>Atomicity</strong> — all statements in a transaction succeed or none do. <strong>Consistency</strong> — a transaction moves the database from one valid state to another, never violating constraints. <strong>Isolation</strong> — concurrent transactions don't see each other's half-finished work. <strong>Durability</strong> — once committed, a crash a millisecond later can't undo it. These are database engine guarantees; Spring's <code>@Transactional</code> is just a convenient way to declare transaction boundaries around them.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3E6;</div><p><strong>Bank transfer:</strong> moving $50 from Account A to Account B is really two statements — debit A, credit B. Atomicity is the guarantee that you never end up in a world where A was debited but B was never credited (money vanishes) or B was credited twice (money appears from nowhere). It's both, or neither.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">TransferExample</span> {
+
+  <span class="cm">// &#x274C; NO transaction wrapper — a crash between the two UPDATEs leaves money vanished</span>
+  <span class="kw">static void</span> <span class="fn">unsafeTransfer</span>(<span class="cl">Connection</span> conn, <span class="kw">int</span> fromId, <span class="kw">int</span> toId, <span class="kw">double</span> amount) <span class="kw">throws</span> <span class="cl">SQLException</span> {
+    <span class="kw">try</span> (<span class="cl">Statement</span> st = conn.<span class="fn">createStatement</span>()) {
+      st.<span class="fn">executeUpdate</span>(<span class="st">"UPDATE accounts SET balance = balance - "</span> + amount + <span class="st">" WHERE id = "</span> + fromId);
+      <span class="cm">// &#x26A1; if the JVM crashes / network drops right here, A lost money but B never gained it</span>
+      st.<span class="fn">executeUpdate</span>(<span class="st">"UPDATE accounts SET balance = balance + "</span> + amount + <span class="st">" WHERE id = "</span> + toId);
+    }
+  }
+
+  <span class="cm">// &#x2705; wrapped in a transaction — atomic: both happen, or the rollback undoes the first</span>
+  <span class="kw">static void</span> <span class="fn">safeTransfer</span>(<span class="cl">Connection</span> conn, <span class="kw">int</span> fromId, <span class="kw">int</span> toId, <span class="kw">double</span> amount) <span class="kw">throws</span> <span class="cl">SQLException</span> {
+<span class="hl">    conn.<span class="fn">setAutoCommit</span>(<span class="kw">false</span>); <span class="cm">// &#x1F512; open a transaction — nothing commits until we say so</span></span>
+    <span class="kw">try</span> (<span class="cl">Statement</span> st = conn.<span class="fn">createStatement</span>()) {
+      st.<span class="fn">executeUpdate</span>(<span class="st">"UPDATE accounts SET balance = balance - "</span> + amount + <span class="st">" WHERE id = "</span> + fromId);
+      <span class="kw">if</span> (amount &gt; <span class="nm">1_000_000</span>) <span class="kw">throw new</span> <span class="cl">IllegalStateException</span>(<span class="st">"suspiciously large transfer"</span>);
+      st.<span class="fn">executeUpdate</span>(<span class="st">"UPDATE accounts SET balance = balance + "</span> + amount + <span class="st">" WHERE id = "</span> + toId);
+<span class="hl">      conn.<span class="fn">commit</span>(); <span class="cm">// both statements become permanent together</span></span>
+    } <span class="kw">catch</span> (<span class="cl">Exception</span> e) {
+<span class="hl">      conn.<span class="fn">rollback</span>(); <span class="cm">// undo the debit too — DB is exactly as if nothing happened</span></span>
+      <span class="kw">throw new</span> <span class="cl">RuntimeException</span>(<span class="st">"transfer failed, rolled back"</span>, e);
+    }
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">before: A=100.0 B=50.0</span>
+<span class="er">unsafeTransfer crashes after debit &#x2192; A=50.0 B=50.0   &#x2190; $50 vanished!</span>
+<span class="ok">safeTransfer throws on oversized amount &#x2192; rollback() runs &#x2192; A=100.0 B=50.0   &#x2190; unchanged</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>@Transactional</code> in Spring primarily targets <strong>Atomicity</strong> and, via its <code>isolation</code> attribute, <strong>Isolation</strong>. <strong>Consistency</strong> is enforced by DB constraints (foreign keys, checks) and your application logic; <strong>Durability</strong> is the storage engine's job (write-ahead logs, fsync) once a commit succeeds.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Write a manual JDBC transfer</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write <code>transfer(Connection conn, int fromId, int toId, double amount)</code> using <code>setAutoCommit(false)</code>, <code>commit()</code>, and <code>rollback()</code> in a catch block. Verify both balances change together on success.</p>
+              <div class="practice-hints"><span class="hint-chip">setAutoCommit(false)</span><span class="hint-chip">commit() on success</span><span class="hint-chip">rollback() in catch</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Throw an exception right after the debit UPDATE but before the credit UPDATE (simulating a mid-transfer crash). Query the balances afterward and confirm the database looks exactly as it did before the transfer started.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">@Transactional Basics</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Spring wraps a <code>@Transactional</code> bean in a proxy. Calling the method opens a transaction; a normal return commits it; an unchecked exception rolls it back &#x2014; all the boilerplate from concept 1 collapses into one annotation.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> org.springframework.transaction.annotation.Transactional;
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">AccountService</span> {
+
+  <span class="kw">private final</span> <span class="cl">AccountRepository</span> accountRepository;
+
+  <span class="kw">public</span> <span class="cl">AccountService</span>(<span class="cl">AccountRepository</span> accountRepository) {
+    <span class="kw">this</span>.accountRepository = accountRepository;
+  }
+
+<span class="hl">  <span class="ann">@Transactional</span> <span class="cm">// &#x1F512; proxy opens a tx on entry, commits on return, rolls back on RuntimeException</span></span>
+  <span class="kw">public void</span> <span class="fn">transfer</span>(<span class="kw">long</span> fromId, <span class="kw">long</span> toId, <span class="cl">BigDecimal</span> amount) {
+    accountRepository.<span class="fn">debit</span>(fromId, amount);
+
+    <span class="kw">if</span> (amount.<span class="fn">compareTo</span>(BigDecimal.<span class="fn">valueOf</span>(<span class="nm">1_000_000</span>)) &gt; <span class="nm">0</span>) {
+<span class="hl">      <span class="kw">throw new</span> <span class="cl">IllegalStateException</span>(<span class="st">"suspiciously large transfer"</span>); <span class="cm">// triggers rollback</span></span>
+    }
+
+    accountRepository.<span class="fn">credit</span>(toId, amount); <span class="cm">// never reached if the check above throws</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">before: A=100.00 B=50.00</span>
+<span class="er">transfer(A, B, 2_000_000) throws IllegalStateException</span>
+<span class="ok">after (rolled back): A=100.00 B=50.00   &#x2190; debit() was undone automatically</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>By default, Spring only rolls back on <strong>unchecked</strong> exceptions (<code>RuntimeException</code>/<code>Error</code>). A checked exception thrown from inside a <code>@Transactional</code> method <strong>commits</strong> unless you override that &#x2014; see concept 5.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Three-way transfer</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a <code>@Transactional</code> method that debits Account A and credits both B and C in three steps. Throw a <code>RuntimeException</code> on the third step and confirm <strong>all three</strong> balances are unchanged afterward, not just the last one.</p>
+              <div class="practice-hints"><span class="hint-chip">@Transactional</span><span class="hint-chip">throw on step 3</span><span class="hint-chip">assert all 3 unchanged</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Propagation Types</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Propagation decides what happens when a <code>@Transactional</code> method is called <strong>while another transaction is already open</strong>. <strong>REQUIRED</strong> (default) joins the existing one, or starts a new one if there isn't one. <strong>REQUIRES_NEW</strong> always suspends the caller's transaction and starts a brand-new, independent one. <strong>NESTED</strong> creates a savepoint inside the same physical transaction &#x2014; a rollback only unwinds to that savepoint. <strong>SUPPORTS</strong> joins if one exists, otherwise runs non-transactionally. <strong>MANDATORY</strong> throws if no transaction exists. <strong>NOT_SUPPORTED</strong> suspends any existing transaction and runs without one. <strong>NEVER</strong> throws if a transaction exists.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> org.springframework.transaction.annotation.Propagation;
+<span class="kw">import</span> org.springframework.transaction.annotation.Transactional;
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">AuditService</span> {
+
+<span class="hl">  <span class="ann">@Transactional</span>(propagation = Propagation.REQUIRES_NEW) <span class="cm">// &#x1F195; always its own transaction</span></span>
+  <span class="kw">public void</span> <span class="fn">logAttempt</span>(<span class="kw">long</span> accountId, String action) {
+    auditRepository.<span class="fn">save</span>(<span class="kw">new</span> <span class="cl">AuditEntry</span>(accountId, action, Instant.<span class="fn">now</span>()));
+  }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">AccountService</span> {
+
+  <span class="kw">private final</span> <span class="cl">AuditService</span> auditService; <span class="cm">// separate bean — needed so the proxy is honored, see concept 6</span>
+
+  <span class="ann">@Transactional</span> <span class="cm">// default REQUIRED — this is the "outer" transaction</span>
+  <span class="kw">public void</span> <span class="fn">withdraw</span>(<span class="kw">long</span> accountId, <span class="cl">BigDecimal</span> amount) {
+    auditService.<span class="fn">logAttempt</span>(accountId, <span class="st">"WITHDRAW_ATTEMPT"</span>); <span class="cm">// commits in its OWN transaction, right now</span>
+
+<span class="hl">    <span class="kw">throw new</span> <span class="cl">InsufficientFundsException</span>(<span class="st">"balance too low"</span>); <span class="cm">// rolls back the OUTER tx only</span></span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">audit_log table: 1 row inserted ("WITHDRAW_ATTEMPT")   &#x2190; committed independently</span>
+<span class="er">withdraw() throws InsufficientFundsException &#x2192; outer transaction rolled back</span>
+<span class="ok">accounts table: unchanged   &#x2190; but the audit row from above SURVIVES</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>REQUIRES_NEW</code> is the standard pattern for "this must be recorded no matter what the caller does next" &#x2014; audit trails, outbound notifications you don't want silently rolled back with the business transaction that triggered them.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Prove REQUIRES_NEW survives a rollback</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Implement <code>AuditService.logAttempt()</code> with <code>Propagation.REQUIRES_NEW</code>, call it from inside a business method, then throw <strong>after</strong> the audit call. Query the audit table after the outer method fails and confirm the audit row committed anyway.</p>
+              <div class="practice-hints"><span class="hint-chip">Propagation.REQUIRES_NEW</span><span class="hint-chip">separate bean</span><span class="hint-chip">throw after audit call</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Isolation Levels &amp; Read Phenomena</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Isolation controls what one transaction is allowed to see of another transaction's <strong>uncommitted or concurrently changing</strong> work. The SQL standard defines four levels, each preventing more read anomalies than the last &#x2014; at the cost of more locking and lower concurrency.</div>
+          <div class="table-wrap">
+            <table class="matrix">
+              <thead><tr><th>Isolation Level</th><th>Dirty Read</th><th>Non-Repeatable Read</th><th>Phantom Read</th></tr></thead>
+              <tbody>
+                <tr><td>READ_UNCOMMITTED</td><td class="yes">possible</td><td class="yes">possible</td><td class="yes">possible</td></tr>
+                <tr><td>READ_COMMITTED</td><td class="no">prevented</td><td class="yes">possible</td><td class="yes">possible</td></tr>
+                <tr><td>REPEATABLE_READ</td><td class="no">prevented</td><td class="no">prevented</td><td class="yes">possible*</td></tr>
+                <tr><td>SERIALIZABLE</td><td class="no">prevented</td><td class="no">prevented</td><td class="no">prevented</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.transaction.annotation.Isolation;
+<span class="kw">import</span> org.springframework.transaction.annotation.Transactional;
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">ReportingService</span> {
+
+<span class="hl">  <span class="ann">@Transactional</span>(isolation = Isolation.READ_COMMITTED) <span class="cm">// explicit override</span></span>
+  <span class="kw">public</span> <span class="cl">BigDecimal</span> <span class="fn">currentBalance</span>(<span class="kw">long</span> accountId) {
+    <span class="kw">return</span> accountRepository.<span class="fn">findBalance</span>(accountId);
+  }
+
+  <span class="cm">// Spring's default is Isolation.DEFAULT — it just delegates to the DB's own default,</span>
+  <span class="cm">// which is REPEATABLE_READ on MySQL/InnoDB but READ_COMMITTED on PostgreSQL and Oracle.</span>
+  <span class="cm">// Know your database — "the default" silently means different things on different engines.</span>
+  <span class="ann">@Transactional</span>
+  <span class="kw">public void</span> <span class="fn">defaultIsolationExample</span>() { <span class="cm">/* uses whatever the DB engine defaults to */</span> }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Higher isolation buys more consistency but costs more locking and lower throughput under concurrent load. Pick the <strong>lowest</strong> level that still keeps your invariants safe &#x2014; most CRUD services never need anything above <code>READ_COMMITTED</code> or the DB's default.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Describe a non-repeatable read</span></div>
+            <div class="practice-body">
+              <p class="practice-q">As a written scenario or code comments: Transaction 1 reads an account's balance twice within the same transaction at <code>READ_COMMITTED</code>. Between the two reads, Transaction 2 commits an update to that row. Explain what Transaction 1 sees on its second read, and how switching to <code>REPEATABLE_READ</code> changes the outcome.</p>
+              <div class="practice-hints"><span class="hint-chip">read twice, same tx</span><span class="hint-chip">concurrent commit in between</span><span class="hint-chip">REPEATABLE_READ fixes it</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">rollbackFor / noRollbackFor</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Spring's default rollback rule is inherited from EJB conventions: roll back on <strong>unchecked</strong> exceptions (<code>RuntimeException</code>, <code>Error</code>), but <strong>commit anyway</strong> on <strong>checked</strong> exceptions. This surprises almost everyone the first time it bites them in production.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">OrderService</span> {
+
+  <span class="cm">// &#x274C; BUG: IOException is checked — Spring commits the DB writes despite the failure!</span>
+  <span class="ann">@Transactional</span>
+  <span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="cl">Order</span> order) <span class="kw">throws</span> <span class="cl">IOException</span> {
+    orderRepository.<span class="fn">save</span>(order);
+<span class="hl">    receiptPrinter.<span class="fn">print</span>(order); <span class="cm">// throws checked IOException — printer offline</span></span>
+    <span class="cm">// &#x2794; transaction still COMMITS: order.save() is now permanent even though printing failed</span>
+  }
+
+  <span class="cm">// &#x2705; FIX: tell Spring to treat this checked exception as rollback-worthy too</span>
+<span class="hl">  <span class="ann">@Transactional</span>(rollbackFor = Exception.<span class="kw">class</span>)</span>
+  <span class="kw">public void</span> <span class="fn">placeOrderFixed</span>(<span class="cl">Order</span> order) <span class="kw">throws</span> <span class="cl">IOException</span> {
+    orderRepository.<span class="fn">save</span>(order);
+    receiptPrinter.<span class="fn">print</span>(order); <span class="cm">// same IOException — this time it DOES roll back</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="er">placeOrder(): IOException thrown &#x2192; orders table STILL HAS the row   &#x2190; silent bug</span>
+<span class="ok">placeOrderFixed(): IOException thrown &#x2192; orders table has NO row   &#x2190; correctly rolled back</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>If any code inside a <code>@Transactional</code> method can throw a checked exception, you almost always want <code>rollbackFor = Exception.class</code> &#x2014; otherwise you'll silently commit partial work every time that checked path fires. The inverse, <code>noRollbackFor</code>, exists for the rarer case where you want an unchecked exception to <strong>not</strong> trigger a rollback.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Reproduce, then fix, the silent-commit bug</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a <code>@Transactional</code> method that saves an entity and then throws a checked exception. Run it, query the table, and confirm the row is still there despite the "failure". Add <code>rollbackFor = Exception.class</code>, re-run, and confirm the row is now gone.</p>
+              <div class="practice-hints"><span class="hint-chip">checked exception, no rollbackFor</span><span class="hint-chip">row commits anyway</span><span class="hint-chip">rollbackFor = Exception.class fixes it</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">The Self-Invocation Pitfall</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>@Transactional</code> works because Spring wraps your bean in a <strong>proxy</strong> (JDK dynamic proxy or CGLIB subclass) that intercepts the method call to open/commit/rollback a transaction around it. Calling an annotated method from <strong>another method in the same class</strong> via <code>this.method()</code> calls the real object directly &#x2014; the proxy is never involved, so no transaction is ever opened. This is one of the most common real-world Spring bugs, and it applies equally to <code>@Async</code>, <code>@Cacheable</code>, and any other proxy-based annotation.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">BrokenAccountService</span> {
+
+  <span class="kw">public void</span> <span class="fn">callSelf</span>() {
+<span class="hl">    <span class="kw">this</span>.<span class="fn">updateData</span>(); <span class="cm">// &#x274C; calls the REAL object, bypassing the transactional proxy entirely</span></span>
+  }
+
+  <span class="ann">@Transactional</span>
+  <span class="kw">public void</span> <span class="fn">updateData</span>() {
+    <span class="kw">boolean</span> active = TransactionSynchronizationManager.<span class="fn">isActualTransactionActive</span>();
+<span class="hl">    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"transaction active? "</span> + active); <span class="cm">// prints false when called via this.updateData()</span></span>
+    accountRepository.<span class="fn">save</span>(<span class="kw">new</span> <span class="cl">Account</span>(...)); <span class="cm">// runs with NO transaction, NO rollback safety net</span>
+  }
+}
+
+<span class="cm">// &#x2705; FIX: split into two beans so the caller invokes the PROXY, not the raw object</span>
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">CallerService</span> {
+  <span class="kw">private final</span> <span class="cl">AccountUpdater</span> accountUpdater; <span class="cm">// injected proxy</span>
+
+  <span class="kw">public void</span> <span class="fn">callSelf</span>() {
+<span class="hl">    accountUpdater.<span class="fn">updateData</span>(); <span class="cm">// &#x2705; goes through the proxy — transaction opens correctly</span></span>
+  }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">AccountUpdater</span> {
+  <span class="ann">@Transactional</span>
+  <span class="kw">public void</span> <span class="fn">updateData</span>() { accountRepository.<span class="fn">save</span>(<span class="kw">new</span> <span class="cl">Account</span>(...)); }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="er">BrokenAccountService.callSelf() &#x2192; transaction active? false   &#x2190; the annotation was silently ignored</span>
+<span class="ok">CallerService.callSelf() &#x2192; transaction active? true   &#x2190; proxy invoked correctly</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Annotate-and-forget doesn't work across internal calls. This is the exact same pitfall as <code>@Async</code>'s self-invocation problem (covered in the <code>@Async</code> guide) &#x2014; both rely on the same proxy mechanism, so both silently no-op the same way when called via <code>this</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Reproduce and fix a self-invocation bug</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write <code>callSelf()</code> calling a <code>@Transactional</code> sibling method via <code>this</code>, and log <code>TransactionSynchronizationManager.isActualTransactionActive()</code> inside it to prove it's <code>false</code>. Then fix it by extracting the transactional method into a second injected bean and confirm the flag flips to <code>true</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">isActualTransactionActive()</span><span class="hint-chip">this.method() bypasses proxy</span><span class="hint-chip">split into two beans</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">readOnly, Timeout &amp; Performance</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>readOnly = true</code> is a hint: Hibernate skips dirty-checking and flushing for the session, and some drivers/routing layers use it to send the query to a read replica. <code>timeout</code> sets a hard ceiling (in seconds) after which Spring force-rolls-back a still-open transaction. Both matter because every open transaction holds a real connection (and often row locks) from your pool &#x2014; a slow one starves everyone else.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">AccountQueryService</span> {
+
+<span class="hl">  <span class="ann">@Transactional</span>(readOnly = <span class="kw">true</span>, timeout = <span class="nm">5</span>) <span class="cm">// no dirty-checking + force-rollback after 5s</span></span>
+  <span class="kw">public</span> <span class="cl">List</span>&lt;Account&gt; <span class="fn">findHighValueAccounts</span>(<span class="cl">BigDecimal</span> threshold) {
+    <span class="kw">return</span> accountRepository.<span class="fn">findByBalanceGreaterThan</span>(threshold);
+  }
+
+  <span class="cm">// &#x274C; ANTI-PATTERN: slow I/O inside a transactional method holds a DB connection idle</span>
+  <span class="ann">@Transactional</span>
+  <span class="kw">public void</span> <span class="fn">syncAccount</span>(<span class="kw">long</span> id) {
+    <span class="cl">Account</span> account = accountRepository.<span class="fn">findById</span>(id);
+<span class="hl">    externalBankApi.<span class="fn">notify</span>(account); <span class="cm">// &#x26A0;&#xFE0F; HTTP call while holding a pooled connection — do this OUTSIDE the tx</span></span>
+    account.<span class="fn">setLastSynced</span>(Instant.<span class="fn">now</span>());
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Mark every pure-read service method <code>readOnly = true</code> &#x2014; it's nearly free and meaningfully reduces ORM overhead at scale. Never perform slow I/O (HTTP calls, file access, messaging) inside a <code>@Transactional</code> method: it holds a pooled DB connection idle for the whole call, and under load that exhausts the connection pool for everyone.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Audit a service class</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a service with <code>findById()</code>, <code>findAllActive()</code>, <code>updateStatus()</code>, and <code>archiveOldRecords()</code>, decide which methods should be <code>readOnly = true</code> and which shouldn't, and add the correct <code>@Transactional</code> annotations (with a sensible <code>timeout</code> on the batch archive method).</p>
+              <div class="practice-hints"><span class="hint-chip">reads &#x2192; readOnly = true</span><span class="hint-chip">writes &#x2192; readOnly = false (default)</span><span class="hint-chip">batch job &#x2192; timeout</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Five questions interviewers love, with the answer a senior candidate is expected to give.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "What does @Transactional actually do under the hood?"</span>
+<span class="cm">// A: Spring wraps the bean in a proxy (JDK dynamic proxy if it implements an interface,</span>
+<span class="cm">//    CGLIB subclass otherwise). The proxy intercepts calls to annotated methods, asks a</span>
+<span class="cm">//    PlatformTransactionManager to begin a transaction before the method runs, then commits</span>
+<span class="cm">//    on a normal return or rolls back based on the exception thrown (see rollback rules).</span>
+
+<span class="cm">// Q: "Why doesn't @Transactional work when called from within the same class?"</span>
+<span class="cm">// A: Self-invocation (this.method()) calls the real, unproxied object directly — the proxy</span>
+<span class="cm">//    that would open the transaction is never in the call path. The fix is to call through</span>
+<span class="cm">//    another injected bean, or inject a self-reference obtained via AopContext.currentProxy()</span>
+<span class="cm">//    (which requires exposeProxy=true) — but splitting into two beans is usually cleaner.</span>
+
+<span class="cm">// Q: "Checked vs unchecked — which rolls back by default, and why does that surprise people?"</span>
+<span class="cm">// A: Unchecked (RuntimeException/Error) rolls back by default; checked exceptions commit</span>
+<span class="cm">//    unless you specify rollbackFor. It's an inherited EJB convention most developers never</span>
+<span class="cm">//    read about until a checked IOException silently commits half-finished work in prod.</span>
+
+<span class="cm">// Q: "REQUIRED vs REQUIRES_NEW — when would you pick REQUIRES_NEW?"</span>
+<span class="cm">// A: REQUIRED (default) joins whatever transaction is already open, so a rollback anywhere</span>
+<span class="cm">//    in the call chain rolls back everything together. REQUIRES_NEW suspends the caller's</span>
+<span class="cm">//    transaction and starts an independent one — use it when a side effect (audit log,</span>
+<span class="cm">//    outbound notification) must survive even if the surrounding business transaction fails.</span>
+
+<span class="cm">// Q: "What's the danger of a long-running @Transactional method in a high-traffic service?"</span>
+<span class="cm">// A: The transaction holds a real connection from the pool (and often row locks) for its</span>
+<span class="cm">//    entire duration. A method doing slow I/O or heavy computation inside a transaction ties</span>
+<span class="cm">//    up that connection the whole time — under load this exhausts the pool, and every other</span>
+<span class="cm">//    request queues up waiting for a connection, turning one slow method into an outage.</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Senior interviews aren't testing whether you can recite the propagation table &#x2014; they're testing whether you've been burned by a self-invocation bug or an exhausted connection pool in production and changed how you design services because of it.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Final boss: design a checkout transaction strategy</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Design the transaction strategy for an order-checkout flow: <strong>reserve inventory</strong>, <strong>charge payment</strong>, <strong>write an audit log entry</strong>. Decide propagation for each step (should the audit log survive a payment failure?), pick an isolation level for the inventory reservation to prevent overselling, and decide which exceptions should trigger rollback. Write it as actual code — a <code>CheckoutService</code> with the right <code>@Transactional</code> attributes on each collaborator.</p>
+              <div class="practice-hints"><span class="hint-chip">REQUIRES_NEW for audit</span><span class="hint-chip">isolation for inventory</span><span class="hint-chip">rollbackFor on payment failure</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Add a <code>timeout</code> to the outer checkout transaction so a stuck payment gateway call can't hold inventory locks indefinitely — and explain in a comment why the payment call itself shouldn't happen inside the transactional method at all (concept 7).</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; Transactions mastered!</h2>
+    <p>From "what's atomicity?" to designing a multi-step checkout transaction strategy like a senior engineer.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> ACID Properties Overview</div>
+      <div class="grid-item"><span class="grid-num">02</span> @Transactional Basics</div>
+      <div class="grid-item"><span class="grid-num">03</span> Propagation Types</div>
+      <div class="grid-item"><span class="grid-num">04</span> Isolation Levels</div>
+      <div class="grid-item"><span class="grid-num">05</span> rollbackFor / noRollbackFor</div>
+      <div class="grid-item"><span class="grid-num">06</span> Self-Invocation Pitfall</div>
+      <div class="grid-item"><span class="grid-num">07</span> readOnly, Timeout &amp; Perf</div>
+      <div class="grid-item"><span class="grid-num">08</span> Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 8) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 8';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

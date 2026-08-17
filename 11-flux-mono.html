@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flux &amp; Mono — Practice Set</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#0D1117;
+    --panel:#141A22;
+    --panel-2:#1B222C;
+    --line:#26303C;
+    --text:#E6EDF3;
+    --muted:#8B98A5;
+    --flux:#4FD1C5;
+    --flux-dim:#2A5D58;
+    --mono:#B79CF2;
+    --mono-dim:#4E4270;
+    --amber:#E8B14F;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  code, .mono{font-family:'JetBrains Mono',monospace;}
+
+  .app{display:flex; min-height:100vh;}
+  .sidebar{
+    width:260px;
+    flex-shrink:0;
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:24px 16px;
+    position:sticky;
+    top:0;
+    height:100vh;
+    overflow-y:auto;
+  }
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:0 8px 20px 8px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:18px;
+  }
+  .stream-mark{width:34px;height:20px;position:relative;flex-shrink:0;}
+  .stream-mark span{
+    position:absolute; top:8px; width:5px;height:5px;border-radius:50%;
+    background:var(--flux);
+    animation:flow 2.2s linear infinite;
+  }
+  .stream-mark span:nth-child(2){animation-delay:.55s;background:var(--mono);}
+  .stream-mark span:nth-child(3){animation-delay:1.1s;}
+  .stream-mark span:nth-child(4){animation-delay:1.65s;background:var(--amber);}
+  @keyframes flow{
+    0%{left:-6px;opacity:0;}
+    10%{opacity:1;}
+    90%{opacity:1;}
+    100%{left:32px;opacity:0;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .stream-mark span{animation:none; opacity:1;}
+    .stream-mark span:nth-child(1){left:0;}
+    .stream-mark span:nth-child(2){left:9px;}
+    .stream-mark span:nth-child(3){left:18px;}
+    .stream-mark span:nth-child(4){left:27px;}
+  }
+  .brand-text{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:14.5px;letter-spacing:.3px;}
+  .brand-text .dim{color:var(--muted); font-weight:500;}
+
+  .tier-list{list-style:none;margin:0;padding:0;}
+  .tier-item{
+    width:100%;
+    text-align:left;
+    background:transparent;
+    border:none;
+    color:var(--muted);
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+    padding:10px 10px;
+    border-radius:8px;
+    cursor:pointer;
+    margin-bottom:2px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    transition:background .15s ease, color .15s ease;
+  }
+  .tier-item:hover{background:var(--panel-2); color:var(--text);}
+  .tier-item.active{background:var(--panel-2); color:var(--text); box-shadow:inset 2px 0 0 var(--flux);}
+  .tier-item .count{
+    font-family:'JetBrains Mono',monospace;
+    font-size:10.5px;
+    color:var(--muted);
+    background:var(--bg);
+    padding:2px 6px;
+    border-radius:20px;
+    border:1px solid var(--line);
+  }
+  .tier-item.active .count{color:var(--flux); border-color:var(--flux-dim);}
+
+  .progress-block{margin-top:24px; padding:14px 10px; background:var(--bg); border:1px solid var(--line); border-radius:10px;}
+  .progress-label{font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px; display:flex; justify-content:space-between;}
+  .progress-bar{height:6px; background:var(--panel-2); border-radius:6px; overflow:hidden;}
+  .progress-fill{height:100%; width:0%; background:linear-gradient(90deg,var(--mono),var(--flux)); transition:width .4s ease;}
+  .reset-btn{
+    margin-top:12px; width:100%; background:transparent; border:1px solid var(--line);
+    color:var(--muted); font-family:'Inter',sans-serif; font-size:12px; padding:7px; border-radius:7px; cursor:pointer;
+  }
+  .reset-btn:hover{border-color:var(--mono); color:var(--text);}
+
+  .main{flex:1; padding:40px 48px 80px 48px; max-width:920px;}
+  .page-header{margin-bottom:36px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--flux);
+    letter-spacing:1.5px; text-transform:uppercase; margin-bottom:10px;
+  }
+  h1{font-size:30px; margin:0 0 8px 0; letter-spacing:-.3px;}
+  .subtitle{color:var(--muted); font-size:14.5px; line-height:1.6; max-width:600px;}
+
+  .q-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    margin-bottom:14px;
+    overflow:hidden;
+    transition:border-color .15s ease;
+  }
+  .q-card.revealed{border-color:var(--flux-dim);}
+  .q-head{
+    display:flex; align-items:flex-start; gap:14px;
+    padding:18px 20px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .q-num{
+    font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--bg);
+    background:var(--muted);
+    width:28px;height:28px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; font-weight:700;
+    transition:background .2s ease, color .2s ease;
+  }
+  .q-card.revealed .q-num{background:var(--flux); color:#04201D;}
+  .q-text{flex:1; font-size:15px; line-height:1.55; padding-top:2px;}
+  .q-toggle{
+    flex-shrink:0; color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:11px;
+    border:1px solid var(--line); padding:4px 9px; border-radius:6px; margin-top:1px;
+    transition:all .15s ease;
+  }
+  .q-card:hover .q-toggle{border-color:var(--mono); color:var(--text);}
+
+  .a-wrap{display:none;}
+  .q-card.revealed .a-wrap{display:block;}
+  .a-inner{
+    padding:16px 20px 22px 62px;
+    color:var(--text);
+    font-size:14.5px;
+    line-height:1.75;
+    border-top:1px dashed var(--line);
+  }
+  .a-inner p{margin:0 0 12px 0;}
+  .a-inner p:last-child{margin-bottom:0;}
+  .a-inner code{
+    background:var(--bg); border:1px solid var(--line); padding:1px 6px; border-radius:4px;
+    font-size:13px; color:var(--flux);
+  }
+  .a-inner ul{margin:0 0 12px 0; padding-left:20px;}
+  .a-inner li{margin-bottom:6px;}
+  pre{
+    background:var(--bg);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    overflow-x:auto;
+    font-size:12.8px;
+    line-height:1.6;
+    margin:10px 0 14px 0;
+  }
+  pre code{background:none; border:none; padding:0; color:var(--text);}
+  .kw{color:var(--mono);}
+  .cm{color:var(--muted);}
+  .st{color:var(--amber);}
+
+  .analogy{
+    background:linear-gradient(to right, rgba(183,156,242,.08), transparent);
+    border-left:3px solid var(--mono);
+    padding:10px 14px;
+    border-radius:0 8px 8px 0;
+    margin:0 0 14px 0;
+    font-size:14px;
+  }
+  .analogy .tag{
+    font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--mono);
+    text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:4px;
+  }
+  .output-label{
+    font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--amber);
+    text-transform:uppercase; letter-spacing:1px; margin:-6px 0 4px 0;
+  }
+  .keypoint{
+    background:rgba(79,209,197,.07);
+    border-left:3px solid var(--flux);
+    padding:10px 14px;
+    border-radius:0 8px 8px 0;
+    margin:0 0 14px 0;
+    font-size:14px;
+  }
+  .keypoint .tag{
+    font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--flux);
+    text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:4px;
+  }
+
+  @media (max-width:820px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%; height:auto; position:relative; border-right:none; border-bottom:1px solid var(--line);}
+    .main{padding:28px 20px 60px 20px;}
+    .a-inner{padding-left:20px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="stream-mark"><span></span><span></span><span></span><span></span></div>
+      <div class="brand-text">flux<span class="dim">/</span>mono<br><span class="dim" style="font-size:10px;">practice set</span></div>
+    </div>
+    <ul class="tier-list" id="tierList"></ul>
+    <div class="progress-block">
+      <div class="progress-label"><span>Revealed</span><span id="progressCount">0 / 41</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <button class="reset-btn" id="resetBtn">Reset progress</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="eyebrow">Project Reactor · Interview Prep</div>
+      <h1 id="tierTitle">Fundamentals</h1>
+      <div class="subtitle" id="tierSub"></div>
+    </div>
+    <div id="questionArea"></div>
+  </main>
+</div>
+
+<script>
+const DATA = [
+{
+  tier:"Fundamentals", key:"t1",
+  sub:"The stuff that has to be automatic — no hesitation allowed here. Every answer includes an analogy, code, and expected output.",
+  items:[
+    {q:"What's the core difference between <code>Mono&lt;T&gt;</code> and <code>Flux&lt;T&gt;</code>? Give a real example of each from a typical Spring Boot service.",
+     a:`<div class="analogy"><span class="tag">Analogy</span>A <code>Mono</code> is like ordering one pizza — you either get your pizza (1 item), the shop calls saying they're out of dough (empty), or the delivery crashes (error). A <code>Flux</code> is like a pizza subscription — pizzas keep arriving one by one (0 to many), until the subscription ends normally or something goes wrong.</div>
+        <p><strong>Mono&lt;T&gt;</strong> = a stream that emits <strong>at most ONE</strong> item, then completes.<br>
+        <strong>Flux&lt;T&gt;</strong> = a stream that emits <strong>ZERO to MANY</strong> items, then completes.</p>
+        <pre><code><span class="cm">// Mono: you expect ONE user (or none)</span>
+Mono&lt;User&gt; user = userRepository.findById(<span class="st">"u123"</span>);
+
+<span class="cm">// Flux: you expect MANY orders</span>
+Flux&lt;Order&gt; orders = orderRepository.findAll();</code></pre>
+        <pre><code>Mono.just(<span class="st">"hello"</span>).subscribe(System.out::println);
+Flux.just(<span class="st">"a"</span>, <span class="st">"b"</span>, <span class="st">"c"</span>).subscribe(System.out::println);</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>hello
+a
+b
+c</code></pre>
+        <div class="keypoint"><span class="tag">Interview tip</span>The return type is a promise about cardinality. Seeing <code>Mono&lt;Order&gt;</code> in an API tells you "one order max" without reading any docs. That self-documentation is part of why the split exists.</div>`},
+
+    {q:"Why does nothing happen when you just call <code>Mono.just(\"hello\")</code> without subscribing? Explain the \"cold publisher\" concept.",
+     a:`<div class="analogy"><span class="tag">Analogy</span>A cold publisher is a <strong>recipe</strong>, not a meal. Writing "Step 1: boil water, Step 2: add pasta" doesn't cook anything. The kitchen only starts cooking when a customer places an order — and each customer's order is cooked <em>fresh, from scratch</em>. Two customers = the recipe runs twice.</div>
+        <p>In Reactor, building a <code>Mono</code>/<code>Flux</code> chain only <strong>describes</strong> what should happen. Nothing executes until someone calls <code>subscribe()</code>. This is called being <strong>lazy</strong>.</p>
+        <pre><code>Mono&lt;String&gt; mono = Mono.fromCallable(() -&gt; {
+    System.out.println(<span class="st">"Fetching data..."</span>);
+    <span class="kw">return</span> <span class="st">"result"</span>;
+});
+
+System.out.println(<span class="st">"Chain built. Nothing has run yet!"</span>);
+
+mono.subscribe(val -&gt; System.out.println(<span class="st">"Got: "</span> + val));
+mono.subscribe(val -&gt; System.out.println(<span class="st">"Got again: "</span> + val));</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>Chain built. Nothing has run yet!
+Fetching data...          <span class="cm">&larr; ran for subscriber 1</span>
+Got: result
+Fetching data...          <span class="cm">&larr; ran AGAIN for subscriber 2!</span>
+Got again: result</code></pre>
+        <p><strong>"Each subscriber gets its own execution from scratch"</strong> means exactly what you see above: <code>Fetching data...</code> printed twice. Subscriber 2 didn't reuse subscriber 1's result — the whole source logic re-ran. If that callable were an HTTP call, you'd have fired <strong>two real HTTP requests</strong>.</p>
+        <div class="keypoint"><span class="tag">Real-world gotcha</span><code>webClient.get().retrieve().bodyToMono(...)</code> is cold. Accidentally subscribe twice (e.g. once for logging, once to return) and you've hit the downstream API twice. This is a common production bug.</div>`},
+
+    {q:"What are the four types of signals a Reactive Streams <code>Subscriber</code> can receive?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>Think of a phone call with a delivery company. <strong>onSubscribe</strong> = the call connects and they say "we've got your order, tell us how many boxes you can accept." <strong>onNext</strong> = a box arrives at your door (can happen many times). <strong>onComplete</strong> = they call and say "that was the last box, all done!" <strong>onError</strong> = they call and say "the truck crashed, no more boxes are coming." You get either the all-done call OR the crash call — never both, and nothing after either.</div>
+        <p>The four signals, in the order they can happen:</p>
+        <ul>
+          <li><strong><code>onSubscribe(Subscription s)</code></strong> — fires exactly once, first, when the subscription is established. The <code>Subscription</code> object is the "remote control": the subscriber uses <code>s.request(n)</code> to ask for n items (this is backpressure!) and <code>s.cancel()</code> to hang up early.</li>
+          <li><strong><code>onNext(T item)</code></strong> — fires once per emitted item. Zero times (empty stream) to many times (a Flux with lots of data).</li>
+          <li><strong><code>onComplete()</code></strong> — fires once, at the end, if everything succeeded. Terminal: nothing can come after it.</li>
+          <li><strong><code>onError(Throwable t)</code></strong> — fires once if something failed. Also terminal. A stream ends with <em>either</em> onComplete or onError, never both.</li>
+        </ul>
+        <p>You can watch all four using the full <code>subscribe</code> overload:</p>
+        <pre><code>Flux.just(<span class="st">"a"</span>, <span class="st">"b"</span>)
+    .subscribe(
+        item  -&gt; System.out.println(<span class="st">"onNext: "</span> + item),
+        error -&gt; System.out.println(<span class="st">"onError: "</span> + error),
+        ()    -&gt; System.out.println(<span class="st">"onComplete!"</span>),
+        sub   -&gt; { System.out.println(<span class="st">"onSubscribe — requesting all"</span>);
+                   sub.request(Long.MAX_VALUE); }
+    );</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>onSubscribe — requesting all
+onNext: a
+onNext: b
+onComplete!</code></pre>
+        <p>Now an error case — dividing by zero mid-stream:</p>
+        <pre><code>Flux.just(4, 2, 0, 8)
+    .map(n -&gt; 100 / n)
+    .subscribe(
+        item  -&gt; System.out.println(<span class="st">"onNext: "</span> + item),
+        error -&gt; System.out.println(<span class="st">"onError: "</span> + error)
+    );</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>onNext: 25
+onNext: 50
+onError: java.lang.ArithmeticException: / by zero
+<span class="cm">// note: 8 was never processed — onError killed the stream</span></code></pre>
+        <div class="keypoint"><span class="tag">Key rule</span>Signal contract: <code>onSubscribe</code> → <code>onNext</code> × 0..N → (<code>onComplete</code> | <code>onError</code>). Terminal means terminal — after onError, the remaining items are simply never emitted.</div>`},
+
+    {q:"Difference between <code>subscribe()</code> with no args vs <code>subscribe(Consumer&lt;T&gt;)</code> vs <code>subscribe(Consumer&lt;T&gt;, Consumer&lt;Throwable&gt;)</code>.",
+     a:`<div class="analogy"><span class="tag">Analogy</span>It's like ordering food delivery with different levels of attention: no-arg = you order but never answer the door (food arrives, nobody eats it; if delivery fails, you never find out). One consumer = you answer the door for food, but if the driver crashes you're left waiting forever with no notification. Two consumers = you answer for food AND you've given them your phone number for problems.</div>
+        <pre><code><span class="cm">// 1. No args — triggers the pipeline, ignores everything</span>
+Flux.just(1, 2, 3).map(n -&gt; n * 10).subscribe();
+<span class="cm">// runs, but you never see the values</span>
+
+<span class="cm">// 2. One consumer — handles values only</span>
+Flux.just(1, 2, 3).subscribe(n -&gt; System.out.println(<span class="st">"Got "</span> + n));
+
+<span class="cm">// 3. Two consumers — handles values AND errors (production default)</span>
+Flux.just(4, 0)
+    .map(n -&gt; 100 / n)
+    .subscribe(
+        n  -&gt; System.out.println(<span class="st">"Got "</span> + n),
+        ex -&gt; System.out.println(<span class="st">"Failed: "</span> + ex.getMessage())
+    );</code></pre>
+        <div class="output-label">Output of #3</div>
+        <pre><code>Got 25
+Failed: / by zero</code></pre>
+        <p><strong>The danger with #1 and #2:</strong> if an error occurs and you gave no error consumer, Reactor throws an <code>ErrorCallbackNotImplemented</code> / logs it as an unhandled error. In a real app, that's an error disappearing into the logs with no handling logic.</p>
+        <div class="keypoint"><span class="tag">Interview tip</span>In WebFlux controllers you usually <em>don't</em> call subscribe at all — you return the <code>Mono</code>/<code>Flux</code> and <strong>the framework subscribes for you</strong>. Manual subscribe is for edges: schedulers, listeners, main methods, tests.</div>`},
+
+    {q:"How do you convert a <code>List&lt;T&gt;</code> into a <code>Flux&lt;T&gt;</code>? How do you convert a <code>Flux&lt;T&gt;</code> back into a <code>List&lt;T&gt;</code> reactively (not blocking)?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>A <code>List</code> is a box of items sitting on a table — all there at once. A <code>Flux</code> is a conveyor belt — items pass one at a time. <code>fromIterable</code> puts the box's contents onto the belt; <code>collectList</code> stands at the end of the belt with an empty box, collecting everything until the belt stops, then hands over the box.</div>
+        <pre><code>List&lt;String&gt; names = List.of(<span class="st">"Kavya"</span>, <span class="st">"Jun"</span>, <span class="st">"Ashwini"</span>);
+
+<span class="cm">// List -&gt; Flux</span>
+Flux&lt;String&gt; nameFlux = Flux.fromIterable(names);
+
+<span class="cm">// Flux -&gt; Mono&lt;List&gt; (reactive, non-blocking)</span>
+Mono&lt;List&lt;String&gt;&gt; backToList = nameFlux
+    .map(String::toUpperCase)
+    .collectList();
+
+backToList.subscribe(list -&gt; System.out.println(<span class="st">"Final list: "</span> + list));</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>Final list: [KAVYA, JUN, ASHWINI]</code></pre>
+        <p>Notice <code>collectList()</code> gives you a <code>Mono&lt;List&lt;String&gt;&gt;</code>, <strong>not</strong> a plain <code>List</code>. You're still inside the reactive world — the list only materializes when someone subscribes. The blocking alternative would be <code>flux.collectList().block()</code>, which actually waits and returns the raw list — fine in a test or main method, forbidden inside a reactive pipeline.</p>`},
+
+    {q:"What does <code>Mono.empty()</code> represent, and how is it different from <code>Mono.justOrEmpty(null)</code>?",
+     a:`<div class="analogy"><span class="tag">Analogy</span><code>Mono.empty()</code> is a courier who rings your bell just to say "nothing for you today, have a nice day" — a polite, successful nothing. It's NOT an error, and it's NOT a null being delivered.</div>
+        <p><code>Mono.empty()</code> emits no <code>onNext</code> at all — it goes straight to <code>onComplete</code>. This is how reactive code says "not found" or "no result" without using null (null is actually <strong>forbidden</strong> as a stream value by the Reactive Streams spec).</p>
+        <pre><code>Mono.empty()
+    .subscribe(
+        val -&gt; System.out.println(<span class="st">"onNext: "</span> + val),
+        err -&gt; System.out.println(<span class="st">"onError"</span>),
+        ()  -&gt; System.out.println(<span class="st">"onComplete — no value, no error"</span>)
+    );</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>onComplete — no value, no error</code></pre>
+        <p>Now the difference from <code>justOrEmpty</code>:</p>
+        <pre><code>String maybeNull = legacyDao.findName();   <span class="cm">// might return null!</span>
+
+Mono.just(maybeNull);         <span class="cm">// ❌ throws NullPointerException if null</span>
+Mono.justOrEmpty(maybeNull);  <span class="cm">// ✅ null  -&gt; behaves like Mono.empty()</span>
+                              <span class="cm">// ✅ value -&gt; behaves like Mono.just(value)</span></code></pre>
+        <div class="keypoint"><span class="tag">When to use which</span><code>Mono.empty()</code> when you already know there's nothing. <code>Mono.justOrEmpty(x)</code> at the boundary between old null-returning code and your reactive chain — it's the null-safe adapter.</div>`},
+
+    {q:"What's the difference between <code>map()</code> and <code>flatMap()</code> on a <code>Flux</code>/<code>Mono</code>? When would <code>map</code> break your reactive chain?",
+     a:`<div class="analogy"><span class="tag">Analogy</span><code>map</code> is a sticker machine on the conveyor belt: item goes in, transformed item comes out, instantly, same belt. <code>flatMap</code> is a station that sends the item to a <em>whole other factory</em> (which has its own conveyor belt) and merges that factory's output back onto the main belt. If your transformation itself produces a belt (a publisher), you need flatMap to merge belts — putting a belt on a belt with <code>map</code> just gives you a tangled mess.</div>
+        <pre><code><span class="cm">// map: synchronous, simple transform. T -&gt; R</span>
+Flux.just(1, 2, 3)
+    .map(n -&gt; n * 10)
+    .subscribe(System.out::println);   <span class="cm">// 10, 20, 30</span>
+
+<span class="cm">// flatMap: the transform returns ANOTHER publisher. T -&gt; Mono&lt;R&gt;</span>
+Flux.just(<span class="st">"u1"</span>, <span class="st">"u2"</span>)
+    .flatMap(id -&gt; userRepository.findById(id))  <span class="cm">// each call returns Mono&lt;User&gt;</span>
+    .subscribe(user -&gt; System.out.println(user.getName()));</code></pre>
+        <p><strong>Where map breaks things</strong> — using it with an async call:</p>
+        <pre><code><span class="cm">// ❌ WRONG</span>
+Mono&lt;Mono&lt;User&gt;&gt; nested = Mono.just(<span class="st">"u1"</span>)
+    .map(id -&gt; userRepository.findById(id));
+<span class="cm">// You now have a Mono INSIDE a Mono. The inner one is never</span>
+<span class="cm">// subscribed, so the DB call never even executes.</span>
+
+<span class="cm">// ✅ RIGHT</span>
+Mono&lt;User&gt; user = Mono.just(<span class="st">"u1"</span>)
+    .flatMap(id -&gt; userRepository.findById(id));</code></pre>
+        <div class="keypoint"><span class="tag">Rule of thumb</span>Does your lambda return a plain value? → <code>map</code>. Does it return a <code>Mono</code>/<code>Flux</code> (any repository call, WebClient call, Kafka send)? → <code>flatMap</code>. If your return type ever looks like <code>Mono&lt;Mono&lt;...&gt;&gt;</code>, you used map where you needed flatMap.</div>`}
+  ]
+},
+{
+  tier:"Operators", key:"t2",
+  sub:"The operators you'll reach for daily once you're writing real reactive pipelines.",
+  items:[
+    {q:"Explain <code>flatMap</code> vs <code>concatMap</code> vs <code>flatMapSequential</code> — ordering guarantees and when each matters.",
+     a:`<div class="analogy"><span class="tag">Analogy</span>You give 3 chefs 3 dishes to cook. <strong>flatMap</strong>: all cook at once, dishes served whenever each finishes (fast, random order). <strong>concatMap</strong>: one chef cooks dish 1 completely, then dish 2, then dish 3 (slow, exact order). <strong>flatMapSequential</strong>: all cook at once, but the waiter holds finished dishes and serves them in original order (fast AND ordered, but the waiter needs a tray to hold early finishers).</div>
+        <pre><code><span class="cm">// Simulate: item 1 is SLOW (300ms), items 2 & 3 are fast</span>
+Flux.just(1, 2, 3)
+    .flatMap(n -&gt; Mono.just(n)
+        .delayElement(n == 1 ? Duration.ofMillis(300) : Duration.ofMillis(50)))
+    .subscribe(n -&gt; System.out.println(<span class="st">"flatMap: "</span> + n));</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>flatMap: 2      <span class="cm">&larr; fast ones finished first</span>
+flatMap: 3
+flatMap: 1      <span class="cm">&larr; slow one arrives last — ORDER LOST</span></code></pre>
+        <p>Same code with <code>concatMap</code>:</p>
+        <div class="output-label">Output</div>
+        <pre><code>concatMap: 1    <span class="cm">&larr; waits 300ms for #1 before even starting #2</span>
+concatMap: 2
+concatMap: 3    <span class="cm">&larr; order kept, but total time = sum of all delays</span></code></pre>
+        <p>And <code>flatMapSequential</code>:</p>
+        <div class="output-label">Output</div>
+        <pre><code>flatMapSequential: 1   <span class="cm">&larr; 2 and 3 finished early but were buffered</span>
+flatMapSequential: 2
+flatMapSequential: 3   <span class="cm">&larr; order kept, total time ≈ slowest single item</span></code></pre>
+        <div class="keypoint"><span class="tag">When to use which</span>Order irrelevant, want speed → <code>flatMap</code>. Order matters AND operations must not overlap (e.g. sequential writes to the same record) → <code>concatMap</code>. Order matters but operations are safe to run in parallel → <code>flatMapSequential</code>.</div>`},
+
+    {q:"What does <code>zip()</code> do, and how would you use it to combine results from two independent service calls (e.g., a payment call and a fraud-check call)?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>Zip is like a zipper on a jacket: it pairs tooth 1 from the left side with tooth 1 from the right side. It waits for BOTH sides to produce their next tooth before making the next pair — one fast side just waits for the slow one.</div>
+        <pre><code>Mono&lt;PaymentResult&gt; payment = paymentClient.charge(order);   <span class="cm">// takes ~200ms</span>
+Mono&lt;FraudResult&gt; fraud = fraudClient.check(order);          <span class="cm">// takes ~300ms</span>
+
+Mono&lt;OrderDecision&gt; decision = Mono.zip(payment, fraud)
+    .map(tuple -&gt; {
+        PaymentResult p = tuple.getT1();
+        FraudResult f = tuple.getT2();
+        <span class="kw">return new</span> OrderDecision(p, f);
+    });</code></pre>
+        <p>Key behaviors to mention in an interview:</p>
+        <ul>
+          <li>Both calls start <strong>at the same time</strong> (concurrent) — total wait ≈ 300ms (the slower one), not 500ms (the sum). That's the whole point vs chaining with flatMap.</li>
+          <li>If <em>either</em> errors, zip errors immediately and cancels the other — fail-fast for free.</li>
+          <li>If either completes <strong>empty</strong>, zip completes empty too (no pair can be made). This surprises people: a <code>Mono.empty()</code> input silently produces no result.</li>
+        </ul>`},
+
+    {q:"How do <code>filter()</code>, <code>defaultIfEmpty()</code>, and <code>switchIfEmpty()</code> differ, and how do you chain them for a \"get resource or 404\" pattern?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>You're checking your mailbox. <code>filter</code> is throwing away junk mail (may leave you with nothing). <code>defaultIfEmpty</code> is: "if the mailbox is empty, just read yesterday's newspaper instead" (a ready-made fallback item). <code>switchIfEmpty</code> is: "if the mailbox is empty, drive to the post office" (a whole new <em>process</em> to get a result — or to raise a complaint).</div>
+        <pre><code><span class="cm">// filter can turn a Mono-with-value into an empty Mono</span>
+Mono.just(15)
+    .filter(n -&gt; n &gt; 100)          <span class="cm">// 15 fails the test → now empty</span>
+    .defaultIfEmpty(-1)             <span class="cm">// supply a static fallback VALUE</span>
+    .subscribe(System.out::println);</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>-1</code></pre>
+        <p>The classic "find or 404" pattern uses <code>switchIfEmpty</code> because the fallback isn't a value — it's an error publisher:</p>
+        <pre><code><span class="kw">public</span> Mono&lt;User&gt; getUser(String id) {
+    <span class="kw">return</span> userRepository.findById(id)
+        .switchIfEmpty(Mono.error(
+            <span class="kw">new</span> ResponseStatusException(HttpStatus.NOT_FOUND,
+                                        <span class="st">"User "</span> + id + <span class="st">" not found"</span>)));
+}</code></pre>
+        <div class="keypoint"><span class="tag">Common trap</span><code>switchIfEmpty(someMono)</code> takes an already-built publisher. If building it has side effects (logging, counters), wrap in <code>Mono.defer(() -&gt; ...)</code> so it's only built when actually needed.</div>`},
+
+    {q:"What's the purpose of <code>doOnNext</code>, <code>doOnError</code>, <code>doOnSuccess</code>, and <code>doFinally</code>? Are they side-effect-only or can they change the stream?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>These are security cameras along the conveyor belt. They <em>watch</em> items pass and can trigger alarms or write logs — but they never touch, modify, or remove the items. The belt's contents are identical with or without the cameras.</div>
+        <p>All <code>doOn*</code> operators are <strong>side-effect-only</strong>. They receive the signal, run your callback, then pass the exact same signal downstream unchanged. Their #1 use: logging and metrics.</p>
+        <pre><code>orderService.placeOrder(req)
+    .doOnNext(order -&gt; log.info(<span class="st">"Order created: {}"</span>, order.getId()))
+    .doOnError(ex   -&gt; log.error(<span class="st">"Order failed"</span>, ex))
+    .doFinally(signal -&gt; log.info(<span class="st">"Pipeline ended with: {}"</span>, signal));
+    <span class="cm">// signal is SignalType: ON_COMPLETE, ON_ERROR, or CANCEL</span></code></pre>
+        <ul>
+          <li><code>doOnNext</code> — runs for every emitted item.</li>
+          <li><code>doOnError</code> — runs when an error signal passes through (error continues downstream!).</li>
+          <li><code>doOnSuccess</code> — <code>Mono</code>-only; runs on successful completion, receiving the value (or null if it completed empty).</li>
+          <li><code>doFinally</code> — runs on ANY terminal event including cancellation — the reactive equivalent of a <code>finally</code> block, perfect for cleanup.</li>
+        </ul>
+        <div class="keypoint"><span class="tag">Interview trap</span>"Does doOnError handle the error?" <strong>No.</strong> It only observes it. The error keeps propagating. To actually handle/recover, you need <code>onErrorResume</code>/<code>onErrorReturn</code>.</div>`},
+
+    {q:"How does <code>collectList()</code> work, and why is it dangerous to use on an unbounded <code>Flux</code>?",
+     a:`<div class="analogy"><span class="tag">Analogy</span><code>collectList</code> is someone at the end of a conveyor belt filling a box, promising to hand it over "when the belt stops." If the belt never stops (a live Kafka topic, an infinite stream), they'll keep stuffing the box until it — and your JVM heap — explodes.</div>
+        <pre><code>Flux.range(1, 5)
+    .collectList()                       <span class="cm">// Mono&lt;List&lt;Integer&gt;&gt;</span>
+    .subscribe(list -&gt; System.out.println(<span class="st">"All at once: "</span> + list));</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>All at once: [1, 2, 3, 4, 5]</code></pre>
+        <p>Two dangers:</p>
+        <ul>
+          <li><strong>Memory:</strong> every element is buffered in heap until completion. A Flux streaming 10M Mongo documents → 10M objects in memory simultaneously.</li>
+          <li><strong>It never emits on an infinite stream:</strong> since the list is only handed over on <code>onComplete</code>, a never-completing Flux means <code>collectList</code> never emits anything — your pipeline just silently hangs while eating memory.</li>
+        </ul>
+        <div class="keypoint"><span class="tag">Better options</span>Stream elements individually to the response (WebFlux can stream a raw <code>Flux</code>), or batch with <code>buffer(500)</code> to process in chunks of bounded size.</div>`},
+
+    {q:"What does <code>reduce()</code> do on a <code>Flux</code>, and how is it different from <code>scan()</code>?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>You're counting cash. <code>reduce</code> counts silently and only announces the final total at the end. <code>scan</code> announces the running total after every note: "10... 30... 60... 100!"</div>
+        <pre><code>Flux&lt;Integer&gt; amounts = Flux.just(10, 20, 30, 40);
+
+amounts.reduce(0, (sum, n) -&gt; sum + n)
+       .subscribe(total -&gt; System.out.println(<span class="st">"reduce: "</span> + total));
+
+amounts.scan(0, (sum, n) -&gt; sum + n)
+       .subscribe(running -&gt; System.out.println(<span class="st">"scan: "</span> + running));</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>reduce: 100          <span class="cm">&larr; one value, only after stream completes (Mono)</span>
+scan: 0              <span class="cm">&larr; the seed itself is emitted first</span>
+scan: 10
+scan: 30
+scan: 60
+scan: 100            <span class="cm">&larr; emits after EVERY element (Flux)</span></code></pre>
+        <div class="keypoint"><span class="tag">Consequence</span><code>reduce</code> returns <code>Mono&lt;T&gt;</code> and is useless on infinite streams (never completes → never emits). <code>scan</code> returns <code>Flux&lt;T&gt;</code> and works fine on infinite streams — that's your choice for live running totals/aggregations.</div>`},
+
+    {q:"Explain <code>take(n)</code>, <code>skip(n)</code>, and <code>takeUntil(predicate)</code>.",
+     a:`<pre><code>Flux&lt;Integer&gt; nums = Flux.range(1, 10);   <span class="cm">// 1..10</span>
+
+nums.take(3).subscribe(n -&gt; System.out.print(n + <span class="st">" "</span>));
+<span class="cm">// 1 2 3        — first 3, then CANCELS upstream and completes</span>
+
+nums.skip(7).subscribe(n -&gt; System.out.print(n + <span class="st">" "</span>));
+<span class="cm">// 8 9 10       — drops first 7, emits the rest</span>
+
+nums.takeUntil(n -&gt; n == 4).subscribe(n -&gt; System.out.print(n + <span class="st">" "</span>));
+<span class="cm">// 1 2 3 4      — INCLUSIVE: the matching element IS emitted, then stop</span></code></pre>
+        <p>Details worth knowing:</p>
+        <ul>
+          <li><code>take(n)</code> actively <strong>cancels</strong> the upstream once it has n items — the source stops working, it's not just filtered. This makes <code>take</code> a legitimate way to make an infinite Flux finite.</li>
+          <li><code>takeUntil(predicate)</code> is inclusive of the matching element. Its sibling <code>takeWhile(predicate)</code> is exclusive: it emits <em>while</em> the predicate is true and drops the first failing element. Interviewers love this off-by-one distinction.</li>
+        </ul>`}
+  ]
+},
+{
+  tier:"Error Handling", key:"t3",
+  sub:"Getting this wrong is how reactive pipelines fail silently in production.",
+  items:[
+    {q:"Compare <code>onErrorReturn()</code>, <code>onErrorResume()</code>, and <code>onErrorContinue()</code> — when would using the wrong one silently break your pipeline?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>Your pizza delivery fails. <code>onErrorReturn</code>: give the customer a frozen pizza from the freezer (a canned fallback value, done). <code>onErrorResume</code>: order from a different restaurant (switch to a whole backup process). <code>onErrorContinue</code>: "skip THAT customer's order, keep delivering to everyone else on the route" — but this only works if your delivery company explicitly supports skipping, which many don't.</div>
+        <pre><code><span class="cm">// onErrorReturn — static fallback value, stream then completes</span>
+priceService.getPrice(<span class="st">"AAPL"</span>)
+    .onErrorReturn(BigDecimal.ZERO);
+
+<span class="cm">// onErrorResume — switch to a fallback publisher (can inspect the error)</span>
+priceService.getPrice(<span class="st">"AAPL"</span>)
+    .onErrorResume(TimeoutException.<span class="kw">class</span>,
+                   ex -&gt; cachedPriceService.getPrice(<span class="st">"AAPL"</span>));
+
+<span class="cm">// onErrorContinue — drop the failing ELEMENT, keep the stream alive</span>
+Flux.just(4, 0, 2)
+    .map(n -&gt; 100 / n)
+    .onErrorContinue((ex, badValue) -&gt;
+        log.warn(<span class="st">"Skipping {}: {}"</span>, badValue, ex.getMessage()))
+    .subscribe(System.out::println);</code></pre>
+        <div class="output-label">Output of the onErrorContinue example</div>
+        <pre><code>25
+50        <span class="cm">&larr; 0 was skipped, the stream survived</span></code></pre>
+        <p><strong>The silent-breakage trap:</strong> <code>onErrorContinue</code> works by quietly passing a hint <em>upstream</em>, and only certain operators (like <code>map</code>, <code>filter</code>, <code>flatMap</code> in some configurations) honor it. Put it after an operator that doesn't support it — or combine it with <code>onErrorResume</code> — and it either does nothing or hijacks errors you meant to handle elsewhere. It also affects the whole upstream, including operators inside library code you don't control.</p>
+        <div class="keypoint"><span class="tag">Safe habit</span>Default to <code>onErrorResume</code>. If you need per-element skipping, prefer handling <em>inside</em> the flatMap: <code>.flatMap(n -&gt; process(n).onErrorResume(ex -&gt; Mono.empty()))</code> — same effect, no hidden magic.</div>`},
+
+    {q:"How do you implement a retry with exponential backoff on a <code>Mono</code> using Reactor's built-in <code>retryWhen</code> (without Resilience4j)?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>Calling a busy customer-care line: don't redial instantly forever. Wait 1 min, then 2, then 4 — give the line time to free up, and give up after a few tries. That's exponential backoff.</div>
+        <pre><code>paymentClient.charge(order)
+    .retryWhen(Retry.backoff(3, Duration.ofMillis(200))  <span class="cm">// 3 tries, start at 200ms</span>
+        .maxBackoff(Duration.ofSeconds(2))               <span class="cm">// cap the wait</span>
+        .jitter(0.5)                                     <span class="cm">// randomize ±50%</span>
+        .filter(ex -&gt; ex <span class="kw">instanceof</span> TransientException)   <span class="cm">// only retry retryable errors</span>
+        .onRetryExhaustedThrow((spec, signal) -&gt;
+            <span class="kw">new</span> PaymentUnavailableException(signal.failure())));</code></pre>
+        <p>How the waits play out (without jitter): fail → wait ~200ms → retry 1 fails → wait ~400ms → retry 2 fails → wait ~800ms → retry 3 fails → error propagates.</p>
+        <ul>
+          <li><strong>Why retry works at all:</strong> remember cold publishers — a retry is literally a <em>re-subscribe</em>, which re-runs the source from scratch. That's the cold-publisher behavior being useful.</li>
+          <li><strong>Why <code>.filter()</code> matters:</strong> retrying a validation error (400) is pointless; retrying a timeout or 503 makes sense. Never blanket-retry.</li>
+          <li><strong>Why jitter:</strong> if 1,000 instances all retry after exactly 200ms, you stampede the recovering service. Randomness spreads the load.</li>
+        </ul>`},
+
+    {q:"What happens to downstream operators if an exception is thrown inside a <code>map()</code> lambda? Does it propagate as <code>onError</code> automatically?",
+     a:`<p>Yes. Reactor wraps your operator lambdas — any exception thrown inside is caught and converted into a proper <code>onError</code> signal. You don't need try/catch inside every lambda.</p>
+        <pre><code>Flux.just(<span class="st">"1"</span>, <span class="st">"2"</span>, <span class="st">"abc"</span>, <span class="st">"4"</span>)
+    .map(Integer::parseInt)          <span class="cm">// "abc" throws NumberFormatException</span>
+    .subscribe(
+        n  -&gt; System.out.println(<span class="st">"Got: "</span> + n),
+        ex -&gt; System.out.println(<span class="st">"Error signal: "</span> + ex));</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>Got: 1
+Got: 2
+Error signal: java.lang.NumberFormatException: For input string: "abc"
+<span class="cm">// "4" is never processed — onError is terminal</span></code></pre>
+        <p>Downstream operators that handle values (<code>map</code>, <code>filter</code>, etc.) are skipped; the error travels straight down until it meets an error-handling operator (<code>onErrorResume</code> etc.) or the subscriber's error consumer.</p>
+        <div class="keypoint"><span class="tag">Nuance</span>This safety net covers exceptions <em>inside operators</em>. Exceptions thrown while <em>building</em> the chain (before subscribe) are normal Java exceptions. And in async callbacks outside Reactor's control, you'd use <code>Mono.error(ex)</code> / <code>sink.error(ex)</code> explicitly.</div>`},
+
+    {q:"How would you log an error but still let it propagate to the caller?",
+     a:`<pre><code>orderService.placeOrder(req)
+    .doOnError(ex -&gt; log.error(<span class="st">"placeOrder failed for {}"</span>, req.getId(), ex));
+    <span class="cm">// no onErrorResume / onErrorReturn — nothing swallows the error,</span>
+    <span class="cm">// so the caller (controller / global handler) still receives it</span></code></pre>
+        <p><code>doOnError</code> is a peek, not a catch — it observes the error signal and lets it continue downstream untouched. The common mistake is using <code>onErrorResume(ex -&gt; { log.error(...); return Mono.empty(); })</code> "just to log" — that <strong>swallows</strong> the error, and the caller now sees a mysteriously empty success instead of a failure.</p>
+        <div class="keypoint"><span class="tag">Rule</span>Log-and-rethrow = <code>doOnError</code>. Log-and-recover = <code>onErrorResume</code>. Pick based on whether the caller should still see the failure.</div>`},
+
+    {q:"What's the difference between handling errors at the <code>Mono</code>/<code>Flux</code> chain level vs a global <code>@ExceptionHandler</code> in a WebFlux controller?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>Chain-level handling is the fire extinguisher in each room — deal with a small fire where it starts, using local knowledge. The global handler is the sprinkler system for the whole building — it can't fix anything specific, but it guarantees no fire escapes as an ugly raw 500.</div>
+        <p><strong>Chain level</strong> (<code>onErrorResume</code>, <code>retryWhen</code>, ...): for errors you can meaningfully <em>recover</em> from — fall back to cache, retry a transient failure, substitute a default. Business logic lives here.</p>
+        <p><strong>Global level</strong> (<code>@RestControllerAdvice</code> + <code>@ExceptionHandler</code>): the API-contract layer. Translates whatever escaped the chains into consistent HTTP responses:</p>
+        <pre><code><span class="kw">@RestControllerAdvice</span>
+<span class="kw">public class</span> GlobalErrorHandler {
+    <span class="kw">@ExceptionHandler</span>(NotFoundException.<span class="kw">class</span>)
+    <span class="kw">public</span> ResponseEntity&lt;ErrorBody&gt; notFound(NotFoundException ex) {
+        <span class="kw">return</span> ResponseEntity.status(404)
+                             .body(<span class="kw">new</span> ErrorBody(ex.getMessage()));
+    }
+}</code></pre>
+        <p>This works in WebFlux because when the framework subscribes to your returned <code>Mono</code> and receives <code>onError</code>, it routes that exception through the same exception-handler machinery. Use both layers: recover what's recoverable in the chain, format what's not in the advice.</p>`}
+  ]
+},
+{
+  tier:"Schedulers", key:"t4",
+  sub:"Threading is where reactive code quietly goes wrong if you don't reason about it explicitly.",
+  items:[
+    {q:"Difference between <code>subscribeOn()</code> and <code>publishOn()</code> — which affects which part of the chain?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>A factory line: <code>subscribeOn</code> decides which building the RAW MATERIALS are produced in (the source) — and no matter where in the paperwork you write it, it applies to the origin. <code>publishOn</code> is a hand-off point mid-line: "from THIS station onward, workers from building B take over."</div>
+        <pre><code>Flux.range(1, 2)
+    .map(n -&gt; { print(<span class="st">"map A"</span>); <span class="kw">return</span> n; })
+    .publishOn(Schedulers.parallel())          <span class="cm">// switch threads HERE</span>
+    .map(n -&gt; { print(<span class="st">"map B"</span>); <span class="kw">return</span> n; })
+    .subscribeOn(Schedulers.boundedElastic())  <span class="cm">// affects the SOURCE</span>
+    .subscribe();
+
+<span class="cm">// print() = System.out.println(label + " on " + Thread.currentThread().getName())</span></code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>map A on boundedElastic-1     <span class="cm">&larr; source + everything before publishOn</span>
+map A on boundedElastic-1
+map B on parallel-1           <span class="cm">&larr; everything after publishOn</span>
+map B on parallel-1</code></pre>
+        <ul>
+          <li><code>subscribeOn</code>: position-independent, affects where subscription/source emission runs, <strong>only the first one counts</strong>.</li>
+          <li><code>publishOn</code>: position-dependent, switches the thread for everything <strong>downstream</strong> of it; you can use several to hop multiple times.</li>
+        </ul>`},
+
+    {q:"What's the difference between <code>Schedulers.boundedElastic()</code>, <code>Schedulers.parallel()</code>, and <code>Schedulers.immediate()</code>? When would you pick each?",
+     a:`<ul>
+          <li><strong><code>boundedElastic()</code></strong> — a pool that grows on demand (capped at 10× CPU cores by default) and reuses idle threads. Built for <strong>blocking, I/O-bound work</strong>: JDBC calls, legacy blocking clients, file I/O. Threads here are expected to sit and wait.</li>
+          <li><strong><code>parallel()</code></strong> — fixed pool, one thread per CPU core. Built for <strong>CPU-bound, non-blocking computation</strong> (transformations, calculations). Blocking here is a bug — you'd stall one of your precious few compute threads.</li>
+          <li><strong><code>immediate()</code></strong> — no thread switch at all, runs on whatever thread is already executing. Used in tests, or to explicitly say "stay here."</li>
+        </ul>
+        <pre><code><span class="cm">// The classic pattern: quarantine a blocking call</span>
+Mono.fromCallable(() -&gt; legacyJdbcDao.findOrders())   <span class="cm">// BLOCKING</span>
+    .subscribeOn(Schedulers.boundedElastic())          <span class="cm">// run it over there</span>
+    .flatMapMany(Flux::fromIterable);</code></pre>
+        <div class="keypoint"><span class="tag">Memory hook</span>boundedElastic = waiting room (threads expected to wait), parallel = gym (threads expected to work hard, never idle-block), immediate = "no scheduler, stay put."</div>`},
+
+    {q:"Why is calling a blocking JDBC call inside a reactive chain dangerous, and how would <code>boundedElastic()</code> help mitigate it?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>A WebFlux server is a restaurant with only 4 hyper-efficient waiters (event-loop threads ≈ CPU cores) serving 1,000 tables by never standing still. A blocking JDBC call is a customer forcing a waiter to stand at their table for 2 minutes doing nothing. Do that at 4 tables at once and the entire restaurant freezes — 996 tables get no service.</div>
+        <p>Netty's event loop has very few threads because non-blocking work never needs to wait. One blocked thread = a large fraction of your server's total capacity gone. Blocked all of them = every request hangs, health checks fail, pod restarts.</p>
+        <pre><code><span class="cm">// ❌ blocks a Netty event-loop thread</span>
+<span class="kw">public</span> Mono&lt;List&lt;Order&gt;&gt; getOrders() {
+    <span class="kw">return</span> Mono.just(jdbcDao.findAll());   <span class="cm">// findAll() runs on the caller thread!</span>
+}
+
+<span class="cm">// ✅ quarantine it on boundedElastic</span>
+<span class="kw">public</span> Mono&lt;List&lt;Order&gt;&gt; getOrders() {
+    <span class="kw">return</span> Mono.fromCallable(jdbcDao::findAll)
+               .subscribeOn(Schedulers.boundedElastic());
+}</code></pre>
+        <p>Note the subtle bug in the ❌ version: <code>Mono.just(expensiveCall())</code> evaluates the call <em>eagerly at assembly time</em> — the blocking already happened before Reactor is even involved. <code>fromCallable</code> defers it so <code>subscribeOn</code> can move it.</p>
+        <div class="keypoint"><span class="tag">Honest framing</span>boundedElastic is a mitigation, not a cure — you're still burning a thread per blocking call, just from a pool designed for it. The real fix is a reactive driver (R2DBC, reactive Mongo). Also mention BlockHound, a tool that detects accidental blocking in tests.</div>`},
+
+    {q:"If you call <code>subscribeOn()</code> twice in the same chain, which one wins?",
+     a:`<p>The one <strong>closest to the source</strong> wins. Subscription travels bottom-up (subscriber → source): the lower <code>subscribeOn</code> switches the thread first, but then the upper (closer to source) one switches it again — so the source ends up emitting on the scheduler of the closest-to-source call.</p>
+        <pre><code>Flux.range(1, 2)
+    .doOnNext(n -&gt; System.out.println(<span class="st">"emit on "</span> + Thread.currentThread().getName()))
+    .subscribeOn(Schedulers.boundedElastic())   <span class="cm">// closest to source → WINS</span>
+    .subscribeOn(Schedulers.parallel())         <span class="cm">// effectively ignored</span>
+    .subscribe();</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>emit on boundedElastic-1
+emit on boundedElastic-1</code></pre>
+        <p>Practical takeaway: don't stack them. One <code>subscribeOn</code> per chain (for the source), and <code>publishOn</code> whenever you need a mid-chain switch.</p>`}
+  ]
+},
+{
+  tier:"Backpressure", key:"t5",
+  sub:"What separates 'it works in the demo' from 'it survives production load.'",
+  items:[
+    {q:"What problem does backpressure solve, and how is it fundamentally different from just \"buffering everything\"?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>A chef plating dishes faster than the lone waiter can carry them. Buffering = keep stacking plates on the counter — works for a rush, but eventually plates hit the ceiling and crash (OutOfMemoryError). Backpressure = the waiter tells the chef "only cook 5 more for now" — the chef slows down to reality.</div>
+        <p>Backpressure is the consumer controlling the producer's pace via the Reactive Streams protocol: the subscriber calls <code>request(n)</code> on its <code>Subscription</code>, and a well-behaved producer emits at most n items until asked again.</p>
+        <pre><code>Flux.range(1, 1000)
+    .subscribe(<span class="kw">new</span> BaseSubscriber&lt;Integer&gt;() {
+        <span class="kw">protected void</span> hookOnSubscribe(Subscription s) {
+            System.out.println(<span class="st">"Requesting only 3"</span>);
+            request(3);
+        }
+        <span class="kw">protected void</span> hookOnNext(Integer v) {
+            System.out.println(<span class="st">"Got "</span> + v);
+            <span class="cm">// not requesting more — producer must stop</span>
+        }
+    });</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>Requesting only 3
+Got 1
+Got 2
+Got 3
+<span class="cm">// ...silence. 997 items exist but were never pushed.</span></code></pre>
+        <p>The fundamental difference: buffering absorbs a rate mismatch by paying memory; backpressure <strong>removes</strong> the mismatch by slowing the source. Buffering delays the problem, backpressure solves it — provided the source can actually slow down (a DB cursor can; a live sensor firehose can't, which is where the strategies in the next question come in).</p>`},
+
+    {q:"Explain the difference between <code>onBackpressureBuffer()</code>, <code>onBackpressureDrop()</code>, and <code>onBackpressureLatest()</code>.",
+     a:`<div class="analogy"><span class="tag">Analogy</span>A photographer hands you photos faster than you can review them. <strong>Buffer</strong>: pile the extras on your desk (bounded desk or infinite desk — your call, but infinite desks collapse). <strong>Drop</strong>: any photo you can't take right now goes straight in the bin. <strong>Latest</strong>: keep only the newest photo on the desk, binning the previous unviewed one — when you're free, you always see the most recent shot.</div>
+        <p>These operators sit between a source that <em>can't</em> slow down (sensor data, UI events, hot streams) and a slow consumer, deciding what to sacrifice:</p>
+        <pre><code>hotSensorFlux
+    .onBackpressureBuffer(1000,                     <span class="cm">// bounded queue</span>
+        dropped -&gt; log.warn(<span class="st">"overflow, dropped {}"</span>, dropped),
+        BufferOverflowStrategy.DROP_OLDEST)
+    ...
+
+liveStockPrices
+    .onBackpressureLatest()   <span class="cm">// only the freshest price matters</span>
+    ...
+
+clickEvents
+    .onBackpressureDrop(e -&gt; metrics.increment(<span class="st">"dropped_clicks"</span>))
+    ...</code></pre>
+        <ul>
+          <li><strong>Buffer</strong> — lose nothing (until the bound), pay memory + latency. For data where every element matters (financial transactions).</li>
+          <li><strong>Drop</strong> — lose excess, pay nothing. For high-volume telemetry where sampling is fine.</li>
+          <li><strong>Latest</strong> — lose stale, keep fresh. For "current state" data: prices, GPS position, sensor readings.</li>
+        </ul>`},
+
+    {q:"How would you throttle a fast-producing <code>Flux</code> to match a slow downstream consumer (e.g., writing to Kafka or Mongo)?",
+     a:`<p>First: in a fully reactive chain, you often don't need to do anything — backpressure propagates automatically. A reactive Mongo write that's slow will simply <code>request()</code> less from upstream, and the demand signal travels all the way to the source.</p>
+        <p>When you want explicit control:</p>
+        <pre><code><span class="cm">// 1. limitRate — request from upstream in small batches</span>
+hugeMongoQuery.limitRate(100)          <span class="cm">// pull 100 at a time, not MAX_VALUE</span>
+    .flatMap(doc -&gt; kafkaSender.send(doc));
+
+<span class="cm">// 2. flatMap concurrency — cap in-flight async operations</span>
+events.flatMap(e -&gt; mongoTemplate.save(e), 8);   <span class="cm">// max 8 concurrent writes</span>
+<span class="cm">// this is often THE most practical throttle: flatMap only requests</span>
+<span class="cm">// more from upstream when a slot frees up</span>
+
+<span class="cm">// 3. buffer into batches — fewer, bigger writes</span>
+events.buffer(500)
+    .flatMap(batch -&gt; mongoTemplate.insertAll(batch), 2);
+
+<span class="cm">// 4. delayElements — crude time-based pacing (rate-limited APIs)</span>
+requests.delayElements(Duration.ofMillis(100));   <span class="cm">// ~10/sec</span></code></pre>
+        <div class="keypoint"><span class="tag">Interview answer shape</span>Lead with "backpressure is automatic if the chain is honest," then show you know the explicit knobs: <code>limitRate</code> for demand batching, flatMap's concurrency parameter for in-flight caps, <code>buffer</code> for batching writes.</div>`}
+  ]
+},
+{
+  tier:"Testing", key:"t6",
+  sub:"If you can't test it, you don't actually understand the timing of your chain yet.",
+  items:[
+    {q:"How do you test a <code>Mono</code>/<code>Flux</code> chain using <code>StepVerifier</code>? Write a test skeleton for a <code>Mono&lt;String&gt;</code> that should emit \"OK\" then complete.",
+     a:`<div class="analogy"><span class="tag">Analogy</span>StepVerifier is a script for a play: "Actor enters, says OK, exits." At rehearsal (the test), if the actor says anything else, enters twice, or trips (errors), the director (JUnit) stops everything and tells you exactly which line went wrong.</div>
+        <pre><code><span class="kw">@Test</span>
+<span class="kw">void</span> ping_returnsOk() {
+    Mono&lt;String&gt; result = service.ping();
+
+    StepVerifier.create(result)      <span class="cm">// StepVerifier subscribes FOR you</span>
+        .expectNext(<span class="st">"OK"</span>)            <span class="cm">// assert the onNext signal</span>
+        .verifyComplete();           <span class="cm">// assert onComplete + trigger the run</span>
+}</code></pre>
+        <p>Two things beginners miss:</p>
+        <ul>
+          <li>Nothing runs until <code>verify()</code>/<code>verifyComplete()</code> is called — that's the subscribe. Forgetting it = a test that always passes because nothing executed.</li>
+          <li>Every signal must be accounted for. If the Mono emits <code>"OK"</code> but you only wrote <code>verifyComplete()</code>, the test fails with "expected onComplete but got onNext(OK)". The script must match the play exactly.</li>
+        </ul>
+        <p>A Flux example asserting multiple values:</p>
+        <pre><code>StepVerifier.create(Flux.just(1, 2, 3).map(n -&gt; n * 10))
+    .expectNext(10, 20, 30)
+    .verifyComplete();</code></pre>`},
+
+    {q:"How would you use <code>StepVerifier</code> to assert that a <code>Flux</code> emits an error of a specific exception type?",
+     a:`<pre><code><span class="kw">@Test</span>
+<span class="kw">void</span> failsWithNotFound() {
+    StepVerifier.create(service.getUser(<span class="st">"missing-id"</span>))
+        .expectError(NotFoundException.<span class="kw">class</span>)
+        .verify();
+}
+
+<span class="cm">// Or assert values BEFORE the error, and inspect the message:</span>
+StepVerifier.create(service.riskyStream())
+    .expectNext(<span class="st">"first"</span>, <span class="st">"second"</span>)
+    .expectErrorSatisfies(ex -&gt; {
+        assertThat(ex).isInstanceOf(TimeoutException.<span class="kw">class</span>);
+        assertThat(ex.getMessage()).contains(<span class="st">"downstream"</span>);
+    })
+    .verify();</code></pre>
+        <p>Use <code>verify()</code> (not <code>verifyComplete()</code>) when expecting an error — the stream terminates with <code>onError</code>, so <code>onComplete</code> never happens. <code>expectErrorMessage("...")</code> is a handy shorthand when only the message matters.</p>`},
+
+    {q:"How do you test time-based operators (like <code>delayElements</code>) without actually waiting using <code>StepVerifier.withVirtualTime()</code>?",
+     a:`<div class="analogy"><span class="tag">Analogy</span>Virtual time is a movie fast-forward button. The plot (your operator logic) unfolds identically — you just don't sit through the boring waits in real time. A "wait 1 hour" scene passes in a millisecond of your CI pipeline.</div>
+        <pre><code><span class="kw">@Test</span>
+<span class="kw">void</span> emitsFiveValuesOverFiveHours_instantly() {
+    StepVerifier.withVirtualTime(() -&gt;
+            Flux.interval(Duration.ofHours(1)).take(5))
+        .expectSubscription()
+        .expectNoEvent(Duration.ofMinutes(59))   <span class="cm">// nothing before the 1st hour</span>
+        .thenAwait(Duration.ofHours(5))          <span class="cm">// fast-forward 5 hours</span>
+        .expectNextCount(5)
+        .verifyComplete();                       <span class="cm">// test runs in milliseconds</span>
+}</code></pre>
+        <p>Critical detail: the publisher <strong>must be built inside the lambda</strong>. <code>withVirtualTime</code> swaps Reactor's default schedulers for a <code>VirtualTimeScheduler</code> before the supplier runs — if you build the Flux outside and pass it in, it's already bound to real clocks and the fast-forward does nothing.</p>
+        <div class="keypoint"><span class="tag">Where this shines</span>Testing retry backoff (question in the Error tier): verifying "waits 200ms, then 400ms, then 800ms" without a test that actually sleeps 1.4 seconds.</div>`}
+  ]
+},
+{
+  tier:"Scenario / Interview", key:"t7",
+  sub:"This is where interviewers actually separate 'knows the API' from 'has good judgment.'",
+  items:[
+    {q:"You have a Spring WebFlux controller endpoint that calls two downstream REST services and needs both responses combined before replying. Sketch the reactive chain (which operator, why).",
+     a:`<pre><code><span class="kw">@GetMapping</span>(<span class="st">"/dashboard/{id}"</span>)
+<span class="kw">public</span> Mono&lt;DashboardResponse&gt; dashboard(<span class="kw">@PathVariable</span> String id) {
+    Mono&lt;Profile&gt; profile = userClient.getProfile(id)
+        .timeout(Duration.ofSeconds(2));
+    Mono&lt;List&lt;Order&gt;&gt; orders = orderClient.getOrders(id)
+        .timeout(Duration.ofSeconds(2));
+
+    <span class="kw">return</span> Mono.zip(profile, orders)
+        .map(t -&gt; <span class="kw">new</span> DashboardResponse(t.getT1(), t.getT2()));
+}</code></pre>
+        <p><strong>Why zip:</strong> the calls are independent — neither needs the other's result — so they should run concurrently. Total latency ≈ max(call1, call2) instead of the sum. Chaining with <code>flatMap</code> would serialize them for no reason:</p>
+        <pre><code><span class="cm">// ❌ Works, but 2x slower — orders waits for profile</span>
+userClient.getProfile(id)
+    .flatMap(p -&gt; orderClient.getOrders(id)
+        .map(o -&gt; <span class="kw">new</span> DashboardResponse(p, o)));</code></pre>
+        <div class="keypoint"><span class="tag">Senior touches</span>Mention timeouts on each leg, and what happens if one leg can be optional: <code>orders.onErrorReturn(List.of())</code> keeps the dashboard alive when the order service is down. When to use flatMap chaining instead: when call 2 genuinely needs call 1's result (get user → get orders BY user's account number).</div>`},
+
+    {q:"A <code>Flux</code> from a MongoDB reactive repository is being consumed in a WebFlux controller, but the response never completes — what are the top 3 likely causes?",
+     a:`<p><strong>1. The stream genuinely never completes.</strong> A tailable cursor on a capped collection, a change-stream subscription, or an operator like <code>Flux.interval</code>/<code>repeat()</code> in the chain — sources designed to stay open. Fine for SSE endpoints, wrong for a normal JSON response (which needs <code>onComplete</code> to close the array and flush). Fix: right query type, or bound it with <code>take(n)</code>/<code>timeout()</code>.</p>
+        <p><strong>2. A blocking call starved the event loop.</strong> Something in the chain (or elsewhere in the app) called <code>.block()</code> or a blocking driver on a Netty thread — the thread that was supposed to deliver your response is stuck. Symptoms: not just this endpoint but others hang too. Fix: find it with BlockHound, quarantine on boundedElastic or go truly reactive.</p>
+        <p><strong>3. A swallowed terminal signal / hung inner publisher.</strong> A <code>flatMap</code> whose inner Mono never completes (e.g. a WebClient call with no timeout to a dead service), or a misused <code>then()</code>/<code>zip</code> waiting on an empty/never source. The outer Flux can't complete until inner ones do. Fix: <code>timeout()</code> on every network call, and <code>log()</code> on the chain to see exactly which signal never arrives.</p>
+        <div class="keypoint"><span class="tag">Debugging tool</span>Drop <code>.log()</code> at suspicious points in the chain — it prints every signal (onSubscribe, request, onNext, onComplete) with thread names. The missing signal tells you where the hang lives.</div>`},
+
+    {q:"Your team lead says \"never call <code>.block()</code> in a reactive pipeline.\" Why not, and what's the one legitimate exception (hint: main method / tests)?",
+     a:`<p><code>.block()</code> subscribes and then <strong>parks the current thread</strong> until the result arrives — it converts non-blocking back into blocking. Inside a WebFlux request, "the current thread" is a Netty event-loop thread serving hundreds of other requests; parking it starves them all. Worse, if the Mono being blocked needs <em>that same thread</em> to deliver its result, you've deadlocked — newer Reactor versions detect this and throw <code>blockingOperationError</code>.</p>
+        <pre><code><span class="cm">// ❌ inside a controller / reactive chain — never</span>
+User user = userRepository.findById(id).block();
+
+<span class="cm">// ✅ legitimate: the true edge of the reactive world</span>
+<span class="kw">public static void</span> main(String[] args) {
+    ReportResult r = reportService.generate().block();  <span class="cm">// CLI batch job</span>
+    System.out.println(r);
+}
+<span class="cm">// ✅ also fine: tests (though StepVerifier is better),</span>
+<span class="cm">//    or a scheduled batch task on its own thread pool</span></code></pre>
+        <p>The principle: somebody eventually has to wait for the final result — but that somebody should be at the outermost edge (a main thread with nothing else to do, a test runner), never a shared event-loop thread in the middle of the system.</p>`},
+
+    {q:"How would you rewrite a blocking service method (that currently returns <code>List&lt;Order&gt;</code> via JPA) into a non-blocking reactive equivalent using R2DBC or reactive Mongo?",
+     a:`<pre><code><span class="cm">// BEFORE — blocking JPA</span>
+<span class="kw">public interface</span> OrderRepository <span class="kw">extends</span> JpaRepository&lt;Order, String&gt; {
+    List&lt;Order&gt; findByCustomerId(String customerId);
+}
+<span class="kw">public</span> List&lt;Order&gt; getOrders(String custId) {
+    <span class="kw">return</span> repo.findByCustomerId(custId);
+}
+
+<span class="cm">// AFTER — reactive (R2DBC shown; ReactiveMongoRepository is identical in shape)</span>
+<span class="kw">public interface</span> OrderRepository <span class="kw">extends</span> R2dbcRepository&lt;Order, String&gt; {
+    Flux&lt;Order&gt; findByCustomerId(String customerId);
+}
+<span class="kw">public</span> Flux&lt;Order&gt; getOrders(String custId) {
+    <span class="kw">return</span> repo.findByCustomerId(custId);
+}</code></pre>
+        <p>The signature change must ripple <strong>all the way up</strong>: repository → service → controller all return <code>Flux</code>/<code>Mono</code>. Reactive is end-to-end or it's fake:</p>
+        <pre><code><span class="cm">// ❌ FAKE reactive — the JPA call still blocks the calling thread</span>
+<span class="kw">return</span> Mono.just(jpaRepo.findByCustomerId(custId));</code></pre>
+        <p>Also changes to be honest about in an interview: the driver changes (JDBC → R2DBC), <code>@Transactional</code> needs the reactive transaction manager, lazy loading / entity relationships work very differently in R2DBC (no lazy proxies), and if a dependency simply has no reactive driver, the fallback is the <code>fromCallable + boundedElastic</code> quarantine pattern.</p>`},
+
+    {q:"You need to call three independent downstream services in parallel and fail fast if any one of them errors — what's your operator choice and why?",
+     a:`<pre><code>Mono&lt;Enriched&gt; result = Mono.zip(
+        inventoryClient.check(sku),
+        pricingClient.getPrice(sku),
+        shippingClient.getEta(sku))
+    .map(t -&gt; <span class="kw">new</span> Enriched(t.getT1(), t.getT2(), t.getT3()));</code></pre>
+        <p><strong><code>Mono.zip</code></strong> gives you all three requirements in one operator:</p>
+        <ul>
+          <li><strong>Parallel:</strong> zip subscribes to all sources immediately and concurrently.</li>
+          <li><strong>Fail fast:</strong> the first <code>onError</code> from any source is propagated immediately, and the other in-flight subscriptions are <strong>cancelled</strong> — no waiting for calls whose results are now useless.</li>
+          <li><strong>Combined result:</strong> the tuple hands you all three values together.</li>
+        </ul>
+        <p>Worth contrasting: if you <em>didn't</em> want fail-fast — "give me whatever succeeded" — you'd give each leg its own <code>onErrorResume</code> fallback before zipping, or use <code>Mono.zipDelayError</code> to collect all errors instead of cancelling on the first.</p>`},
+
+    {q:"Given your Activity Log listener service writes to MongoDB — if you were to make that listener reactive, what would change about how you handle the incoming event stream and the write?",
+     a:`<p>Three concrete changes:</p>
+        <p><strong>1. Consumer model:</strong> the annotation-driven <code>@KafkaListener</code> (a blocking, thread-per-container model) becomes Reactor Kafka's <code>KafkaReceiver</code>, which exposes the topic as a <code>Flux&lt;ReceiverRecord&gt;</code>:</p>
+        <pre><code>KafkaReceiver.create(receiverOptions)
+    .receive()                                          <span class="cm">// Flux&lt;ReceiverRecord&gt;</span>
+    .flatMap(record -&gt;
+        reactiveMongoTemplate.save(toActivityDoc(record))
+            .doOnSuccess(doc -&gt; record.receiverOffset().acknowledge())
+            .onErrorResume(ex -&gt; sendToDlt(record).then(Mono.empty())),
+        16)                                             <span class="cm">// bounded concurrency</span>
+    .subscribe();</code></pre>
+        <p><strong>2. Write + ack ordering:</strong> the crucial line is acknowledging the offset <em>inside</em> <code>doOnSuccess</code> of the Mongo write — the reactive equivalent of your manual-ack pattern. Ack only after the document is confirmed persisted, preserving at-least-once end to end. Ack before the write (or auto-commit) and a crash between ack and write loses events.</p>
+        <p><strong>3. Backpressure replaces config tuning:</strong> instead of tuning <code>max.poll.records</code> and container threads to avoid overwhelming Mongo, the flatMap concurrency limit (16 above) naturally slows consumption — the receiver only requests more records from Kafka when write slots free up. A slow Mongo automatically means slower polling, with no rebalance storms from exceeded poll intervals.</p>
+        <div class="keypoint"><span class="tag">Balanced take</span>Also say when NOT to do this: if throughput is comfortably handled today, the blocking listener is simpler to reason about, debug, and hand over. Reactive Kafka earns its complexity when consumption rate or per-event I/O fan-out actually becomes the bottleneck.</div>`}
+  ]
+},
+{
+  tier:"Quick-Fire", key:"t8",
+  sub:"Rapid-fire conceptual checks — aim to answer each in under 15 seconds, but the details below are your depth reserve.",
+  items:[
+    {q:"Hot vs cold publisher — give one example of each in Reactor.",
+     a:`<div class="analogy"><span class="tag">Analogy</span>Cold = Netflix: every viewer starts the movie from the beginning, their own private playback. Hot = live TV: you see whatever is airing from the moment you switch on; everything before is gone (unless someone is recording — that's a replay sink).</div>
+        <pre><code><span class="cm">// COLD — each subscriber re-triggers the source from scratch</span>
+Flux&lt;Order&gt; cold = orderRepository.findAll();
+cold.subscribe();   <span class="cm">// DB query #1</span>
+cold.subscribe();   <span class="cm">// DB query #2 — full re-execution</span>
+
+<span class="cm">// HOT — one live source, subscribers see from-now-on only</span>
+Sinks.Many&lt;String&gt; sink = Sinks.many().multicast().onBackpressureBuffer();
+Flux&lt;String&gt; hot = sink.asFlux();
+sink.tryEmitNext(<span class="st">"A"</span>);              <span class="cm">// nobody listening — lost</span>
+hot.subscribe(v -&gt; System.out.println(<span class="st">"S1: "</span> + v));
+sink.tryEmitNext(<span class="st">"B"</span>);</code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>S1: B      <span class="cm">&larr; "A" was emitted before subscribing — gone</span></code></pre>
+        <p>Bridge concept for your Kafka intuition: Kafka behaves like a hot source with a <em>persisted, replayable</em> log — the producer ran once, but each consumer group keeps its own offset and can read from the beginning. The closest Reactor analog is a replay sink (<code>Sinks.many().replay()</code>), not a cold publisher: cold re-<em>executes</em> the source, Kafka re-<em>reads</em> stored results.</p>`},
+
+    {q:"What does <code>Mono&lt;Void&gt;</code> mean, and when do you use it?",
+     a:`<p>A Mono that can never emit a value — only <code>onComplete</code> (it worked) or <code>onError</code> (it didn't). It's the reactive version of a <code>void</code> method: you care <em>that</em> it finished, not <em>what</em> it produced.</p>
+        <pre><code><span class="kw">public</span> Mono&lt;Void&gt; deleteUser(String id) {
+    <span class="kw">return</span> userRepository.deleteById(id);
+}
+
+<span class="cm">// chaining AFTER a Mono&lt;Void&gt;: use then(), not map/flatMap</span>
+deleteUser(id)
+    .then(auditService.logDeletion(id))   <span class="cm">// runs after completion</span>
+    .subscribe();</code></pre>
+        <div class="keypoint"><span class="tag">Trap</span><code>map</code>/<code>flatMap</code> after a <code>Mono&lt;Void&gt;</code> never fire — they trigger on <code>onNext</code>, which never happens. "My code after the delete doesn't run" is almost always this; the fix is <code>then(...)</code>.</div>`},
+
+    {q:"What's the purpose of <code>Mono.defer()</code> / <code>Flux.defer()</code>?",
+     a:`<div class="analogy"><span class="tag">Analogy</span><code>Mono.just(cook())</code> is cooking the meal when you print the menu — everyone later gets that same cold, stale plate. <code>Mono.defer(() -&gt; cook())</code> prints only the recipe; cooking happens fresh when each customer orders.</div>
+        <pre><code><span class="cm">// Eager — currentTime() runs ONCE, at assembly</span>
+Mono&lt;Long&gt; eager = Mono.just(System.currentTimeMillis());
+
+<span class="cm">// Deferred — runs fresh per subscription</span>
+Mono&lt;Long&gt; deferred = Mono.defer(() -&gt;
+    Mono.just(System.currentTimeMillis()));
+
+eager.subscribe(t -&gt; System.out.println(<span class="st">"eager 1: "</span> + t));
+Thread.sleep(1000);
+eager.subscribe(t -&gt; System.out.println(<span class="st">"eager 2: "</span> + t));      <span class="cm">// same!</span>
+deferred.subscribe(t -&gt; System.out.println(<span class="st">"defer 1: "</span> + t));
+Thread.sleep(1000);
+deferred.subscribe(t -&gt; System.out.println(<span class="st">"defer 2: "</span> + t));   <span class="cm">// fresh</span></code></pre>
+        <div class="output-label">Output</div>
+        <pre><code>eager 1: 1720000000000
+eager 2: 1720000000000     <span class="cm">&larr; identical — captured at assembly</span>
+defer 1: 1720000001005
+defer 2: 1720000002010     <span class="cm">&larr; re-evaluated per subscribe</span></code></pre>
+        <p>Where it matters most: retries (each retry should re-evaluate, e.g. pick a fresh token or timestamp) and lazy side effects inside <code>switchIfEmpty</code>.</p>`},
+
+    {q:"Can a <code>Mono</code> emit more than one <code>onNext</code> signal? What happens if it tries to?",
+     a:`<p>No — at most one <code>onNext</code>, immediately followed by <code>onComplete</code>, is the Mono contract. Well-behaved operators make violation impossible in normal code. Where it can arise is adapting a multi-value source yourself:</p>
+        <pre><code><span class="cm">// Converting Flux → Mono forces you to CHOOSE the policy:</span>
+flux.next();          <span class="cm">// take the first, cancel the rest</span>
+flux.single();        <span class="cm">// exactly one expected — errors if 0 or 2+</span>
+flux.last();          <span class="cm">// wait for completion, take the last</span>
+flux.collectList();   <span class="cm">// keep all, as one List value</span></code></pre>
+        <p><code>single()</code> on a two-element Flux gives <code>IndexOutOfBoundsException: Source emitted more than one item</code> — the runtime enforcing the cardinality promise. If you hand-roll a source with <code>Mono.create(sink -&gt; ...)</code> and call <code>sink.success(v)</code> twice, the second is simply dropped per the spec.</p>`},
+
+    {q:"What does <code>.cache()</code> do on a <code>Flux</code>, and what's a real risk of misusing it?",
+     a:`<div class="analogy"><span class="tag">Analogy</span><code>cache()</code> is recording the live show: the first viewer triggers the recording; everyone after watches the tape. Great for an awards show; terrible for the weather channel — viewers next week get last week's forecast and no one realizes.</div>
+        <pre><code>Mono&lt;Config&gt; config = configClient.fetch()     <span class="cm">// expensive call</span>
+    .cache(Duration.ofMinutes(5));             <span class="cm">// TTL — refetches after expiry</span>
+
+config.subscribe();   <span class="cm">// real HTTP call</span>
+config.subscribe();   <span class="cm">// replayed from cache — no call</span></code></pre>
+        <p>It turns a cold publisher into a replaying hot one: first subscription executes the source, subsequent subscriptions replay the recorded signals. The risks:</p>
+        <ul>
+          <li><strong>Stale data forever:</strong> <code>.cache()</code> with no TTL memoizes permanently — a DB read cached at startup never reflects updates.</li>
+          <li><strong>Cached errors:</strong> plain <code>cache()</code> also replays <code>onError</code> — one transient failure at the wrong moment and every future subscriber gets the same exception. Mitigate with TTL variants or retry-before-cache.</li>
+          <li><strong>Memory:</strong> on a Flux, cached elements are held as long as the Flux is referenced.</li>
+        </ul>`},
+
+    {q:"BONUS — How is Kafka's \"each consumer group reads from the beginning\" different from a Reactor cold publisher re-executing per subscriber?",
+     a:`<p>They look similar (two consumers, two full reads) but the mechanism is opposite:</p>
+        <ul>
+          <li><strong>Cold publisher:</strong> nothing is stored. Each subscriber causes the source logic to <strong>re-execute</strong> — the DB is re-queried, the HTTP call re-fires. Two subscribers = twice the work at the source.</li>
+          <li><strong>Kafka:</strong> the work happened once — the producer wrote messages into a <strong>persisted log</strong>. Consumer groups don't re-trigger the producer; each group just maintains its own <em>offset</em> (bookmark) into the same stored data. With <code>auto.offset.reset=earliest</code> and no committed offsets, a new group's bookmark starts at 0 — a re-<em>read</em>, not a re-<em>execution</em>.</li>
+        </ul>
+        <p>So Kafka is best modeled as a <strong>hot source with a replayable buffer</strong> — in Reactor terms, closer to <code>Sinks.many().replay().all()</code> than to a cold Flux. And note the offset rule: <code>earliest</code> only applies when the group has <em>no committed offset</em>; an existing group resumes from its bookmark regardless of that setting.</p>`}
+  ]
+}
+];
+
+const tierList = document.getElementById('tierList');
+const questionArea = document.getElementById('questionArea');
+const tierTitle = document.getElementById('tierTitle');
+const tierSub = document.getElementById('tierSub');
+const progressCount = document.getElementById('progressCount');
+const progressFill = document.getElementById('progressFill');
+
+const TOTAL = DATA.reduce((sum,t) => sum + t.items.length, 0);
+let revealed = new Set();
+let activeTier = 0;
+
+function keyFor(tierIdx, itemIdx){ return tierIdx+'-'+itemIdx; }
+
+function renderSidebar(){
+  tierList.innerHTML = '';
+  DATA.forEach((tier, i) => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.className = 'tier-item' + (i === activeTier ? ' active' : '');
+    const doneInTier = tier.items.filter((_, j) => revealed.has(keyFor(i,j))).length;
+    btn.innerHTML = `<span>${tier.tier}</span><span class="count">${doneInTier}/${tier.items.length}</span>`;
+    btn.onclick = () => { activeTier = i; renderAll(); window.scrollTo(0,0); };
+    li.appendChild(btn);
+    tierList.appendChild(li);
+  });
+}
+
+function renderQuestions(){
+  const tier = DATA[activeTier];
+  tierTitle.textContent = tier.tier;
+  tierSub.textContent = tier.sub;
+  questionArea.innerHTML = '';
+  tier.items.forEach((item, j) => {
+    const k = keyFor(activeTier, j);
+    const card = document.createElement('div');
+    card.className = 'q-card' + (revealed.has(k) ? ' revealed' : '');
+    card.innerHTML = `
+      <div class="q-head">
+        <div class="q-num">${j+1}</div>
+        <div class="q-text">${item.q}</div>
+        <div class="q-toggle">${revealed.has(k) ? 'hide' : 'reveal'}</div>
+      </div>
+      <div class="a-wrap"><div class="a-inner">${item.a}</div></div>
+    `;
+    card.querySelector('.q-head').onclick = () => {
+      if(revealed.has(k)) revealed.delete(k); else revealed.add(k);
+      renderAll();
+    };
+    questionArea.appendChild(card);
+  });
+}
+
+function renderProgress(){
+  progressCount.textContent = `${revealed.size} / ${TOTAL}`;
+  progressFill.style.width = (revealed.size / TOTAL * 100) + '%';
+}
+
+function renderAll(){
+  renderSidebar();
+  renderQuestions();
+  renderProgress();
+}
+
+document.getElementById('resetBtn').onclick = () => {
+  revealed.clear();
+  renderAll();
+};
+
+renderAll();
+</script>
+</body>
+</html>

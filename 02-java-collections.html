@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Collections — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#06100E; --surface:#0D1B18; --surface2:#142824; --border:#1C3833; --border2:#284B44;
+  --accent:#14B8A6; --accent2:#2DD4BF; --accent3:#5EEAD4; --glow:rgba(20,184,166,0.18);
+  --text:#E6F2EF; --muted:#7FA89F; --muted2:#4D6B64;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(20,184,166,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(94,234,212,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(20,184,166,.1);
+  border:1px solid rgba(20,184,166,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#D1FAE5 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(6,16,14,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(20,184,166,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(20,184,166,.12),0 0 16px rgba(20,184,166,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(20,184,166,.35); box-shadow:0 0 0 1px rgba(20,184,166,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(20,184,166,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+.code-wrap { background:#081512; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(20,184,166,.12); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+.analogy { display:flex; gap:12px; background:rgba(20,184,166,.06); border:1px solid rgba(20,184,166,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#040F0C; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3D8; }
+
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(20,184,166,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(20,184,166,.2); border:1px solid rgba(20,184,166,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+.compare-table { width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:20px; }
+.compare-table th { background:var(--surface2); padding:9px 12px; text-align:left; font-size:11px;
+  letter-spacing:.05em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); }
+.compare-table td { padding:9px 12px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:top; }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table tr:hover td { background:var(--surface2); }
+
+.faq { margin-bottom:16px; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--surface); }
+.faq-q { padding:14px 18px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; color:var(--accent3); border-bottom:1px solid var(--border); }
+.faq-a { padding:14px 18px; font-size:13.5px; color:var(--muted); line-height:1.7; }
+.faq-a strong { color:var(--text); }
+.faq-a code { font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--surface2); border-radius:4px; padding:1px 6px; color:var(--accent3); }
+
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(20,184,166,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(20,184,166,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Java Collections — Visual Guide</div>
+  <h1>Master<br><em>Java Collections</em><br>Visually</h1>
+  <p class="hero-sub">14 concepts. From zero to senior-interview-ready. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">14</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">14</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 14</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Collection Hierarchy</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Every collection class implements one of four root interfaces: <strong>List</strong> (ordered, duplicates allowed), <strong>Set</strong> (no duplicates), <strong>Queue</strong> (FIFO/priority processing), or <strong>Map</strong> (key&#x2192;value, not technically a Collection but part of the framework).</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4DA;</div><p><strong>Library shelves:</strong> A <strong>List</strong> is a numbered shelf (order matters, can repeat). A <strong>Set</strong> is a club roster (no member twice). A <strong>Map</strong> is a card catalog (lookup by title, not position).</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">List</span>&lt;<span class="cl">String</span>&gt; list = <span class="kw">new</span> <span class="cl">ArrayList</span>&lt;&gt;(); <span class="cm">// ordered, allows duplicates</span>
+    list.<span class="fn">add</span>(<span class="st">"a"</span>); list.<span class="fn">add</span>(<span class="st">"a"</span>); <span class="cm">// "a" twice — fine</span>
+
+    <span class="cl">Set</span>&lt;<span class="cl">String</span>&gt; set = <span class="kw">new</span> <span class="cl">HashSet</span>&lt;&gt;();   <span class="cm">// no order guarantee, no duplicates</span>
+    set.<span class="fn">add</span>(<span class="st">"a"</span>); set.<span class="fn">add</span>(<span class="st">"a"</span>);   <span class="cm">// second "a" silently ignored</span>
+
+    <span class="cl">Map</span>&lt;<span class="cl">String</span>,<span class="cl">Integer</span>&gt; map = <span class="kw">new</span> <span class="cl">HashMap</span>&lt;&gt;(); <span class="cm">// key&#x2192;value lookup</span>
+    map.<span class="fn">put</span>(<span class="st">"a"</span>, <span class="nm">1</span>);
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"list="</span>+list.<span class="fn">size</span>()+<span class="st">" set="</span>+set.<span class="fn">size</span>()+<span class="st">" map="</span>+map.<span class="fn">size</span>());
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">list=2 set=1 map=1</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>Map</code> is NOT a <code>Collection</code> in the type hierarchy — it's a sibling interface. Everything else (List/Set/Queue) extends <code>Collection</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Pick the right shape</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Store 1000 unique user IDs where you'll frequently check &quot;does this ID already exist?&quot;. Which interface, and why is it faster than a List for this job?</p>
+              <div class="practice-hints"><span class="hint-chip">Set&lt;Integer&gt;</span><span class="hint-chip">contains() is O(1) not O(n)</span><span class="hint-chip">HashSet</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">ArrayList Internals</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Backed by a plain <strong>resizable array</strong>. <code>get(i)</code> is O(1) — direct index access. When it's full, Java allocates a NEW array at <strong>1.5&#x00D7;</strong> the size and copies everything over — an O(n) operation that happens occasionally, not every add.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4E6;</div><p><strong>Parking garage:</strong> Numbered spots side by side. Park in spot 5 instantly (O(1)). Garage full? Build a bigger garage next door and move every car (O(n), rare).</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">List</span>&lt;<span class="cl">Integer</span>&gt; nums = <span class="kw">new</span> <span class="cl">ArrayList</span>&lt;&gt;(); <span class="cm">// default capacity 10 internally</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">15</span>; i++) nums.<span class="fn">add</span>(i); <span class="cm">// triggers a resize once we pass 10</span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(nums.<span class="fn">get</span>(<span class="nm">12</span>));   <span class="cm">// O(1) — direct array index</span>
+    nums.<span class="fn">add</span>(<span class="nm">0</span>, <span class="nm">99</span>);            <span class="cm">// O(n) — shifts every element right by one</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(nums.<span class="fn">get</span>(<span class="nm">0</span>));    <span class="cm">// 99</span>
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>get(i)</code>/<code>set(i,v)</code> are O(1). <code>add(i,v)</code>/<code>remove(i)</code> in the middle are O(n) because elements must shift. <strong>Vector</strong> and <strong>Stack</strong> work the same way but synchronize every method — avoid them; use <code>ArrayList</code> + explicit locking, or <code>Collections.synchronizedList()</code>, or a concurrent collection instead.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Measure the resize</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Create an <code>ArrayList</code> with <code>new ArrayList&lt;&gt;(1_000_000)</code> (pre-sized) vs <code>new ArrayList&lt;&gt;()</code> (default). Add 1,000,000 ints to each, time both with <code>System.nanoTime()</code>. Explain the gap.</p>
+              <div class="practice-hints"><span class="hint-chip">initial capacity</span><span class="hint-chip">avoids repeated resizing</span><span class="hint-chip">System.nanoTime()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">LinkedList</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>doubly linked list</strong> — every element is a node holding a value plus pointers to the previous and next node. <code>get(i)</code> is O(n) (must walk from one end), but adding/removing at the <strong>head or tail</strong> is O(1) since no shifting is needed.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F683;</div><p><strong>Train carriages:</strong> Each carriage only knows its neighbours. Adding a carriage at the front/back is instant. Reaching carriage #50 means walking through 49 carriages first.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">LinkedList</span>&lt;<span class="cl">String</span>&gt; queue = <span class="kw">new</span> <span class="cl">LinkedList</span>&lt;&gt;();
+    queue.<span class="fn">addLast</span>(<span class="st">"order-1"</span>); <span class="cm">// O(1) — just relinks the tail pointer</span>
+    queue.<span class="fn">addLast</span>(<span class="st">"order-2"</span>);
+    queue.<span class="fn">addFirst</span>(<span class="st">"order-0"</span>); <span class="cm">// O(1) — just relinks the head pointer</span>
+
+    <span class="kw">while</span> (!queue.<span class="fn">isEmpty</span>()) {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Processing "</span> + queue.<span class="fn">removeFirst</span>()); <span class="cm">// O(1)</span>
+    }
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Processing order-0</span>
+<span class="ok">Processing order-1</span>
+<span class="ok">Processing order-2</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>The common belief &quot;LinkedList is faster for inserts&quot; is only true at the <strong>head/tail</strong>. For random-access reads or middle inserts, <code>ArrayList</code> usually wins even in theory-favoring-LinkedList cases, because array memory is cache-friendly and linked nodes are scattered across the heap. Reach for <code>ArrayDeque</code> over <code>LinkedList</code> for queue/stack use today (see concept 10).</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Head/tail vs middle</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Benchmark inserting 100,000 elements at index 0 for both <code>ArrayList</code> and <code>LinkedList</code>. Then benchmark <code>get(50_000)</code> 100,000 times for both. Which wins each round, and why?</p>
+              <div class="practice-hints"><span class="hint-chip">addFirst vs add(0,_)</span><span class="hint-chip">random access cost</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">equals() &amp; hashCode() Contract</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The rule: <strong>if two objects are equal() they MUST have the same hashCode()</strong>. Break this and <code>HashSet</code>/<code>HashMap</code> silently store &quot;duplicate&quot; entries or fail to find things that should match.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">class</span> <span class="cl">Point</span> {
+  <span class="kw">final int</span> x, y;
+  <span class="cl">Point</span>(<span class="kw">int</span> x, <span class="kw">int</span> y) { <span class="kw">this</span>.x = x; <span class="kw">this</span>.y = y; }
+
+<span class="hl">  <span class="cm">// &#x274C; BROKEN — only overrides equals(), not hashCode()</span></span>
+  <span class="ann">@Override</span>
+  <span class="kw">public boolean</span> <span class="fn">equals</span>(<span class="cl">Object</span> o) {
+    <span class="kw">if</span> (!(o <span class="kw">instanceof</span> <span class="cl">Point</span> p)) <span class="kw">return false</span>;
+    <span class="kw">return</span> x == p.x && y == p.y;
+  }
+  <span class="cm">// no hashCode() override &#x2192; uses Object's identity hash &#x2192; BUG</span>
+}
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">Set</span>&lt;<span class="cl">Point</span>&gt; seen = <span class="kw">new</span> <span class="cl">HashSet</span>&lt;&gt;();
+    seen.<span class="fn">add</span>(<span class="kw">new</span> <span class="cl">Point</span>(<span class="nm">1</span>,<span class="nm">1</span>));
+    <span class="kw">boolean</span> hasIt = seen.<span class="fn">contains</span>(<span class="kw">new</span> <span class="cl">Point</span>(<span class="nm">1</span>,<span class="nm">1</span>)); <span class="cm">// expect true...</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(hasIt); <span class="cm">// prints false! different hashCode = different bucket</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output (the bug)</div>
+            <div class="output-box"><span class="er">false</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Always generate both together: <code>Objects.equals()</code> + <code>Objects.hash(x, y)</code>, or let your IDE/<code>record</code> generate them. Java <strong>records</strong> (<code>record Point(int x, int y) {}</code>) give you a correct equals/hashCode pair for free.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Fix the Point class</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Add a correct <code>hashCode()</code> to <code>Point</code> using <code>Objects.hash(x, y)</code>. Re-run the HashSet test above and confirm <code>contains()</code> now returns true.</p>
+              <div class="practice-hints"><span class="hint-chip">Objects.hash(x, y)</span><span class="hint-chip">equals + hashCode always together</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Rewrite <code>Point</code> as a Java <code>record</code> and verify the HashSet behaviour is correct with zero manual equals/hashCode code.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">HashSet</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Backed internally by a <code>HashMap&lt;E, Object&gt;</code> (the value is a dummy constant). <code>add()</code>/<code>contains()</code>/<code>remove()</code> are all <strong>O(1) average case</strong> because the element's <code>hashCode()</code> tells it exactly which bucket to check — no scanning the whole collection.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">Set</span>&lt;<span class="cl">String</span>&gt; visited = <span class="kw">new</span> <span class="cl">HashSet</span>&lt;&gt;();
+
+    <span class="cl">String</span>[] pages = {<span class="st">"/home"</span>, <span class="st">"/cart"</span>, <span class="st">"/home"</span>, <span class="st">"/checkout"</span>};
+    <span class="kw">for</span> (<span class="cl">String</span> p : pages) {
+      <span class="kw">if</span> (!visited.<span class="fn">add</span>(p)) { <span class="cm">// add() returns false if already present</span>
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Repeat visit: "</span> + p);
+      }
+    }
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Unique pages: "</span> + visited.<span class="fn">size</span>());
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Repeat visit: /home</span>
+<span class="ok">Unique pages: 3</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>HashSet</code> gives <strong>zero ordering guarantee</strong> — iteration order can change between runs. If you need O(1) lookups AND insertion order, use <code>LinkedHashSet</code> (next card).</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Deduplicate a list</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given <code>List&lt;Integer&gt;</code> with duplicates, produce a list of only the unique values using a <code>HashSet</code>. Then do it in one line with <code>new ArrayList&lt;&gt;(new LinkedHashSet&lt;&gt;(list))</code> and explain why that preserves order.</p>
+              <div class="practice-hints"><span class="hint-chip">HashSet&lt;Integer&gt;</span><span class="hint-chip">LinkedHashSet preserves order</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">LinkedHashSet &amp; TreeSet</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><strong>LinkedHashSet</strong> = HashSet + a linked list tracking insertion order, so iteration is predictable. <strong>TreeSet</strong> keeps elements <strong>sorted</strong> at all times (via a red-black tree) using <code>Comparable</code> or a supplied <code>Comparator</code> — O(log n) instead of O(1), but you get ordering and range queries for free.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">Set</span>&lt;<span class="cl">String</span>&gt; insertionOrder = <span class="kw">new</span> <span class="cl">LinkedHashSet</span>&lt;&gt;();
+    insertionOrder.<span class="fn">add</span>(<span class="st">"banana"</span>); insertionOrder.<span class="fn">add</span>(<span class="st">"apple"</span>); insertionOrder.<span class="fn">add</span>(<span class="st">"cherry"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(insertionOrder); <span class="cm">// [banana, apple, cherry] — exact insert order</span>
+
+    <span class="cl">TreeSet</span>&lt;<span class="cl">String</span>&gt; sorted = <span class="kw">new</span> <span class="cl">TreeSet</span>&lt;&gt;(insertionOrder);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sorted); <span class="cm">// [apple, banana, cherry] — always alphabetical</span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sorted.<span class="fn">floor</span>(<span class="st">"banana"</span>));  <span class="cm">// banana — largest element &lt;= "banana"</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(sorted.<span class="fn">higher</span>(<span class="st">"banana"</span>)); <span class="cm">// cherry — smallest element &gt; "banana"</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">[banana, apple, cherry]</span>
+<span class="ok">[apple, banana, cherry]</span>
+<span class="ok">banana</span>
+<span class="ok">cherry</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Pick by need: <strong>HashSet</strong> = fastest, no order. <strong>LinkedHashSet</strong> = fast + insertion order. <strong>TreeSet</strong> = slower (O(log n)) but always sorted, plus <code>floor/ceiling/higher/lower</code> range methods (<code>NavigableSet</code>).</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Leaderboard ordering</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Store player scores in a <code>TreeSet&lt;Integer&gt;</code> with a <code>Comparator</code> for descending order. Print the top 3 using <code>headSet()</code> or by iterating.</p>
+              <div class="practice-hints"><span class="hint-chip">TreeSet(Comparator.reverseOrder())</span><span class="hint-chip">headSet / iterator limit 3</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">HashMap Internals</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <code>HashMap</code> is an array of <strong>buckets</strong>. <code>key.hashCode()</code> picks the bucket index. Multiple keys landing in the same bucket form a small linked list (a <strong>collision</strong>) — or, since Java 8, a <strong>red-black tree</strong> once a bucket has 8+ entries, turning worst-case O(n) lookups into O(log n). When the map is ~75% full (the <strong>load factor</strong>), it doubles its bucket array and rehashes everything.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4EE;</div><p><strong>Post office boxes:</strong> Your hashCode picks which box your mail goes in. Two people can hash to the same box (collision) — the clerk just keeps a small list inside that box and checks names with <code>equals()</code>.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+<span class="hl">    <span class="cl">Map</span>&lt;<span class="cl">String</span>,<span class="cl">Integer</span>&gt; inventory = <span class="kw">new</span> <span class="cl">HashMap</span>&lt;&gt;(<span class="nm">16</span>, <span class="nm">0.75f</span>); <span class="cm">// initial capacity 16, load factor 0.75</span></span>
+
+    inventory.<span class="fn">put</span>(<span class="st">"widget"</span>, <span class="nm">100</span>);
+    inventory.<span class="fn">merge</span>(<span class="st">"widget"</span>, <span class="nm">-5</span>, <span class="cl">Integer</span>::sum); <span class="cm">// atomic-looking update: 100 + (-5) = 95</span>
+    inventory.<span class="fn">computeIfAbsent</span>(<span class="st">"gadget"</span>, k -> <span class="nm">0</span>);    <span class="cm">// inserts 0 only if "gadget" missing</span>
+
+    <span class="kw">for</span> (<span class="cl">Map</span>.Entry&lt;<span class="cl">String</span>,<span class="cl">Integer</span>&gt; e : inventory.<span class="fn">entrySet</span>())
+      <span class="cl">System</span>.out.<span class="fn">println</span>(e.<span class="fn">getKey</span>() + <span class="st">" = "</span> + e.<span class="fn">getValue</span>());
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A bad/constant <code>hashCode()</code> degrades a HashMap into a linked list — every operation becomes O(n). This is also why <strong>mutable keys</strong> are dangerous: change a key's fields after insertion and its hashCode changes, so <code>get()</code> can never find it again — it's looking in the wrong bucket.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Word frequency counter</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a sentence, build a <code>Map&lt;String,Integer&gt;</code> of word &#x2192; count using <code>merge()</code> or <code>getOrDefault()</code>. Print the most frequent word.</p>
+              <div class="practice-hints"><span class="hint-chip">map.merge(word, 1, Integer::sum)</span><span class="hint-chip">Collections.max via Map.Entry.comparingByValue()</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Use a key class with a broken <code>hashCode()</code> that always returns 0. Insert 100,000 entries and time <code>get()</code> calls. Watch it go from O(1) to effectively O(n).</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">LinkedHashMap &amp; LRU Cache</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>LinkedHashMap</code> adds a doubly linked list on top of HashMap to track order. Pass <code>accessOrder=true</code> to its constructor and every <code>get()</code> moves that entry to the end — combine that with overriding <code>removeEldestEntry()</code> and you get a working <strong>LRU cache</strong> in about 10 lines.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">class</span> <span class="cl">LruCache</span>&lt;K,V&gt; <span class="kw">extends</span> <span class="cl">LinkedHashMap</span>&lt;K,V&gt; {
+  <span class="kw">private final int</span> capacity;
+
+  <span class="cl">LruCache</span>(<span class="kw">int</span> capacity) {
+<span class="hl">    <span class="kw">super</span>(<span class="nm">16</span>, <span class="nm">0.75f</span>, <span class="kw">true</span>); <span class="cm">// true = order by ACCESS, not insertion</span></span>
+    <span class="kw">this</span>.capacity = capacity;
+  }
+
+  <span class="ann">@Override</span>
+<span class="hl">  <span class="kw">protected boolean</span> <span class="fn">removeEldestEntry</span>(<span class="cl">Map</span>.Entry&lt;K,V&gt; eldest) {</span>
+<span class="hl">    <span class="kw">return</span> size() > capacity; <span class="cm">// evict the least-recently-used entry once over capacity</span></span>
+  }
+}
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">LruCache</span>&lt;<span class="cl">Integer</span>,<span class="cl">String</span>&gt; cache = <span class="kw">new</span> <span class="cl">LruCache</span>&lt;&gt;(<span class="nm">2</span>);
+    cache.<span class="fn">put</span>(<span class="nm">1</span>, <span class="st">"a"</span>); cache.<span class="fn">put</span>(<span class="nm">2</span>, <span class="st">"b"</span>);
+    cache.<span class="fn">get</span>(<span class="nm">1</span>);          <span class="cm">// touch key 1 — now key 2 is the least-recently-used</span>
+    cache.<span class="fn">put</span>(<span class="nm">3</span>, <span class="st">"c"</span>);  <span class="cm">// over capacity — evicts key 2, NOT key 1</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(cache.<span class="fn">keySet</span>()); <span class="cm">// [1, 3]</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">[1, 3]</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>This exact pattern — extend <code>LinkedHashMap</code>, override <code>removeEldestEntry()</code> — is the textbook way to implement an in-process LRU cache, and a very common interview whiteboard question.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Build it from scratch</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Implement the <code>LruCache</code> above yourself without copying it, capacity 3. Put 5 keys in sequence with some <code>get()</code> calls mixed in, and print the final key set to confirm the right ones were evicted.</p>
+              <div class="practice-hints"><span class="hint-chip">extends LinkedHashMap</span><span class="hint-chip">accessOrder=true</span><span class="hint-chip">removeEldestEntry override</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">TreeMap &amp; NavigableMap</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <code>TreeMap</code> is a red-black tree keeping keys <strong>always sorted</strong>. O(log n) for get/put instead of HashMap's O(1), but you gain <code>firstKey()</code>, <code>lastKey()</code>, and range queries — exactly what a HashMap can never give you.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">TreeMap</span>&lt;<span class="cl">Integer</span>,<span class="cl">String</span>&gt; events = <span class="kw">new</span> <span class="cl">TreeMap</span>&lt;&gt;();
+    events.<span class="fn">put</span>(<span class="nm">900</span>,  <span class="st">"market open"</span>);
+    events.<span class="fn">put</span>(<span class="nm">1200</span>, <span class="st">"lunch report"</span>);
+    events.<span class="fn">put</span>(<span class="nm">1600</span>, <span class="st">"market close"</span>);
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(events.<span class="fn">floorKey</span>(<span class="nm">1300</span>));   <span class="cm">// 1200 — latest event at or before 13:00</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(events.<span class="fn">ceilingKey</span>(<span class="nm">1300</span>)); <span class="cm">// 1600 — earliest event at or after 13:00</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(events.<span class="fn">headMap</span>(<span class="nm">1300</span>));   <span class="cm">// everything before 13:00</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">1200</span>
+<span class="ok">1600</span>
+<span class="ok">{900=market open, 1200=lunch report}</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Reach for <code>TreeMap</code>/<code>TreeSet</code> whenever the question is &quot;what's the closest value to X?&quot; — a HashMap simply cannot answer that without scanning everything.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Time-bucketed log lookup</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Store server log timestamps (as <code>long</code> millis) &#x2192; message in a <code>TreeMap</code>. Given an arbitrary query timestamp, find the closest log entry using <code>floorEntry()</code>/<code>ceilingEntry()</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">TreeMap&lt;Long,String&gt;</span><span class="hint-chip">floorEntry / ceilingEntry</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Queue, Deque &amp; PriorityQueue</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>ArrayDeque</code> is the modern default for a stack OR a queue — faster than <code>LinkedList</code> for this job because it's backed by a resizable array with two movable ends, no per-node allocation. <code>PriorityQueue</code> is a binary <strong>heap</strong> — not sorted overall, but <code>peek()</code>/<code>poll()</code> always return the smallest (or highest-priority) element in O(log n).</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3E5;</div><p><strong>Hospital triage:</strong> Patients don't get seen first-come-first-served — the most critical case (highest priority) is always pulled next, no matter when they arrived.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">record</span> <span class="cl">Patient</span>(String name, <span class="kw">int</span> severity) {}
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">Deque</span>&lt;<span class="cl">String</span>&gt; stack = <span class="kw">new</span> <span class="cl">ArrayDeque</span>&lt;&gt;();
+    stack.<span class="fn">push</span>(<span class="st">"A"</span>); stack.<span class="fn">push</span>(<span class="st">"B"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(stack.<span class="fn">pop</span>()); <span class="cm">// B — last in, first out</span>
+
+<span class="hl">    <span class="cl">PriorityQueue</span>&lt;<span class="cl">Patient</span>&gt; triage = <span class="kw">new</span> <span class="cl">PriorityQueue</span>&lt;&gt;(</span>
+<span class="hl">        Comparator.comparingInt(<span class="cl">Patient</span>::severity).<span class="fn">reversed</span>());</span>
+    triage.<span class="fn">add</span>(<span class="kw">new</span> <span class="cl">Patient</span>(<span class="st">"Alice"</span>, <span class="nm">2</span>));
+    triage.<span class="fn">add</span>(<span class="kw">new</span> <span class="cl">Patient</span>(<span class="st">"Bob"</span>, <span class="nm">9</span>));   <span class="cm">// most severe — seen first despite arriving 2nd</span>
+    triage.<span class="fn">add</span>(<span class="kw">new</span> <span class="cl">Patient</span>(<span class="st">"Cara"</span>, <span class="nm">5</span>));
+
+    <span class="kw">while</span> (!triage.<span class="fn">isEmpty</span>())
+      <span class="cl">System</span>.out.<span class="fn">println</span>(triage.<span class="fn">poll</span>().name());
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">B</span>
+<span class="ok">Bob</span>
+<span class="ok">Cara</span>
+<span class="ok">Alice</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>PriorityQueue</code> is THE go-to structure for top-K problems ("find the 5 largest values in a stream"). For a max-K problem, keep a min-heap of size K — anything bigger than the current minimum bumps the smallest one out.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Top-3 highest scores</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Stream 1,000 random integers one at a time. Maintain a <code>PriorityQueue</code> of size 3 holding only the top 3 seen so far. After the stream ends, print them sorted descending.</p>
+              <div class="practice-hints"><span class="hint-chip">min-heap of size K</span><span class="hint-chip">poll() smallest when size &gt; 3</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="concept" data-id="11">
+    <div class="concept-node">11</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Fail-Fast Iterators &amp; CopyOnWriteArrayList</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Most java.util collections keep an internal <strong>modCount</strong>. If you structurally modify the collection (add/remove) while iterating it directly — not through the iterator — the next call to <code>next()</code> throws <code>ConcurrentModificationException</code> immediately. This is &quot;fail-fast&quot;: better a loud crash than silent corruption.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+<span class="kw">import</span> java.util.concurrent.CopyOnWriteArrayList;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">List</span>&lt;<span class="cl">String</span>&gt; names = <span class="kw">new</span> <span class="cl">ArrayList</span>&lt;&gt;(<span class="cl">List</span>.<span class="fn">of</span>(<span class="st">"Ann"</span>, <span class="st">"Bob"</span>, <span class="st">"Cara"</span>));
+
+    <span class="kw">try</span> {
+      <span class="kw">for</span> (<span class="cl">String</span> n : names) {
+<span class="hl">        <span class="kw">if</span> (n.<span class="fn">equals</span>(<span class="st">"Bob"</span>)) names.<span class="fn">remove</span>(n); <span class="cm">// &#x274C; modifying the list mid for-each</span></span>
+      }
+    } <span class="kw">catch</span> (<span class="cl">ConcurrentModificationException</span> e) {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Caught CME — must use iterator.remove() instead"</span>);
+    }
+
+<span class="hl">    <span class="cl">List</span>&lt;<span class="cl">String</span>&gt; safe = <span class="kw">new</span> <span class="cl">CopyOnWriteArrayList</span>&lt;&gt;(<span class="cl">List</span>.<span class="fn">of</span>(<span class="st">"Ann"</span>, <span class="st">"Bob"</span>, <span class="st">"Cara"</span>));</span>
+    <span class="kw">for</span> (<span class="cl">String</span> n : safe) {
+      <span class="kw">if</span> (n.<span class="fn">equals</span>(<span class="st">"Bob"</span>)) safe.<span class="fn">remove</span>(n); <span class="cm">// safe — iterates over a SNAPSHOT taken at loop start</span>
+    }
+    <span class="cl">System</span>.out.<span class="fn">println</span>(safe); <span class="cm">// [Ann, Cara]</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Caught CME — must use iterator.remove() instead</span>
+<span class="ok">[Ann, Cara]</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>The real fix for plain <code>ArrayList</code> is <code>Iterator.remove()</code> (the only structural change a fail-fast iterator allows). <code>CopyOnWriteArrayList</code> is &quot;fail-safe&quot; — it copies the whole backing array on every write, so it's great for rarely-written/often-read lists (like a list of event listeners), but a poor choice for write-heavy workloads.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q11 — Remove safely</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Rewrite the broken loop above using an explicit <code>Iterator&lt;String&gt;</code> and <code>it.remove()</code> so it removes &quot;Bob&quot; from the original <code>ArrayList</code> without throwing.</p>
+              <div class="practice-hints"><span class="hint-chip">Iterator&lt;String&gt; it = names.iterator()</span><span class="hint-chip">it.remove()</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Also try <code>names.removeIf(n -&gt; n.equals("Bob"))</code> — Java's built-in safe alternative to manual iteration.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="concept" data-id="12">
+    <div class="concept-node">12</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Comparable vs Comparator</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>Comparable&lt;T&gt;</code> is implemented BY the class itself — its <strong>one natural ordering</strong> (e.g. numbers sort by value). <code>Comparator&lt;T&gt;</code> is a separate, swappable strategy object — you can have as many of these as you want, and you don't need to modify the original class to add one.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">record</span> <span class="cl">Employee</span>(String name, <span class="kw">int</span> age, <span class="kw">double</span> salary) <span class="kw">implements</span> <span class="cl">Comparable</span>&lt;<span class="cl">Employee</span>&gt; {
+<span class="hl">    <span class="ann">@Override</span></span>
+<span class="hl">    <span class="kw">public int</span> <span class="fn">compareTo</span>(<span class="cl">Employee</span> other) {</span>
+<span class="hl">      <span class="kw">return</span> <span class="cl">Integer</span>.<span class="fn">compare</span>(<span class="kw">this</span>.age, other.age); <span class="cm">// natural order: by age</span></span>
+    }
+  }
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">List</span>&lt;<span class="cl">Employee</span>&gt; staff = <span class="kw">new</span> <span class="cl">ArrayList</span>&lt;&gt;(<span class="cl">List</span>.<span class="fn">of</span>(
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Ann"</span>, <span class="nm">34</span>, <span class="nm">95000</span>),
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Bob"</span>, <span class="nm">29</span>, <span class="nm">110000</span>),
+        <span class="kw">new</span> <span class="cl">Employee</span>(<span class="st">"Cara"</span>, <span class="nm">41</span>, <span class="nm">88000</span>)));
+
+    Collections.<span class="fn">sort</span>(staff); <span class="cm">// uses compareTo() — sorted by age</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(staff.<span class="fn">get</span>(<span class="nm">0</span>).name()); <span class="cm">// Bob (29)</span>
+
+<span class="hl">    staff.<span class="fn">sort</span>(Comparator.comparingDouble(<span class="cl">Employee</span>::salary).<span class="fn">reversed</span>()</span>
+<span class="hl">                              .<span class="fn">thenComparing</span>(<span class="cl">Employee</span>::name)); <span class="cm">// custom: highest salary first, tiebreak by name</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(staff.<span class="fn">get</span>(<span class="nm">0</span>).name()); <span class="cm">// Bob (110000)</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Bob</span>
+<span class="ok">Bob</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A class can have only ONE <code>compareTo()</code>, but unlimited <code>Comparator</code>s. <code>Comparator.comparing(...).thenComparing(...)</code> chains tie-breakers cleanly without nested if-statements.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q12 — Multi-field sort</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Sort the <code>Employee</code> list by department (add a field), then by salary descending within each department, using one chained <code>Comparator</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">Comparator.comparing(Employee::dept)</span><span class="hint-chip">.thenComparing(Comparator.comparingDouble(Employee::salary).reversed())</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="concept" data-id="13">
+    <div class="concept-node">13</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Collections Utility Class &amp; Big-O Cheat Sheet</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The <code>Collections</code> class (singular methods, not to be confused with the <code>Collection</code> interface) is a grab-bag of static helpers: sorting, searching, wrapping a list as read-only or thread-safe, and more.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">List</span>&lt;<span class="cl">Integer</span>&gt; nums = <span class="kw">new</span> <span class="cl">ArrayList</span>&lt;&gt;(<span class="cl">List</span>.<span class="fn">of</span>(<span class="nm">5</span>,<span class="nm">1</span>,<span class="nm">9</span>,<span class="nm">3</span>));
+    Collections.<span class="fn">sort</span>(nums);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(Collections.<span class="fn">binarySearch</span>(nums, <span class="nm">9</span>)); <span class="cm">// 3 — index found via O(log n) search; list MUST be sorted first</span>
+
+    <span class="cl">List</span>&lt;<span class="cl">Integer</span>&gt; readOnly = Collections.<span class="fn">unmodifiableList</span>(nums);
+    <span class="kw">try</span> { readOnly.<span class="fn">add</span>(<span class="nm">99</span>); }
+    <span class="kw">catch</span> (<span class="cl">UnsupportedOperationException</span> e) { <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Blocked — read-only view"</span>); }
+
+<span class="hl">    <span class="cl">List</span>&lt;<span class="cl">Integer</span>&gt; threadSafe = Collections.<span class="fn">synchronizedList</span>(nums); <span class="cm">// wraps every method in synchronized</span></span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">3</span>
+<span class="ok">Blocked — read-only view</span></div></div>
+          <table style="width:100%; border-collapse:collapse; font-size:13px; margin-top:8px;">
+            <tr style="border-bottom:1px solid var(--border2);"><th style="text-align:left; padding:6px 8px; color:var(--muted);">Structure</th><th style="text-align:left; padding:6px 8px; color:var(--muted);">get/contains</th><th style="text-align:left; padding:6px 8px; color:var(--muted);">add/remove (end)</th><th style="text-align:left; padding:6px 8px; color:var(--muted);">add/remove (middle)</th></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">ArrayList</td><td style="padding:6px 8px;">O(1) / O(n)</td><td style="padding:6px 8px;">O(1)</td><td style="padding:6px 8px;">O(n)</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">LinkedList</td><td style="padding:6px 8px;">O(n) / O(n)</td><td style="padding:6px 8px;">O(1)</td><td style="padding:6px 8px;">O(n) to find + O(1) to splice</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">HashSet / HashMap</td><td style="padding:6px 8px;">O(1) avg</td><td style="padding:6px 8px;">O(1) avg</td><td style="padding:6px 8px;">&#x2014;</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">TreeSet / TreeMap</td><td style="padding:6px 8px;">O(log n)</td><td style="padding:6px 8px;">O(log n)</td><td style="padding:6px 8px;">&#x2014;</td></tr>
+            <tr style="border-bottom:1px solid var(--border);"><td style="padding:6px 8px;">ArrayDeque</td><td style="padding:6px 8px;">O(1) ends / O(n) middle</td><td style="padding:6px 8px;">O(1) both ends</td><td style="padding:6px 8px;">O(n)</td></tr>
+            <tr><td style="padding:6px 8px;">PriorityQueue</td><td style="padding:6px 8px;">O(1) peek / O(n) contains</td><td style="padding:6px 8px;">O(log n)</td><td style="padding:6px 8px;">&#x2014;</td></tr>
+          </table>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>binarySearch()</code> on an unsorted list silently returns garbage — it assumes sorted input and never checks. Always sort first.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q13 — Memorize the table</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Without looking, write down the get/add complexity for ArrayList, HashMap, and TreeMap. Then explain in one sentence WHY each is what it is (array indexing / hashing / tree traversal).</p>
+              <div class="practice-hints"><span class="hint-chip">array index = O(1)</span><span class="hint-chip">hash bucket = O(1) avg</span><span class="hint-chip">tree height = O(log n)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="concept" data-id="14">
+    <div class="concept-node">14</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The questions that come up again and again once you're past the "name 3 collections" stage.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "How does HashMap work internally?"</span>
+<span class="cm">// A: Array of buckets. key.hashCode() (then a secondary spread function)</span>
+<span class="cm">//    picks the bucket index. Same-bucket keys form a linked list, or a</span>
+<span class="cm">//    red-black tree once a bucket passes 8 entries (Java 8+). Resizes</span>
+<span class="cm">//    (doubles + rehashes everything) once size exceeds capacity*loadFactor.</span>
+
+<span class="cm">// Q: "ArrayList vs LinkedList — when does LinkedList actually win?"</span>
+<span class="cm">// A: Only when you are repeatedly adding/removing at the HEAD or via an</span>
+<span class="cm">//    existing Iterator/ListIterator mid-traversal — never for random access</span>
+<span class="cm">//    or simple end-appends, where ArrayList wins due to cache locality.</span>
+<span class="cm">//    In practice: prefer ArrayDeque for queues/stacks over LinkedList too.</span>
+
+<span class="cm">// Q: "HashMap vs Hashtable vs ConcurrentHashMap?"</span>
+<span class="cm">// A: Hashtable is legacy, synchronizes the WHOLE map on every call (slow),</span>
+<span class="cm">//    no null keys/values. HashMap is fast but not thread-safe at all.</span>
+<span class="cm">//    ConcurrentHashMap locks only small internal segments, so multiple</span>
+<span class="cm">//    threads can read/write different keys with no contention.</span>
+
+<span class="cm">// Q: "Fail-fast vs fail-safe iterators?"</span>
+<span class="cm">// A: Fail-fast (ArrayList, HashMap, ...) throws ConcurrentModificationException</span>
+<span class="cm">//    if the collection structurally changes during iteration — it's a bug</span>
+<span class="cm">//    DETECTOR, not a guarantee. Fail-safe (CopyOnWriteArrayList,</span>
+<span class="cm">//    ConcurrentHashMap's iterator) iterates a stable snapshot instead and</span>
+<span class="cm">//    never throws, but may not reflect the very latest writes.</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Interviewers aren't testing memorization — they're testing whether you can connect <strong>hashing &#x2192; buckets &#x2192; collisions &#x2192; resize</strong> into one coherent story, and whether you know the tradeoff behind every "vs" question.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q14 — Explain it out loud</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Pick any two collections from this tutorial and explain, without notes, the exact internal data structure each uses and why you'd choose one over the other for a specific scenario you make up.</p>
+              <div class="practice-hints"><span class="hint-chip">internal structure first</span><span class="hint-chip">then the tradeoff</span><span class="hint-chip">then a concrete scenario</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; Collections, mastered.</h2>
+    <p>From "what's a List" to explaining HashMap internals under interview pressure.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> Collection Hierarchy</div>
+      <div class="grid-item"><span class="grid-num">02</span> ArrayList Internals</div>
+      <div class="grid-item"><span class="grid-num">03</span> LinkedList</div>
+      <div class="grid-item"><span class="grid-num">04</span> equals &amp; hashCode</div>
+      <div class="grid-item"><span class="grid-num">05</span> HashSet</div>
+      <div class="grid-item"><span class="grid-num">06</span> LinkedHashSet &amp; TreeSet</div>
+      <div class="grid-item"><span class="grid-num">07</span> HashMap Internals</div>
+      <div class="grid-item"><span class="grid-num">08</span> LinkedHashMap &amp; LRU</div>
+      <div class="grid-item"><span class="grid-num">09</span> TreeMap</div>
+      <div class="grid-item"><span class="grid-num">10</span> Queue / Deque / PQ</div>
+      <div class="grid-item"><span class="grid-num">11</span> Fail-fast Iterators</div>
+      <div class="grid-item"><span class="grid-num">12</span> Comparable vs Comparator</div>
+      <div class="grid-item"><span class="grid-num">13</span> Collections &amp; Big-O</div>
+      <div class="grid-item"><span class="grid-num">14</span> Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 14) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 14';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

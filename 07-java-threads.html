@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Threads — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#07070D; --surface:#0F0F1A; --surface2:#161625; --border:#1E1E35; --border2:#2A2A45;
+  --accent:#7C6EF5; --accent2:#A78BFA; --accent3:#C4B5FD; --glow:rgba(124,110,245,0.18);
+  --text:#E8E6F0; --muted:#8884A8; --muted2:#5A5878;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(124,110,245,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(167,139,250,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(124,110,245,.1);
+  border:1px solid rgba(124,110,245,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#E9D5FF 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(7,7,13,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(124,110,245,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(124,110,245,.12),0 0 16px rgba(124,110,245,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(124,110,245,.35); box-shadow:0 0 0 1px rgba(124,110,245,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(124,110,245,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#0C0C18; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(124,110,245,.1); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(124,110,245,.06); border:1px solid rgba(124,110,245,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#060610; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(124,110,245,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(124,110,245,.2); border:1px solid rgba(124,110,245,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(124,110,245,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(124,110,245,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Java Concurrency — Visual Guide</div>
+  <h1>Master<br><em>Java Threads</em><br>Visually</h1>
+  <p class="hero-sub">15 concepts. From zero to confident. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">15</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">15</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 15</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">What is a Thread?</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>thread</strong> is an independent worker that runs code. Normally Java runs one line at a time. With threads, multiple workers run <strong>simultaneously</strong>.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F373;</div><p><strong>Kitchen analogy:</strong> One cook doing tasks one at a time = single thread. Hire two cooks working in parallel = two threads.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cl">Thread</span> cook1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Cook 1: Chopping vegetables"</span>);
+    });
+
+    <span class="cl">Thread</span> cook2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Cook 2: Boiling water"</span>);
+    });
+
+    cook1.<span class="fn">start</span>(); <span class="cm">// launches cook1 independently</span>
+    cook2.<span class="fn">start</span>(); <span class="cm">// launches cook2 independently</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output (order not guaranteed)</div>
+            <div class="output-box"><span class="ok">Cook 2: Boiling water</span>
+<span class="ok">Cook 1: Chopping vegetables</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A Thread is a separate worker that runs code independently. Call <code>.start()</code> — not <code>.run()</code> — to launch it in a new thread.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Create your first threads</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Create <strong>3 threads</strong>. Each prints its name and counts 1 to 5. Observe the interleaved output.</p>
+              <div class="practice-hints"><span class="hint-chip">new Thread()</span><span class="hint-chip">.start()</span><span class="hint-chip">Thread.currentThread().getName()</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Add <strong>random sleep</strong> between counts using <code>Thread.sleep()</code>. Notice the order changes every run.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Race Condition</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">When two threads <strong>read and write the same variable at the same time</strong>, updates get lost. <code>count++</code> is secretly 3 steps: read &#x2192; add &#x2192; write. Two threads interleaving = corrupted data.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F52A;</div><p><strong>Shared knife:</strong> Both cooks grab it simultaneously. Both read <code>count=5</code>, both write <code>6</code>. One increment silently lost.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="cm">// static field — shared by every thread in this JVM. DANGER zone.</span>
+  <span class="kw">static int</span> count = <span class="nm">0</span>;
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">1000</span>; i++) count++; <span class="cm">// read&#x2192;add&#x2192;write</span>
+    });
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">1000</span>; i++) count++;
+    });
+
+<span class="hl">    t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>(); <span class="cm">// both race immediately — no order guaranteed</span></span>
+<span class="hl">    t1.<span class="fn">join</span>();  t2.<span class="fn">join</span>();  <span class="cm">// main BLOCKS here until both threads finish</span></span>
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(count); <span class="cm">// expected 2000 — rarely is</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output (never 2000)</div>
+            <div class="output-box"><span class="er">1743</span>
+<span class="er">1850</span>
+<span class="er">1991</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>count++</code> is <strong>not atomic</strong>. Two threads doing it simultaneously = lost updates = wrong answer silently.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Witness the race</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Shared <code>int balance = 1000</code>. Thread A adds 500 (50x10), Thread B subtracts 500 (50x10). Final should be 1000 — but won&apos;t be. Run 5 times and record results.</p>
+              <div class="practice-hints"><span class="hint-chip">balance += 10</span><span class="hint-chip">balance -= 10</span><span class="hint-chip">expected: 1000</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Add a <strong>third thread</strong> that reads and prints <code>balance</code> every 10ms — watch it read inconsistent intermediate values.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">synchronized</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The <strong>fix for race conditions</strong>. Forces threads to take turns — only one can be inside the block at a time. Others wait at the door until the lock is released.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F512;</div><p><strong>Lock on the knife drawer:</strong> Cook 1 grabs the lock, uses the knife, releases. Cook 2 was waiting — now they can go. One at a time. No overlap.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">static int</span> count = <span class="nm">0</span>;
+  <span class="kw">static final</span> <span class="cl">Object</span> lock = <span class="kw">new</span> <span class="cl">Object</span>(); <span class="cm">// the shared lock — any Object works</span>
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">1000</span>; i++) {
+<span class="hl">        <span class="kw">synchronized</span> (lock) { <span class="cm">// &#x1F512; grab</span></span>
+<span class="hl">          count++;             <span class="cm">// safe</span></span>
+<span class="hl">        }                      <span class="cm">// &#x1F513; release</span></span>
+      }
+    });
+
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">1000</span>; i++) {
+        <span class="kw">synchronized</span> (lock) { <span class="cm">// same lock object as t1 — they take turns</span>
+          count++;
+        }
+      }
+    });
+
+    t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>();
+    t1.<span class="fn">join</span>();  t2.<span class="fn">join</span>();
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(count); <span class="cm">// always 2000</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output — every single time</div>
+            <div class="output-box"><span class="ok">2000 &#x2705;</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>synchronized(lock)</code>: grab the lock, do the work, release it. Any other thread trying to enter <strong>waits</strong> until the lock is free.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Fix the race from Q2</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Take Q2 code. Add <code>synchronized</code> to both operations. Verify balance is <strong>always 1000</strong> across 10 runs.</p>
+              <div class="practice-hints"><span class="hint-chip">Object lock = new Object()</span><span class="hint-chip">synchronized(lock)</span><span class="hint-chip">run 10 times</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Wrap <code>balance</code> inside a <strong>BankAccount class</strong> with <code>deposit()</code> and <code>withdraw()</code> synchronized methods — the pattern real production code uses.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Wrong Lock Bug</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Using <code>synchronized</code> on <strong>different lock objects</strong> = zero protection. Both threads enter simultaneously. False sense of safety with all the original bugs.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F6AA;</div><p><strong>Two knife drawers:</strong> Cook 1 locks drawer A. Cook 2 locks drawer B. They don&apos;t block each other at all.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// &#x274C; Broken.java — different lock objects = zero protection</span>
+<span class="kw">public class</span> <span class="cl">Broken</span> {
+
+  <span class="kw">static int</span> count = <span class="nm">0</span>;
+  <span class="kw">static final</span> <span class="cl">Object</span> lockA = <span class="kw">new</span> <span class="cl">Object</span>();
+  <span class="kw">static final</span> <span class="cl">Object</span> lockB = <span class="kw">new</span> <span class="cl">Object</span>(); <span class="cm">// different object — this IS the bug</span>
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">100_000</span>; i++)
+<span class="hl">        <span class="kw">synchronized</span> (lockA) { count++; }</span>
+    });
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">100_000</span>; i++)
+<span class="hl">        <span class="kw">synchronized</span> (lockB) { count++; } <span class="cm">// &#x26A0;&#xFE0F; wrong lock!</span></span>
+    });
+
+    t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>();
+    t1.<span class="fn">join</span>();  t2.<span class="fn">join</span>();
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(count); <span class="cm">// expected 200000 — almost never is</span>
+  }
+}
+
+<span class="cm">// &#x2705; Fixed.java — one shared lock object = real mutual exclusion</span>
+<span class="kw">public class</span> <span class="cl">Fixed</span> {
+
+  <span class="kw">static int</span> count = <span class="nm">0</span>;
+<span class="hl">  <span class="kw">static final</span> <span class="cl">Object</span> lock = <span class="kw">new</span> <span class="cl">Object</span>(); <span class="cm">// ONE lock, shared by both threads</span></span>
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">100_000</span>; i++)
+        <span class="kw">synchronized</span> (lock) { count++; }
+    });
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">100_000</span>; i++)
+        <span class="kw">synchronized</span> (lock) { count++; }
+    });
+
+    t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>();
+    t1.<span class="fn">join</span>();  t2.<span class="fn">join</span>();
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(count); <span class="cm">// always 200000</span>
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>synchronized</code> only works when <strong>all threads use the exact same lock object</strong>. Different locks = no mutual exclusion.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Spot and fix the wrong lock</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write code where 2 threads increment a counter using <code>synchronized</code> but on <strong>different lock objects</strong>. Confirm broken (result &#x2260; 2000). Fix it. Add a comment explaining what went wrong.</p>
+              <div class="practice-hints"><span class="hint-chip">Object lockA, lockB</span><span class="hint-chip">verify broken first</span><span class="hint-chip">fix to one lock</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">volatile</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Each thread caches variables locally. One thread updates a value while another <strong>never sees the change</strong>. <code>volatile</code> forces all reads/writes to go directly to main memory.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4CB;</div><p><strong>Whiteboard vs sticky notes:</strong> Without <code>volatile</code>, threads use their own sticky notes (cache). With it, everyone reads from the shared whiteboard.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="cm">// without volatile: worker may cache "running" and loop forever</span>
+<span class="hl">  <span class="kw">static volatile boolean</span> running = <span class="kw">true</span>;</span>
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    <span class="cl">Thread</span> worker = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">long</span> spins = <span class="nm">0</span>;
+      <span class="kw">while</span> (running) { <span class="cm">// volatile forces a fresh read from main memory every loop</span>
+        spins++; <span class="cm">// pretend work</span>
+      }
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Worker stopped! Spun "</span> + spins + <span class="st">" times."</span>);
+    });
+
+    worker.<span class="fn">start</span>();
+    <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">1000</span>); <span class="cm">// let the worker spin for 1 second</span>
+<span class="hl">    running = <span class="kw">false</span>; <span class="cm">// worker WILL see this on its very next loop check</span></span>
+
+    worker.<span class="fn">join</span>(); <span class="cm">// wait for worker to actually exit before main exits</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Main done."</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>volatile</code> = visibility fix. Use for <strong>simple on/off flags</strong>. Does NOT protect <code>count++</code> — that still needs <code>synchronized</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Stop a thread with a flag</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Worker thread counts upward while <code>volatile boolean running</code> is true. After 1 second, main sets it false. Print the final count when the worker stops.</p>
+              <div class="practice-hints"><span class="hint-chip">volatile boolean running</span><span class="hint-chip">Thread.sleep(1000)</span><span class="hint-chip">print final count</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Remove <code>volatile</code> and see if the worker ever stops. This shows the difference between a <strong>liveness bug</strong> and a data bug.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">wait() and notify()</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Threads sometimes need to <strong>communicate</strong>. <code>wait()</code> puts a thread to sleep and releases its lock. <code>notify()</code> wakes it up. Both must be inside <code>synchronized</code>.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F37D;</div><p><strong>Waiter and Cook:</strong> Waiter doesn&apos;t spin-check every second. Instead waiter sleeps (<code>wait()</code>). Cook finishes and shouts (<code>notify()</code>). Waiter wakes and serves.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">static final</span> <span class="cl">Object</span> lock = <span class="kw">new</span> <span class="cl">Object</span>();
+  <span class="kw">static boolean</span> foodReady = <span class="kw">false</span>; <span class="cm">// must be a FIELD — lambdas can't reassign local vars</span>
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    <span class="cl">Thread</span> waiter = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">synchronized</span> (lock) {
+<span class="hl">        <span class="kw">while</span> (!foodReady) {      <span class="cm">// always while, not if</span></span>
+          <span class="kw">try</span> {
+<span class="hl">            lock.<span class="fn">wait</span>();        <span class="cm">// &#x1F634; release lock + sleep until notified</span></span>
+          } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) {
+            <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>(); <span class="cm">// restore interrupt status, don't swallow it</span>
+          }
+        }
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Serving! &#x2705;"</span>);
+      }
+    });
+
+    <span class="cl">Thread</span> cook = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">try</span> {
+        <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">2000</span>); <span class="cm">// Runnable.run() has no throws clause — must catch here</span>
+      } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) {
+        <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>();
+      }
+      <span class="kw">synchronized</span> (lock) {
+        foodReady = <span class="kw">true</span>;
+<span class="hl">        lock.<span class="fn">notify</span>();           <span class="cm">// &#x1F4E2; wake the waiter</span></span>
+      }
+    });
+
+    waiter.<span class="fn">start</span>();
+    cook.<span class="fn">start</span>();
+    waiter.<span class="fn">join</span>();
+    cook.<span class="fn">join</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>wait()</code> = sleep and release lock. <code>notify()</code> = wake one waiter. Always use <code>while</code> not <code>if</code> to guard against <strong>spurious wakeups</strong>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Producer / Consumer</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Producer adds a number to shared <code>int value</code> and notifies. Consumer waits, reads it, prints it, resets to 0. Run for <strong>5 cycles</strong>.</p>
+              <div class="practice-hints"><span class="hint-chip">wait() / notify()</span><span class="hint-chip">boolean hasValue</span><span class="hint-chip">5 cycles</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Change shared storage to a <strong>queue (LinkedList)</strong>. Producer adds 3 items rapidly. Consumer processes one every 500ms. This is the foundation of Kafka!</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">notifyAll()</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>notify()</code> wakes <strong>one random</strong> thread. <code>notifyAll()</code> wakes <strong>all</strong> waiting threads. When multiple threads should all react, use <code>notifyAll()</code> — the safer default.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">static final</span> <span class="cl">Object</span> lock = <span class="kw">new</span> <span class="cl">Object</span>();
+  <span class="kw">static boolean</span> started = <span class="kw">false</span>;
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    <span class="cl">Thread</span>[] runners = <span class="kw">new</span> <span class="cl">Thread</span>[<span class="nm">5</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">5</span>; i++) {
+      <span class="kw">int</span> id = i;
+      runners[i-<span class="nm">1</span>] = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+        <span class="kw">synchronized</span> (lock) {
+          <span class="kw">while</span> (!started) {
+            <span class="kw">try</span> { lock.<span class="fn">wait</span>(); } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) { <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>(); }
+          }
+        }
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Runner "</span> + id + <span class="st">" started running! &#x1F3C3;"</span>);
+      });
+      runners[i-<span class="nm">1</span>].<span class="fn">start</span>();
+    }
+
+    <span class="cl">Thread</span> starter = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">try</span> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">2000</span>); } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) { <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>(); }
+      <span class="kw">synchronized</span> (lock) {
+        started = <span class="kw">true</span>;
+        <span class="cm">// lock.notify();    &#x26A0;&#xFE0F;  wakes 1 random runner — other 4 stay stuck forever</span>
+<span class="hl">        lock.<span class="fn">notifyAll</span>();    <span class="cm">// &#x2705;  wakes ALL 5 runners at once</span></span>
+      }
+    });
+    starter.<span class="fn">start</span>();
+
+    <span class="kw">for</span> (<span class="cl">Thread</span> r : runners) r.<span class="fn">join</span>();
+    starter.<span class="fn">join</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>When in doubt, use <code>notifyAll()</code>. <code>notify()</code> can leave threads stuck waiting forever if the wrong one wakes up.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Race to the start line</span></div>
+            <div class="practice-body">
+              <p class="practice-q"><strong>5 runner threads</strong> wait at the start line. A starter thread sleeps 2s then fires the gun. All 5 should start simultaneously via <code>notifyAll()</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">notifyAll()</span><span class="hint-chip">boolean started</span><span class="hint-chip">5 runners</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">ReentrantLock</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">More powerful than <code>synchronized</code>. Gives you <strong>try-without-waiting</strong>, <strong>timeouts</strong>, and lock inspection. Must manually call <code>unlock()</code> — always in a <code>finally</code> block.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.TimeUnit;
+<span class="kw">import</span> java.util.concurrent.locks.ReentrantLock;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">static int</span> count = <span class="nm">0</span>;
+  <span class="kw">static final</span> <span class="cl">ReentrantLock</span> lock = <span class="kw">new</span> <span class="cl">ReentrantLock</span>();
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    <span class="cm">// basic — blocks the calling thread until the lock is free</span>
+    lock.<span class="fn">lock</span>();
+    <span class="kw">try</span> { count++; }
+<span class="hl">    <span class="kw">finally</span> { lock.<span class="fn">unlock</span>(); } <span class="cm">// ALWAYS in finally!</span></span>
+
+    <span class="cm">// try without waiting — returns immediately either way</span>
+    <span class="kw">if</span> (lock.<span class="fn">tryLock</span>()) {
+      <span class="kw">try</span> { count++; } <span class="kw">finally</span> { lock.<span class="fn">unlock</span>(); }
+    } <span class="kw">else</span> {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Busy, skipping!"</span>);
+    }
+
+    <span class="cm">// try with a timeout — waits up to 2s for the lock, then gives up</span>
+    <span class="kw">if</span> (lock.<span class="fn">tryLock</span>(<span class="nm">2</span>, <span class="cl">TimeUnit</span>.SECONDS)) {
+      <span class="kw">try</span> { count++; } <span class="kw">finally</span> { lock.<span class="fn">unlock</span>(); }
+    } <span class="kw">else</span> {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Gave up after 2s"</span>);
+    }
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"count = "</span> + count);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Use <code>synchronized</code> for simple cases. Use <code>ReentrantLock</code> for <code>tryLock()</code> and timeouts. <strong>Always unlock in <code>finally</code></strong>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Non-blocking lock attempt</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Thread 1 holds the lock for 3s. Thread 2 uses <code>tryLock(1, SECONDS)</code> — gives up after 1s and prints <strong>&quot;Could not get lock, doing alternative work&quot;</strong>.</p>
+              <div class="practice-hints"><span class="hint-chip">tryLock(1, SECONDS)</span><span class="hint-chip">sleep(3000)</span><span class="hint-chip">finally unlock</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Thread Pool</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Creating a new thread per task is expensive and doesn&apos;t scale. A pool keeps a <strong>fixed set of reusable threads</strong>. Tasks queue up, threads pick them when free.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F468;&#x200D;&#x1F373;</div><p><strong>Smart restaurant:</strong> Hire 3 cooks once. Customers queue. When a cook finishes, they take the next customer. Not hire/fire per customer.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.ExecutorService;
+<span class="kw">import</span> java.util.concurrent.Executors;
+<span class="kw">import</span> java.util.concurrent.TimeUnit;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+<span class="hl">    <span class="cl">ExecutorService</span> pool = <span class="cl">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="nm">3</span>); <span class="cm">// 3 reusable worker threads</span></span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">10</span>; i++) {
+      <span class="kw">int</span> task = i;
+      pool.<span class="fn">submit</span>(() ->
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Task "</span>+task+<span class="st">" by "</span>+<span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">getName</span>())
+      );
+    }
+
+    pool.<span class="fn">shutdown</span>();                          <span class="cm">// stop accepting NEW tasks; queued ones still run</span>
+    pool.<span class="fn">awaitTermination</span>(<span class="nm">5</span>, <span class="cl">TimeUnit</span>.SECONDS); <span class="cm">// block here until all 10 tasks finish (max 5s)</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"All tasks done — pool is shut down."</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Task 1 by pool-1-thread-1</span>
+<span class="ok">Task 2 by pool-1-thread-2</span>
+<span class="ok">Task 3 by pool-1-thread-3</span>
+<span class="ok">Task 4 by pool-1-thread-1  &#x2190; reused!</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Never create <code>new Thread()</code> per request in production. Use <code>ExecutorService</code>. Always call <code>shutdown()</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Parallel file processor</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Process <strong>20 &quot;files&quot;</strong> with a pool of 4. Each sleeps 200ms. Total time should be ~1s not 4s. Measure with <code>System.currentTimeMillis()</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">newFixedThreadPool(4)</span><span class="hint-chip">20 tasks</span><span class="hint-chip">measure time</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Try pool sizes 1, 2, 4, 8 and record the time each takes. Notice after a point, <strong>more threads stop helping</strong> — that&apos;s the optimal pool size problem.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Callable &amp; Future</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>Runnable</code> returns nothing. <code>Callable</code> returns a value. <code>Future</code> is the promise of that value — call <code>.get()</code> when you need the result. It blocks like <code>join()</code>.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4E6;</div><p><strong>Order tracking:</strong> Order online &#x2192; get order number immediately (Future). Do other things. Check when ready &#x2192; package arrives (get()).</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.ExecutionException;
+<span class="kw">import</span> java.util.concurrent.ExecutorService;
+<span class="kw">import</span> java.util.concurrent.Executors;
+<span class="kw">import</span> java.util.concurrent.Future;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span>, <span class="cl">ExecutionException</span> {
+
+    <span class="cl">ExecutorService</span> pool = <span class="cl">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="nm">3</span>);
+
+    <span class="cm">// 3 Callables submitted — all 3 start running immediately, in parallel</span>
+    <span class="cl">Future</span>&lt;<span class="cl">Integer</span>&gt; f1 = pool.<span class="fn">submit</span>(() -> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">1000</span>); <span class="kw">return</span> <span class="nm">10</span>; });
+    <span class="cl">Future</span>&lt;<span class="cl">Integer</span>&gt; f2 = pool.<span class="fn">submit</span>(() -> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">2000</span>); <span class="kw">return</span> <span class="nm">20</span>; });
+    <span class="cl">Future</span>&lt;<span class="cl">Integer</span>&gt; f3 = pool.<span class="fn">submit</span>(() -> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">1500</span>); <span class="kw">return</span> <span class="nm">30</span>; });
+
+<span class="hl">    <span class="cm">// .get() blocks until THAT task finishes — total wait &#x2248; 2s (the longest),</span></span>
+<span class="hl">    <span class="cm">// not 4.5s (1+2+1.5), because all 3 ran concurrently on the pool</span></span>
+    <span class="kw">int</span> total = f1.<span class="fn">get</span>() + f2.<span class="fn">get</span>() + f3.<span class="fn">get</span>();
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(total); <span class="cm">// 60</span>
+    pool.<span class="fn">shutdown</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>Callable</code> = Runnable with a return value. <code>Future.get()</code> blocks and returns the result. Use <code>get(timeout, unit)</code> in APIs to avoid waiting forever.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Parallel API simulation</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Simulate <strong>3 slow external APIs</strong> (800ms, 1200ms, 600ms) returning Strings. Collect via <code>Future.get()</code>. Verify total time &#x2248; 1200ms not 2600ms.</p>
+              <div class="practice-hints"><span class="hint-chip">Callable&lt;String&gt;</span><span class="hint-chip">Future&lt;String&gt;</span><span class="hint-chip">get(3, SECONDS)</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Make one Callable throw an exception. Catch it via <code>ExecutionException</code> from <code>future.get()</code>. Return a fallback and continue — this is how resilient backends work.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="concept" data-id="11">
+    <div class="concept-node">11</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Deadlock</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Two threads each hold a lock the other needs. Neither releases. Both wait forever. App freezes silently — no exception, no crash. The hardest thread bug.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F309;</div><p><strong>Narrow bridge:</strong> A says &quot;you go back first.&quot; B says &quot;no, YOU go back.&quot; Neither moves. Forever.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// &#x274C; Broken.java — opposite lock order &#x1F480; this WILL hang forever</span>
+<span class="kw">public class</span> <span class="cl">Broken</span> {
+
+  <span class="kw">static final</span> <span class="cl">Object</span> lockA = <span class="kw">new</span> <span class="cl">Object</span>();
+  <span class="kw">static final</span> <span class="cl">Object</span> lockB = <span class="kw">new</span> <span class="cl">Object</span>();
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+<span class="hl">      <span class="kw">synchronized</span> (lockA) {</span>
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"t1: locked A, waiting for B..."</span>);
+        <span class="fn">sleep</span>(<span class="nm">500</span>); <span class="cm">// gives t2 time to grab B first — forces the interleaving</span>
+<span class="hl">        <span class="kw">synchronized</span> (lockB) {</span>
+          <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"t1: got both locks"</span>); <span class="cm">// never printed</span>
+        }
+      }
+    });
+
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+<span class="hl">      <span class="kw">synchronized</span> (lockB) {</span>
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"t2: locked B, waiting for A..."</span>);
+        <span class="fn">sleep</span>(<span class="nm">500</span>);
+<span class="hl">        <span class="kw">synchronized</span> (lockA) { <span class="cm">// &#x1F480; t1 holds A wants B, t2 holds B wants A</span></span>
+          <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"t2: got both locks"</span>); <span class="cm">// never printed</span>
+        }
+      }
+    });
+
+    t1.<span class="fn">start</span>();
+    t2.<span class="fn">start</span>();
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Main launched both threads — the app is now frozen forever."</span>);
+    <span class="cm">// no exception, no crash — jstack/VisualVM would show both threads BLOCKED</span>
+  }
+
+  <span class="kw">static void</span> <span class="fn">sleep</span>(<span class="kw">long</span> ms) {
+    <span class="kw">try</span> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(ms); } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) { <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>(); }
+  }
+}
+
+<span class="cm">// &#x2705; Fixed.java — BOTH threads acquire locks in the SAME order (A then B)</span>
+<span class="kw">public class</span> <span class="cl">Fixed</span> {
+
+  <span class="kw">static final</span> <span class="cl">Object</span> lockA = <span class="kw">new</span> <span class="cl">Object</span>();
+  <span class="kw">static final</span> <span class="cl">Object</span> lockB = <span class="kw">new</span> <span class="cl">Object</span>();
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">synchronized</span> (lockA) {
+        <span class="kw">synchronized</span> (lockB) {
+          <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"t1: got both locks"</span>);
+        }
+      }
+    });
+
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+<span class="hl">      <span class="kw">synchronized</span> (lockA) { <span class="cm">// same order as t1 — no cycle possible</span></span>
+        <span class="kw">synchronized</span> (lockB) {
+          <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"t2: got both locks"</span>);
+        }
+      }
+    });
+
+    t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>();
+    t1.<span class="fn">join</span>();  t2.<span class="fn">join</span>();
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Both threads finished — no deadlock."</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Fix by ensuring <strong>all threads acquire locks in the same order</strong>. Or use <code>tryLock(timeout)</code> to give up instead of waiting forever.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q11 — Reproduce then fix</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Thread A locks <code>pen</code> then wants <code>notebook</code>. Thread B locks <code>notebook</code> then wants <code>pen</code>. Confirm it hangs. Fix by using the same lock order.</p>
+              <div class="practice-hints"><span class="hint-chip">Object pen, notebook</span><span class="hint-chip">confirm hang first</span><span class="hint-chip">fix: same order</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Fix using <code>tryLock(500ms)</code>. If you can&apos;t get both locks, release what you have and retry. This is the <strong>backoff strategy</strong> databases use.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="concept" data-id="12">
+    <div class="concept-node">12</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">AtomicInteger</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Thread-safe counter with <strong>no locks needed</strong>. Uses CPU-level CAS (Compare-And-Swap) — atomically read, compute, write in one hardware instruction. Faster than <code>synchronized</code>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.atomic.AtomicInteger;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+<span class="hl">  <span class="kw">static final</span> <span class="cl">AtomicInteger</span> count = <span class="kw">new</span> <span class="cl">AtomicInteger</span>(<span class="nm">0</span>);</span>
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    <span class="cm">// quick API tour</span>
+    count.<span class="fn">incrementAndGet</span>(); <span class="cm">// ++count, returns the NEW value</span>
+    count.<span class="fn">getAndIncrement</span>(); <span class="cm">// count++, returns the OLD value</span>
+    count.<span class="fn">addAndGet</span>(<span class="nm">5</span>);      <span class="cm">// count += 5, returns the NEW value</span>
+    count.<span class="fn">get</span>();             <span class="cm">// just read, no change</span>
+    count.<span class="fn">set</span>(<span class="nm">0</span>);            <span class="cm">// reset before the demo below</span>
+
+    <span class="cm">// two threads, no lock anywhere — always ends at 2000</span>
+    <span class="cl">Thread</span> t1 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>;i&lt;<span class="nm">1000</span>;i++) count.<span class="fn">incrementAndGet</span>();
+    });
+    <span class="cl">Thread</span> t2 = <span class="kw">new</span> <span class="cl">Thread</span>(() -> {
+      <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>;i&lt;<span class="nm">1000</span>;i++) count.<span class="fn">incrementAndGet</span>();
+    });
+
+    t1.<span class="fn">start</span>(); t2.<span class="fn">start</span>();
+    t1.<span class="fn">join</span>();  t2.<span class="fn">join</span>();
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(count.<span class="fn">get</span>()); <span class="cm">// always 2000</span>
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>For single-variable operations — cleaner and faster than <code>synchronized</code>. For <strong>multi-step logic</strong> (check-then-act), still use <code>synchronized</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q12 — Request counter</span></div>
+            <div class="practice-body">
+              <p class="practice-q"><strong>10 threads</strong> handle 100 requests each. Use <code>AtomicInteger</code> for total and failed requests (randomly fail 10%). Print totals at the end.</p>
+              <div class="practice-hints"><span class="hint-chip">AtomicInteger total</span><span class="hint-chip">AtomicInteger failed</span><span class="hint-chip">Math.random() &lt; 0.1</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="concept" data-id="13">
+    <div class="concept-node">13</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">ConcurrentHashMap</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Regular <code>HashMap</code> is not thread-safe. <code>ConcurrentHashMap</code> locks only small <strong>segments</strong> — multiple threads can read/write different keys simultaneously with no contention.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.ConcurrentHashMap;
+<span class="kw">import</span> java.util.concurrent.ExecutorService;
+<span class="kw">import</span> java.util.concurrent.Executors;
+<span class="kw">import</span> java.util.concurrent.TimeUnit;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+<span class="hl">  <span class="kw">static final</span> <span class="cl">ConcurrentHashMap</span>&lt;<span class="cl">String</span>,<span class="cl">Integer</span>&gt; map = <span class="kw">new</span> <span class="cl">ConcurrentHashMap</span>&lt;&gt;();</span>
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+    map.<span class="fn">put</span>(<span class="st">"pasta"</span>, <span class="nm">1</span>);         <span class="cm">// thread-safe</span>
+    map.<span class="fn">putIfAbsent</span>(<span class="st">"pizza"</span>, <span class="nm">0</span>);  <span class="cm">// atomic check+put — no-ops if key already exists</span>
+
+    <span class="cm">// 10 threads, all incrementing the SAME key concurrently — no external lock needed</span>
+    <span class="cl">ExecutorService</span> pool = <span class="cl">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="nm">10</span>);
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">10</span>; i++) {
+<span class="hl">      pool.<span class="fn">submit</span>(() -> map.<span class="fn">compute</span>(<span class="st">"pasta"</span>, (k, v) -> v == <span class="kw">null</span> ? <span class="nm">1</span> : v + <span class="nm">1</span>));</span>
+      <span class="cm">// compute() is atomic per-key — read, recompute, write happens as one step</span>
+    }
+
+    pool.<span class="fn">shutdown</span>();
+    pool.<span class="fn">awaitTermination</span>(<span class="nm">5</span>, <span class="cl">TimeUnit</span>.SECONDS);
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(map.<span class="fn">get</span>(<span class="st">"pasta"</span>)); <span class="cm">// always 11 (1 + 10 increments)</span>
+
+    <span class="cm">// &#x274C; Never share a plain HashMap between threads like this:</span>
+    <span class="cm">// Map&lt;String,Integer&gt; unsafe = new HashMap&lt;&gt;();</span>
+    <span class="cm">// concurrent writers can corrupt internal bucket pointers — possible infinite loop &#x1F480;</span>
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Never share a <code>HashMap</code> between threads. <code>ConcurrentHashMap</code> = segment locking = much better throughput. Note: <strong>no null keys or values</strong> allowed.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q13 — Word frequency counter</span></div>
+            <div class="practice-body">
+              <p class="practice-q"><strong>5 threads</strong> each process 20 words into a shared <code>ConcurrentHashMap&lt;String, AtomicInteger&gt;</code>. Print the top 3 most frequent words at the end.</p>
+              <div class="practice-hints"><span class="hint-chip">ConcurrentHashMap</span><span class="hint-chip">computeIfAbsent</span><span class="hint-chip">AtomicInteger value</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Use <code>map.compute(word, (k,v) -&gt; v==null ? 1 : v+1)</code> instead of AtomicInteger. Both work — understand when you&apos;d prefer one over the other.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="concept" data-id="14">
+    <div class="concept-node">14</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">CountDownLatch</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Counter starts at N. Each thread calls <code>countDown()</code> when done. Main calls <code>await()</code> and blocks until counter hits zero. Cleaner than multiple <code>join()</code> calls — works with thread pools.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3EA;</div><p><strong>Restaurant opening:</strong> Counter starts at 5 (staff). Each arrival decrements. When it hits 0, restaurant opens — main thread was waiting at <code>await()</code>.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.CountDownLatch;
+<span class="kw">import</span> java.util.concurrent.ExecutorService;
+<span class="kw">import</span> java.util.concurrent.Executors;
+<span class="kw">import</span> java.util.concurrent.TimeUnit;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+<span class="hl">    <span class="cl">CountDownLatch</span> latch = <span class="kw">new</span> <span class="cl">CountDownLatch</span>(<span class="nm">5</span>); <span class="cm">// counter starts at 5</span></span>
+
+    <span class="cl">ExecutorService</span> pool = <span class="cl">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="nm">5</span>);
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">5</span>; i++) {
+      <span class="kw">int</span> cookId = i;
+      pool.<span class="fn">submit</span>(() -> {
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Cook "</span> + cookId + <span class="st">" arrived &#x2705;"</span>);
+<span class="hl">        latch.<span class="fn">countDown</span>(); <span class="cm">// 5&#x2192;4&#x2192;3&#x2192;2&#x2192;1&#x2192;0, one per cook</span></span>
+      });
+    }
+
+<span class="hl">    latch.<span class="fn">await</span>(); <span class="cm">// main BLOCKS here until the count reaches 0</span></span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Restaurant open! &#x1F389;"</span>);
+
+    <span class="cm">// alternative — with a timeout, in case a cook never shows up:</span>
+    <span class="cm">// boolean done = latch.await(10, TimeUnit.SECONDS);</span>
+    <span class="cm">// if (!done) System.out.println("Timeout — opening anyway");</span>
+
+    pool.<span class="fn">shutdown</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>One-time gate — once it hits zero it stays zero. You&apos;ll use this in <strong>Kafka integration tests</strong> to wait for N messages to arrive before asserting.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q14 — Parallel dashboard loading</span></div>
+            <div class="practice-body">
+              <p class="practice-q"><strong>4 threads</strong> fetch data (users, orders, products, analytics — all different durations). Use <code>CountDownLatch(4)</code> to wait for all, then print a combined dashboard. Measure the time.</p>
+              <div class="practice-hints"><span class="hint-chip">CountDownLatch(4)</span><span class="hint-chip">countDown()</span><span class="hint-chip">await(5, SECONDS)</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Combine with <code>ConcurrentHashMap</code>: each thread stores result by key (&quot;users&quot;, &quot;orders&quot; etc.). After <code>await()</code>, read all and render. This is exactly how <strong>Spring Boot parallel loading</strong> works.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15 -->
+  <div class="concept" data-id="15">
+    <div class="concept-node">15</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Semaphore</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Controls how many threads access a resource <strong>simultaneously</strong>. N permits — <code>acquire()</code> takes one, <code>release()</code> gives it back. When all taken, new threads wait. Perfect for rate limiting.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F17F;&#xFE0F;</div><p><strong>Parking lot with 3 spots:</strong> 3 permits. Cars 1-3 enter. Car 4 waits. When Car 1 leaves and releases, Car 4 gets the permit and enters.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.ExecutorService;
+<span class="kw">import</span> java.util.concurrent.Executors;
+<span class="kw">import</span> java.util.concurrent.Semaphore;
+<span class="kw">import</span> java.util.concurrent.TimeUnit;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+<span class="hl">    <span class="cl">Semaphore</span> parking = <span class="kw">new</span> <span class="cl">Semaphore</span>(<span class="nm">3</span>); <span class="cm">// only 3 permits — 3 cars can park at once</span></span>
+
+    <span class="cl">ExecutorService</span> pool = <span class="cl">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="nm">6</span>); <span class="cm">// all 6 cars arrive "simultaneously"</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">6</span>; i++) {
+      <span class="kw">int</span> car = i;
+      pool.<span class="fn">submit</span>(() -> {
+        <span class="kw">try</span> {
+<span class="hl">          parking.<span class="fn">acquire</span>(); <span class="cm">// wait for a permit — blocks here if all 3 are taken</span></span>
+        } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) {
+          <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>();
+          <span class="kw">return</span>; <span class="cm">// never acquired a permit — must NOT release one below</span>
+        }
+
+        <span class="kw">try</span> {
+          <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Car "</span>+car+<span class="st">" parked &#x1F697;"</span>);
+          <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">2000</span>); <span class="cm">// occupies the spot for 2 seconds</span>
+        } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) {
+          <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>();
+        } <span class="kw">finally</span> {
+<span class="hl">          parking.<span class="fn">release</span>(); <span class="cm">// ALWAYS in finally — guaranteed even if sleep() is interrupted</span></span>
+        }
+      });
+    }
+
+    pool.<span class="fn">shutdown</span>();
+    pool.<span class="fn">awaitTermination</span>(<span class="nm">10</span>, <span class="cl">TimeUnit</span>.SECONDS);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"All cars processed."</span>);
+  }
+}
+
+<span class="cm">// real Spring Boot services use the same idea to cap concurrent work:</span>
+<span class="cl">Semaphore</span> dbPool   = <span class="kw">new</span> <span class="cl">Semaphore</span>(<span class="nm">5</span>); <span class="cm">// max 5 concurrent DB connections</span>
+<span class="cl">Semaphore</span> apiLimit = <span class="kw">new</span> <span class="cl">Semaphore</span>(<span class="nm">3</span>); <span class="cm">// max 3 concurrent external API calls</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>Semaphore(1)</code> = mutex like <code>synchronized</code>. <code>Semaphore(N)</code> = allow N concurrent threads. Always <code>release()</code> in <code>finally</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q15 — Rate limiter</span></div>
+            <div class="practice-body">
+              <p class="practice-q"><strong>10 threads</strong> call an API, but only <strong>3 at once</strong>. Each call takes 500ms. Print when each starts/finishes. Verify max 3 are ever active simultaneously using an <code>AtomicInteger</code> counter.</p>
+              <div class="practice-hints"><span class="hint-chip">Semaphore(3)</span><span class="hint-chip">acquire/release</span><span class="hint-chip">AtomicInteger active</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss — put it all together</div><p class="bonus-text">Build a <strong>mini job processor</strong>: <code>ExecutorService(5)</code> + <code>Semaphore(2)</code> for DB writes + <code>AtomicInteger</code> for count + <code>ConcurrentHashMap</code> for results + <code>CountDownLatch</code> to wait for all. This is <strong>production-grade Java concurrency</strong>.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; You did it, Sandeep!</h2>
+    <p>From never using threads to knowing the complete Java concurrency model.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> Thread</div>
+      <div class="grid-item"><span class="grid-num">02</span> Race Condition</div>
+      <div class="grid-item"><span class="grid-num">03</span> synchronized</div>
+      <div class="grid-item"><span class="grid-num">04</span> Wrong Lock Bug</div>
+      <div class="grid-item"><span class="grid-num">05</span> volatile</div>
+      <div class="grid-item"><span class="grid-num">06</span> wait / notify</div>
+      <div class="grid-item"><span class="grid-num">07</span> notifyAll</div>
+      <div class="grid-item"><span class="grid-num">08</span> ReentrantLock</div>
+      <div class="grid-item"><span class="grid-num">09</span> Thread Pool</div>
+      <div class="grid-item"><span class="grid-num">10</span> Callable &amp; Future</div>
+      <div class="grid-item"><span class="grid-num">11</span> Deadlock</div>
+      <div class="grid-item"><span class="grid-num">12</span> AtomicInteger</div>
+      <div class="grid-item"><span class="grid-num">13</span> ConcurrentHashMap</div>
+      <div class="grid-item"><span class="grid-num">14</span> CountDownLatch</div>
+      <div class="grid-item"><span class="grid-num">15</span> Semaphore</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 15) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 15';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

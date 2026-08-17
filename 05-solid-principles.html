@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOLID Principles</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0c0e14;
+  --surface: #13161f;
+  --surface2: #1a1e2d;
+  --border: #242840;
+  --text: #dde3f5;
+  --muted: #6b7494;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', sans-serif;
+
+  --srp: #4f9cf9; --srp-dim: #0d2240;
+  --ocp: #2eb88a; --ocp-dim: #0d2b22;
+  --lsp: #f5a623; --lsp-dim: #2e1f00;
+  --isp: #f472b6; --isp-dim: #3a1530;
+  --dip: #a78bfa; --dip-dim: #1e1a3a;
+
+  --code-bg: #090b10;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --orange: #fb923c;
+  --yellow: #fbbf24;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* HERO */
+.hero {
+  padding: 44px 24px 36px;
+  text-align: center;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 50% 80% at 20% 50%, rgba(79,156,249,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 80% at 80% 50%, rgba(167,139,250,0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-eyebrow { font-family: var(--mono); font-size: 10px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; }
+.hero h1 { font-size: clamp(24px, 5vw, 40px); font-weight: 700; letter-spacing: -1px; margin-bottom: 10px; line-height: 1.1; }
+.hero-sub { font-size: 14px; color: var(--muted); max-width: 560px; margin: 0 auto; }
+
+/* LAYOUT */
+.app { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 170px); }
+
+/* SIDEBAR */
+.sidebar { border-right: 1px solid var(--border); padding: 20px 0; position: sticky; top: 0; height: calc(100vh - 170px); overflow-y: auto; }
+.sidebar-label { font-family: var(--mono); font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; padding: 0 16px 10px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 16px; cursor: pointer; font-size: 13px; color: var(--muted);
+  border-left: 2px solid transparent; transition: all 0.15s; user-select: none;
+}
+.nav-item:hover { color: var(--text); background: var(--surface); }
+.nav-item.active { color: var(--text); background: var(--surface); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+/* MAIN */
+.main { overflow-y: auto; }
+.pattern-panel { display: none; }
+.pattern-panel.active { display: block; }
+
+.pattern-header { padding: 28px 32px 20px; border-bottom: 1px solid var(--border); position: relative; }
+.pattern-number { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; color: var(--muted); margin-bottom: 6px; }
+.pattern-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+.pattern-tagline { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+.pattern-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 4px; font-family: var(--mono); }
+.badge-interview { background: #1f1500; color: var(--yellow); }
+
+.pattern-body { padding: 24px 32px; }
+
+/* TABS */
+.ptabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 24px; overflow-x: auto; }
+.ptab { background: none; border: none; color: var(--muted); font-family: var(--sans); font-size: 12px; font-weight: 500; padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
+.ptab:hover { color: var(--text); }
+.ptab.active { color: var(--text); border-bottom-color: currentColor; }
+.ptab-content { display: none; }
+.ptab-content.active { display: block; }
+
+/* BOXES */
+.analogy-box, .problem-box, .spring-box, .gotcha-box, .faq-box {
+  border-radius: 10px; padding: 20px 24px; margin-bottom: 20px;
+}
+.analogy-box { background: var(--surface); border: 1px solid var(--border); }
+.analogy-box h3 { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.analogy-box p { font-size: 13px; line-height: 1.7; }
+.analogy-box p + p { margin-top: 8px; }
+.hl { font-weight: 600; color: var(--text); }
+
+.problem-box { background: rgba(248,113,113,0.05); border: 1px solid rgba(248,113,113,0.2); }
+.problem-box h3 { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--red); margin-bottom: 10px; }
+.problem-box p { font-size: 13px; line-height: 1.7; color: var(--muted); }
+
+.spring-box { background: linear-gradient(135deg, rgba(46,184,138,0.05), rgba(46,184,138,0.02)); border: 1px solid rgba(46,184,138,0.2); }
+.spring-box h3 { font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--ocp); margin-bottom: 10px; }
+.spring-box p { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.spring-box p + p { margin-top: 6px; }
+
+.gotcha-box { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.2); font-size: 13px; color: var(--muted); line-height: 1.7; }
+.gotcha-box strong { color: var(--yellow); }
+
+.oneliner { background: var(--surface2); border-left: 3px solid var(--text); border-radius: 0 8px 8px 0; padding: 14px 18px; font-size: 13px; font-style: italic; line-height: 1.6; margin-bottom: 16px; }
+
+/* CODE */
+.code-block { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 16px; }
+.code-header { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+.code-lang { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.code-label { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; }
+.cl-good { background: #0d2a1a; color: #34d399; }
+.cl-bad  { background: #2a0d0d; color: var(--red); }
+.cl-spring { background: #0d2a1a; color: #34d399; }
+
+pre { padding: 16px; font-family: var(--mono); font-size: 12px; line-height: 1.75; overflow-x: auto; color: #b8c2e0; }
+.kw  { color: #79b8ff; }
+.cls { color: #f9c74f; }
+.str { color: #f97b4f; }
+.cmt { color: #3d4a6a; font-style: italic; }
+.ann { color: #c792ea; }
+.fn  { color: #4ade80; }
+.num { color: #f9c74f; }
+
+/* OVERVIEW */
+.overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; padding: 24px 32px 0; }
+.overview-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; cursor: pointer; transition: border-color 0.2s, transform 0.15s; }
+.overview-card:hover { transform: translateY(-2px); }
+.oc-icon { font-size: 26px; margin-bottom: 10px; }
+.oc-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.oc-tagline { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* TABLE */
+.compare-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; }
+.compare-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
+.compare-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; line-height: 1.5; }
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: var(--surface); }
+
+/* FAQ */
+.faq-box { background: var(--surface); border: 1px solid var(--border); }
+.faq-q { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.faq-a { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 18px; }
+.faq-a:last-child { margin-bottom: 0; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+@media (max-width: 640px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .pattern-body { padding: 16px; }
+  .pattern-header { padding: 20px 16px 16px; }
+  .overview-grid { padding: 16px; grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">Java · Spring Boot · Robert C. Martin</div>
+  <h1>SOLID Principles</h1>
+  <p class="hero-sub">5 principles every senior Java developer is expected to reason about — with before/after code and how each one shows up in real Spring Boot codebases</p>
+</div>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="sidebar-label">Principles</div>
+    <div class="nav-item active" onclick="showPattern('overview')"><span class="nav-icon">🗺️</span> Overview</div>
+    <div class="nav-item" onclick="showPattern('srp')"><span class="nav-icon" style="color:var(--srp)">S</span> Single Responsibility</div>
+    <div class="nav-item" onclick="showPattern('ocp')"><span class="nav-icon" style="color:var(--ocp)">O</span> Open/Closed</div>
+    <div class="nav-item" onclick="showPattern('lsp')"><span class="nav-icon" style="color:var(--lsp)">L</span> Liskov Substitution</div>
+    <div class="nav-item" onclick="showPattern('isp')"><span class="nav-icon" style="color:var(--isp)">I</span> Interface Segregation</div>
+    <div class="nav-item" onclick="showPattern('dip')"><span class="nav-icon" style="color:var(--dip)">D</span> Dependency Inversion</div>
+  </nav>
+
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div id="panel-overview" class="pattern-panel active">
+      <div class="pattern-header">
+        <div class="pattern-number">SOLID</div>
+        <div class="pattern-title">Why these five rules exist</div>
+        <div class="pattern-tagline">Coined by Robert C. "Uncle Bob" Martin — five rules for code that survives change without rotting</div>
+      </div>
+      <div class="pattern-body" style="padding-top:0;">
+        <p style="font-size:13px; color:var(--muted); line-height:1.8; margin-bottom:20px;">
+          SOLID isn't five unrelated rules — it's one goal (low coupling, high cohesion, code that's easy to change without breaking unrelated things) approached from five angles: how big a class should be (S), how to add behaviour without editing existing code (O), how subclasses must behave (L), how interfaces should be shaped (I), and which direction dependencies should point (D). Every pattern in the <strong>design-patterns.html</strong> tutorial in this series is, underneath, a tool for satisfying one of these. Strategy, Decorator, and Observer all exist to satisfy <strong>OCP</strong> — they let you add new behaviour by adding a new class, not editing an existing one. Dependency Inversion is the principle that makes Spring's entire IoC container worth using: every <code>@Autowired</code> interface field is DIP in action.
+        </p>
+
+        <table class="compare-table">
+          <thead><tr><th>Principle</th><th>One-liner</th><th>Violation smell</th><th>Spring example</th></tr></thead>
+          <tbody>
+            <tr><td><strong style="color:var(--srp)">S</strong> — Single Responsibility</td><td>One class, one reason to change</td><td>A class with "and"/"or" in its job description</td><td>Splitting a fat @Service into focused beans</td></tr>
+            <tr><td><strong style="color:var(--ocp)">O</strong> — Open/Closed</td><td>Open for extension, closed for modification</td><td>A growing if/else or switch on type</td><td>Strategy beans injected as <code>Map&lt;String, X&gt;</code></td></tr>
+            <tr><td><strong style="color:var(--lsp)">L</strong> — Liskov Substitution</td><td>Subtypes must be safely substitutable for their base type</td><td>Overridden method throws <code>UnsupportedOperationException</code></td><td>Repository hierarchies that don't lie about capabilities</td></tr>
+            <tr><td><strong style="color:var(--isp)">I</strong> — Interface Segregation</td><td>Don't force classes to implement methods they don't need</td><td>An interface with methods most implementers stub out</td><td>Splitting <code>Repository</code> into <code>Readable</code>/<code>Writable</code></td></tr>
+            <tr><td><strong style="color:var(--dip)">D</strong> — Dependency Inversion</td><td>Depend on abstractions, not concrete classes</td><td><code>new SomeRepository()</code> inside a service</td><td>Constructor injection of an interface field</td></tr>
+          </tbody>
+        </table>
+
+        <div class="faq-box">
+          <div style="font-family:var(--mono); font-size:10px; letter-spacing:2px; color:var(--muted); text-transform:uppercase; margin-bottom:16px;">🎤 Senior interview questions</div>
+          <div class="faq-q">Give an example of violating SRP and how you'd refactor it.</div>
+          <div class="faq-a">A <code>UserService.register()</code> that validates input, hashes the password, saves to the DB, sends a welcome email, and writes an audit log all in one method. Four reasons to change (validation rules, hashing algorithm, persistence, email provider) means four ways this class breaks. Refactor by extracting <code>UserValidator</code>, <code>PasswordEncoder</code> (already exists in Spring Security), <code>EmailService</code>, and <code>AuditLogger</code>, then have <code>UserService</code> orchestrate them.</div>
+          <div class="faq-q">What's the difference between an LSP violation and just "bad inheritance"?</div>
+          <div class="faq-a">They're the same thing described two ways. LSP gives you the precise test: can every caller of the base type use any subtype without knowing or caring which one it got, and without anything breaking? If a subclass overrides a method to throw, return null where the base never would, or narrow accepted inputs, callers written against the base contract break — that's the LSP violation, and it's always rooted in forcing an inheritance relationship that doesn't actually hold ("a Penguin is-a Bird, but can't fly()").</div>
+          <div class="faq-q">How does dependency injection relate to DIP?</div>
+          <div class="faq-a">DIP is the principle; DI is one mechanism for achieving it. DIP says depend on abstractions. DI is the pattern of having something external (you, a factory, or a framework like Spring) hand you that abstraction's implementation instead of you constructing it yourself with <code>new</code>. Spring's whole IoC container exists to automate DI at scale — which is why "Spring is just DIP as a framework" is a fair one-line description.</div>
+          <div class="faq-q">Can you over-apply these principles — give an example of premature abstraction?</div>
+          <div class="faq-a">Yes — creating an interface for every single class "in case we need a second implementation someday" (YAGNI violation), or splitting a 20-line class into five 4-line classes because each method is "technically" a different responsibility. SRP means one reason to change at the level the business actually changes things, not one method per class. If you've never needed a second <code>PaymentStrategy</code> implementation and never will, the interface is ceremony, not design.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SRP -->
+    <div id="panel-srp" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number" style="color:var(--srp)">PRINCIPLE 01</div>
+        <div class="pattern-title">Single Responsibility</div>
+        <div class="pattern-tagline">A class should have one reason to change.</div>
+        <div class="pattern-badges"><span class="badge" style="background:var(--srp-dim);color:var(--srp)">Cohesion</span><span class="badge badge-interview">Asked in every interview</span></div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active" style="color:var(--srp);border-bottom-color:var(--srp)" onclick="showPtab(this,'srp','analogy')">🏠 Analogy</button>
+          <button class="ptab" onclick="showPtab(this,'srp','code')">💻 Code</button>
+          <button class="ptab" onclick="showPtab(this,'srp','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="srp-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🔧 The Swiss Army Knife Problem</h3>
+            <p>A Swiss Army knife does ten things passably. A chef does one thing — cooking — extremely well, and when their knife breaks, only the knife needs fixing. A class that validates, persists, emails, AND logs is a Swiss Army knife: a change to the email provider risks breaking persistence by accident, because it's all tangled in one place.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p><code>UserService.register()</code> validates the email format, hashes the password, saves the user, sends a welcome email, and writes an audit entry — all in one 80-line method. Four unrelated teams (security, DB, marketing, compliance) now all have a reason to touch this one file, and a typo in the email template can fail a unit test for password hashing.</p>
+          </div>
+          <div class="oneliner">"A class should have one reason to change — bundle unrelated responsibilities together and a change to one breaks, or at least re-tests, all the others."</div>
+        </div>
+
+        <div id="srp-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-bad">❌ Before — one class, four jobs</span></div>
+            <pre><span class="kw">public class</span> <span class="cls">UserService</span> {
+
+    <span class="kw">public void</span> <span class="fn">register</span>(String email, String rawPassword) {
+        <span class="cmt">// 1. validation</span>
+        <span class="kw">if</span> (!email.<span class="fn">contains</span>(<span class="str">"@"</span>)) <span class="kw">throw new</span> <span class="cls">IllegalArgumentException</span>(<span class="str">"bad email"</span>);
+
+        <span class="cmt">// 2. hashing</span>
+        String hashed = <span class="cls">Integer</span>.<span class="fn">toHexString</span>(rawPassword.<span class="fn">hashCode</span>()); <span class="cmt">// pretend hash</span>
+
+        <span class="cmt">// 3. persistence</span>
+        System.out.<span class="fn">println</span>(<span class="str">"INSERT INTO users(email, password) VALUES ("</span> + email + <span class="str">", "</span> + hashed + <span class="str">")"</span>);
+
+        <span class="cmt">// 4. notification</span>
+        System.out.<span class="fn">println</span>(<span class="str">"Sending welcome email to "</span> + email);
+
+        <span class="cmt">// 5. audit</span>
+        System.out.<span class="fn">println</span>(<span class="str">"AUDIT: user registered -> "</span> + email);
+    }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="kw">new</span> <span class="cls">UserService</span>().<span class="fn">register</span>(<span class="str">"sandeep@email.com"</span>, <span class="str">"hunter2"</span>);
+    }
+}</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ After — one job each, one orchestrator</span></div>
+            <pre><span class="kw">public class</span> <span class="cls">UserValidator</span> {
+    <span class="kw">public void</span> <span class="fn">validate</span>(String email) {
+        <span class="kw">if</span> (!email.<span class="fn">contains</span>(<span class="str">"@"</span>)) <span class="kw">throw new</span> <span class="cls">IllegalArgumentException</span>(<span class="str">"bad email"</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="cls">PasswordHasher</span> {
+    <span class="kw">public</span> String <span class="fn">hash</span>(String rawPassword) {
+        <span class="kw">return</span> <span class="cls">Integer</span>.<span class="fn">toHexString</span>(rawPassword.<span class="fn">hashCode</span>()); <span class="cmt">// pretend hash</span>
+    }
+}
+
+<span class="kw">public class</span> <span class="cls">UserRepository</span> {
+    <span class="kw">public void</span> <span class="fn">save</span>(String email, String hashedPassword) {
+        System.out.<span class="fn">println</span>(<span class="str">"INSERT INTO users(email, password) VALUES ("</span> + email + <span class="str">", "</span> + hashedPassword + <span class="str">")"</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="cls">EmailService</span> {
+    <span class="kw">public void</span> <span class="fn">sendWelcome</span>(String email) {
+        System.out.<span class="fn">println</span>(<span class="str">"Sending welcome email to "</span> + email);
+    }
+}
+
+<span class="kw">public class</span> <span class="cls">AuditLogger</span> {
+    <span class="kw">public void</span> <span class="fn">log</span>(String event) {
+        System.out.<span class="fn">println</span>(<span class="str">"AUDIT: "</span> + event);
+    }
+}
+
+<span class="cmt">// Now this is the ONLY class with the reason-to-change "how does registration flow"</span>
+<span class="kw">public class</span> <span class="cls">UserService</span> {
+    <span class="kw">private final</span> <span class="cls">UserValidator</span> validator = <span class="kw">new</span> <span class="cls">UserValidator</span>();
+    <span class="kw">private final</span> <span class="cls">PasswordHasher</span> hasher = <span class="kw">new</span> <span class="cls">PasswordHasher</span>();
+    <span class="kw">private final</span> <span class="cls">UserRepository</span> repo = <span class="kw">new</span> <span class="cls">UserRepository</span>();
+    <span class="kw">private final</span> <span class="cls">EmailService</span> email = <span class="kw">new</span> <span class="cls">EmailService</span>();
+    <span class="kw">private final</span> <span class="cls">AuditLogger</span> audit = <span class="kw">new</span> <span class="cls">AuditLogger</span>();
+
+    <span class="kw">public void</span> <span class="fn">register</span>(String userEmail, String rawPassword) {
+        validator.<span class="fn">validate</span>(userEmail);
+        String hashed = hasher.<span class="fn">hash</span>(rawPassword);
+        repo.<span class="fn">save</span>(userEmail, hashed);
+        email.<span class="fn">sendWelcome</span>(userEmail);
+        audit.<span class="fn">log</span>(<span class="str">"user registered -> "</span> + userEmail);
+    }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="kw">new</span> <span class="cls">UserService</span>().<span class="fn">register</span>(<span class="str">"sandeep@email.com"</span>, <span class="str">"hunter2"</span>);
+    }
+}</pre>
+          </div>
+          <div class="gotcha-box"><strong>⚠️ Over-applying SRP:</strong> splitting a 15-line class into five 3-line classes because each method is "technically" different isn't SRP, it's ceremony. SRP is about reasons <strong>the business</strong> changes things, not about method count.</div>
+        </div>
+
+        <div id="srp-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Layered Spring beans ARE SRP</h3>
+            <p>The classic Controller → Service → Repository layering is SRP applied at the architecture level: the controller's only job is HTTP translation, the service's only job is business rules, the repository's only job is persistence.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring — each bean, one job</span></div>
+            <pre><span class="ann">@RestController</span>
+<span class="kw">public class</span> <span class="cls">UserController</span> {     <span class="cmt">// job: HTTP in/out only</span>
+    <span class="kw">private final</span> <span class="cls">UserService</span> userService;
+    <span class="cls">UserController</span>(<span class="cls">UserService</span> s) { <span class="kw">this</span>.userService = s; }
+
+    <span class="ann">@PostMapping</span>(<span class="str">"/users"</span>)
+    <span class="kw">public void</span> <span class="fn">register</span>(<span class="ann">@RequestBody</span> <span class="cls">RegisterRequest</span> req) {
+        userService.<span class="fn">register</span>(req.<span class="fn">email</span>(), req.<span class="fn">password</span>());
+    }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">UserService</span> {        <span class="cmt">// job: orchestrate the business rule</span>
+    <span class="kw">private final</span> <span class="cls">PasswordEncoder</span> encoder;     <span class="cmt">// hashing's job, not ours</span>
+    <span class="kw">private final</span> <span class="cls">UserRepository</span> repo;       <span class="cmt">// persistence's job, not ours</span>
+    <span class="kw">private final</span> <span class="cls">ApplicationEventPublisher</span> events; <span class="cmt">// notification's job, not ours</span>
+    <span class="cmt">// constructor injection omitted for brevity</span>
+
+    <span class="kw">public void</span> <span class="fn">register</span>(String email, String rawPassword) {
+        repo.<span class="fn">save</span>(<span class="kw">new</span> <span class="cls">User</span>(email, encoder.<span class="fn">encode</span>(rawPassword)));
+        events.<span class="fn">publishEvent</span>(<span class="kw">new</span> <span class="cls">UserRegisteredEvent</span>(email)); <span class="cmt">// EmailService listens elsewhere</span>
+    }
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OCP -->
+    <div id="panel-ocp" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number" style="color:var(--ocp)">PRINCIPLE 02</div>
+        <div class="pattern-title">Open/Closed</div>
+        <div class="pattern-tagline">Open for extension, closed for modification.</div>
+        <div class="pattern-badges"><span class="badge" style="background:var(--ocp-dim);color:var(--ocp)">Extensibility</span><span class="badge badge-interview">Pairs with Strategy</span></div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active" style="color:var(--ocp);border-bottom-color:var(--ocp)" onclick="showPtab(this,'ocp','analogy')">🏠 Analogy</button>
+          <button class="ptab" onclick="showPtab(this,'ocp','code')">💻 Code</button>
+          <button class="ptab" onclick="showPtab(this,'ocp','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="ocp-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🔌 The Power Strip</h3>
+            <p>A power strip is <span class="hl">closed</span> — you never re-wire its internals — but <span class="hl">open</span> for extension: plug in any new device that fits the socket shape (the interface). You never modify the strip itself to support a new lamp.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>A <code>switch (paymentType)</code> block handling STRIPE and PAYPAL. Adding Razorpay means opening this already-tested, already-deployed method and editing it — risking breaking Stripe and PayPal while you're in there.</p>
+          </div>
+          <div class="oneliner">"You should be able to add new behaviour by adding new code, not by editing code that already works and is already tested."</div>
+        </div>
+
+        <div id="ocp-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-bad">❌ Before — must edit this method for every new type</span></div>
+            <pre><span class="kw">public class</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(String type, <span class="kw">double</span> amount) {
+        <span class="kw">if</span> (type.<span class="fn">equals</span>(<span class="str">"STRIPE"</span>)) {
+            System.out.<span class="fn">println</span>(<span class="str">"Stripe: charging $"</span> + amount);
+        } <span class="kw">else if</span> (type.<span class="fn">equals</span>(<span class="str">"PAYPAL"</span>)) {
+            System.out.<span class="fn">println</span>(<span class="str">"PayPal: charging $"</span> + amount);
+        }
+        <span class="cmt">// adding Razorpay means editing THIS method again</span>
+    }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="kw">new</span> <span class="cls">PaymentProcessor</span>().<span class="fn">pay</span>(<span class="str">"STRIPE"</span>, <span class="num">99.99</span>);
+    }
+}</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ After — new provider = new class, zero edits</span></div>
+            <pre><span class="kw">interface</span> <span class="cls">PaymentStrategy</span> {
+    <span class="kw">void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount);
+}
+<span class="kw">class</span> <span class="cls">StripePayment</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) { System.out.<span class="fn">println</span>(<span class="str">"Stripe: charging $"</span> + amount); }
+}
+<span class="kw">class</span> <span class="cls">PayPalPayment</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) { System.out.<span class="fn">println</span>(<span class="str">"PayPal: charging $"</span> + amount); }
+}
+<span class="cmt">// Adding Razorpay later = a NEW class. PaymentProcessor below never changes again.</span>
+<span class="kw">class</span> <span class="cls">RazorpayPayment</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) { System.out.<span class="fn">println</span>(<span class="str">"Razorpay: charging $"</span> + amount); }
+}
+
+<span class="kw">public class</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">private final</span> <span class="cls">PaymentStrategy</span> strategy;
+    <span class="cls">PaymentProcessor</span>(<span class="cls">PaymentStrategy</span> strategy) { <span class="kw">this</span>.strategy = strategy; }
+
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) { strategy.<span class="fn">pay</span>(amount); } <span class="cmt">// closed — never edited again</span>
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="kw">new</span> <span class="cls">PaymentProcessor</span>(<span class="kw">new</span> <span class="cls">RazorpayPayment</span>()).<span class="fn">pay</span>(<span class="num">49.99</span>);
+    }
+}</pre>
+          </div>
+          <div class="gotcha-box"><strong>⚠️ Over-applying OCP:</strong> wrapping every single method behind an interface "for future extension" before a second implementation is ever needed is speculative generality (YAGNI). Apply OCP where change is <strong>likely and recurring</strong> (payment providers, notification channels) — not everywhere.</div>
+        </div>
+
+        <div id="ocp-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Strategy beans via Spring DI = zero if/else, ever</h3>
+            <p>Register each strategy as a named bean. Spring auto-collects every implementation into a <code>Map&lt;String, X&gt;</code> keyed by bean name — see the Strategy pattern panel in <code>design-patterns.html</code> for the full walkthrough.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring — extension without modification</span></div>
+            <pre><span class="ann">@Service</span>(<span class="str">"razorpay"</span>) <span class="cmt">// adding this class is the ENTIRE change required</span>
+<span class="kw">public class</span> <span class="cls">RazorpayPayment</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> { <span class="cmt">/* ... */</span> }
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">CheckoutService</span> {
+    <span class="ann">@Autowired</span> <span class="cls">Map</span>&lt;String, <span class="cls">PaymentStrategy</span>&gt; strategies; <span class="cmt">// CheckoutService is never edited again</span>
+
+    <span class="kw">public void</span> <span class="fn">checkout</span>(String provider, <span class="kw">double</span> amount) {
+        strategies.<span class="fn">get</span>(provider).<span class="fn">pay</span>(amount);
+    }
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LSP -->
+    <div id="panel-lsp" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number" style="color:var(--lsp)">PRINCIPLE 03</div>
+        <div class="pattern-title">Liskov Substitution</div>
+        <div class="pattern-tagline">Subtypes must be substitutable for their base type without surprises.</div>
+        <div class="pattern-badges"><span class="badge" style="background:var(--lsp-dim);color:var(--lsp)">Inheritance</span><span class="badge badge-interview">"Penguin can't fly" question</span></div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active" style="color:var(--lsp);border-bottom-color:var(--lsp)" onclick="showPtab(this,'lsp','analogy')">🏠 Analogy</button>
+          <button class="ptab" onclick="showPtab(this,'lsp','code')">💻 Code</button>
+          <button class="ptab" onclick="showPtab(this,'lsp','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="lsp-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🐧 The Penguin Problem</h3>
+            <p>Biologically, a Penguin IS a Bird. But if your <code>Bird</code> class has <code>fly()</code>, and <code>Penguin extends Bird</code>, every piece of code written against "any Bird can fly()" now silently breaks for penguins. The taxonomy was right; the <span class="hl">code contract</span> was wrong.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>A <code>ReadOnlyRepository extends Repository</code> that overrides <code>save()</code> to <code>throw new UnsupportedOperationException()</code>. Any generic code that does <code>repositories.forEach(r -&gt; r.save(x))</code> compiles fine and then blows up at runtime — only for the one subtype nobody remembered was special.</p>
+          </div>
+          <div class="oneliner">"If S is a subtype of T, you must be able to replace any T with an S and the program should keep working — same inputs accepted, no stronger preconditions, no weaker guarantees."</div>
+        </div>
+
+        <div id="lsp-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-bad">❌ Before — a subtype that lies about its contract</span></div>
+            <pre><span class="kw">public abstract class</span> <span class="cls">Repository</span> {
+    <span class="kw">public abstract void</span> <span class="fn">save</span>(String record);
+    <span class="kw">public abstract</span> String <span class="fn">findById</span>(String id);
+}
+
+<span class="kw">public class</span> <span class="cls">ReadOnlyArchiveRepository</span> <span class="kw">extends</span> <span class="cls">Repository</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">save</span>(String record) {
+        <span class="kw">throw new</span> <span class="cls">UnsupportedOperationException</span>(<span class="str">"archive is read-only"</span>); <span class="cmt">// breaks the base contract</span>
+    }
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> String <span class="fn">findById</span>(String id) { <span class="kw">return</span> <span class="str">"archived-record-"</span> + id; }
+}
+
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">static void</span> <span class="fn">backupAll</span>(<span class="cls">Repository</span>[] repos, String record) {
+        <span class="kw">for</span> (<span class="cls">Repository</span> r : repos) r.<span class="fn">save</span>(record); <span class="cmt">// blows up — but only on SOME repos</span>
+    }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">Repository</span>[] repos = { <span class="kw">new</span> <span class="cls">ReadOnlyArchiveRepository</span>() };
+        <span class="fn">backupAll</span>(repos, <span class="str">"new entry"</span>); <span class="cmt">// throws UnsupportedOperationException at runtime</span>
+    }
+}</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ After — split the contract instead of faking it</span></div>
+            <pre><span class="kw">public interface</span> <span class="cls">ReadableRepository</span> {
+    String <span class="fn">findById</span>(String id);
+}
+<span class="kw">public interface</span> <span class="cls">WritableRepository</span> <span class="kw">extends</span> <span class="cls">ReadableRepository</span> {
+    <span class="kw">void</span> <span class="fn">save</span>(String record);
+}
+
+<span class="cmt">// archive only promises what it can actually do — no lie, no surprise</span>
+<span class="kw">public class</span> <span class="cls">ReadOnlyArchiveRepository</span> <span class="kw">implements</span> <span class="cls">ReadableRepository</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> String <span class="fn">findById</span>(String id) { <span class="kw">return</span> <span class="str">"archived-record-"</span> + id; }
+}
+<span class="kw">public class</span> <span class="cls">SqlRepository</span> <span class="kw">implements</span> <span class="cls">WritableRepository</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">save</span>(String record) { System.out.<span class="fn">println</span>(<span class="str">"INSERT: "</span> + record); }
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> String <span class="fn">findById</span>(String id) { <span class="kw">return</span> <span class="str">"row-"</span> + id; }
+}
+
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="cmt">// the compiler now PREVENTS the bug — you literally cannot call save() on a ReadableRepository</span>
+    <span class="kw">static void</span> <span class="fn">backupAll</span>(<span class="cls">WritableRepository</span>[] repos, String record) {
+        <span class="kw">for</span> (<span class="cls">WritableRepository</span> r : repos) r.<span class="fn">save</span>(record);
+    }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="fn">backupAll</span>(<span class="kw">new</span> <span class="cls">WritableRepository</span>[]{ <span class="kw">new</span> <span class="cls">SqlRepository</span>() }, <span class="str">"new entry"</span>);
+    }
+}</pre>
+          </div>
+          <div class="gotcha-box"><strong>⚠️ Over-applying LSP:</strong> creating a brand-new interface for every minor behavioural difference leads to interface explosion. Split only when callers actually need to treat the types differently — if nobody ever calls <code>save()</code> polymorphically across both, the single class with a documented limitation may be simpler.</div>
+        </div>
+
+        <div id="lsp-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Spring Data's interface hierarchy is built around this</h3>
+            <p><code>CrudRepository</code>, <code>PagingAndSortingRepository</code>, and read-only projections in Spring Data exist specifically so you only expose the capabilities a given repository actually supports — instead of one giant interface every implementation half-honours.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring Data — honest capability interfaces</span></div>
+            <pre><span class="cmt">// A reporting repository that should NEVER allow writes —
+// don't extend CrudRepository and override save() to throw.
+// Extend only the read-side interface instead:</span>
+<span class="kw">public interface</span> <span class="cls">OrderReportRepository</span>
+        <span class="kw">extends</span> <span class="cls">Repository</span>&lt;<span class="cls">Order</span>, <span class="cls">Long</span>&gt; {
+    <span class="cls">List</span>&lt;<span class="cls">Order</span>&gt; <span class="fn">findByStatus</span>(String status); <span class="cmt">// read-only, no save() exists to misuse</span>
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ISP -->
+    <div id="panel-isp" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number" style="color:var(--isp)">PRINCIPLE 04</div>
+        <div class="pattern-title">Interface Segregation</div>
+        <div class="pattern-tagline">Don't force a class to implement methods it has no use for.</div>
+        <div class="pattern-badges"><span class="badge" style="background:var(--isp-dim);color:var(--isp)">Interface design</span><span class="badge badge-interview">"Fat interface" question</span></div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active" style="color:var(--isp);border-bottom-color:var(--isp)" onclick="showPtab(this,'isp','analogy')">🏠 Analogy</button>
+          <button class="ptab" onclick="showPtab(this,'isp','code')">💻 Code</button>
+          <button class="ptab" onclick="showPtab(this,'isp','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="isp-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🍽️ The Restaurant Menu</h3>
+            <p>A diner-only menu lists breakfast, lunch, AND dinner on one page even at 8am — most of it is irrelevant noise to today's customer. A well-segmented menu hands you just the breakfast card. Interfaces work the same way: a fat interface forces every implementer to scan past methods that don't apply to them.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>A <code>Worker</code> interface with <code>work()</code>, <code>eat()</code>, and <code>sleep()</code>. A <code>RobotWorker</code> must implement all three to compile — but a robot doesn't eat or sleep, so those methods become empty stubs or throw exceptions, which is itself an LSP violation born from an ISP mistake.</p>
+          </div>
+          <div class="oneliner">"No class should be forced to depend on methods it doesn't use — split fat interfaces into small, focused ones."</div>
+        </div>
+
+        <div id="isp-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-bad">❌ Before — one fat interface, forced stubs</span></div>
+            <pre><span class="kw">interface</span> <span class="cls">Worker</span> {
+    <span class="kw">void</span> <span class="fn">work</span>();
+    <span class="kw">void</span> <span class="fn">eat</span>();
+    <span class="kw">void</span> <span class="fn">sleep</span>();
+}
+
+<span class="kw">class</span> <span class="cls">HumanWorker</span> <span class="kw">implements</span> <span class="cls">Worker</span> {
+    <span class="kw">public void</span> <span class="fn">work</span>()  { System.out.<span class="fn">println</span>(<span class="str">"Coding..."</span>); }
+    <span class="kw">public void</span> <span class="fn">eat</span>()   { System.out.<span class="fn">println</span>(<span class="str">"Lunch break"</span>); }
+    <span class="kw">public void</span> <span class="fn">sleep</span>() { System.out.<span class="fn">println</span>(<span class="str">"Sleeping"</span>); }
+}
+
+<span class="kw">class</span> <span class="cls">RobotWorker</span> <span class="kw">implements</span> <span class="cls">Worker</span> {
+    <span class="kw">public void</span> <span class="fn">work</span>()  { System.out.<span class="fn">println</span>(<span class="str">"Welding..."</span>); }
+    <span class="kw">public void</span> <span class="fn">eat</span>()   { <span class="kw">throw new</span> <span class="cls">UnsupportedOperationException</span>(<span class="str">"robots don't eat"</span>); } <span class="cmt">// forced, useless</span>
+    <span class="kw">public void</span> <span class="fn">sleep</span>() { <span class="kw">throw new</span> <span class="cls">UnsupportedOperationException</span>(<span class="str">"robots don't sleep"</span>); }
+}
+
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">Worker</span> r = <span class="kw">new</span> <span class="cls">RobotWorker</span>();
+        r.<span class="fn">work</span>();
+        r.<span class="fn">eat</span>(); <span class="cmt">// throws — any generic "send everyone to lunch" loop crashes here</span>
+    }
+}</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ After — small, role-specific interfaces</span></div>
+            <pre><span class="kw">interface</span> <span class="cls">Workable</span> { <span class="kw">void</span> <span class="fn">work</span>(); }
+<span class="kw">interface</span> <span class="cls">Eatable</span>   { <span class="kw">void</span> <span class="fn">eat</span>();  }
+<span class="kw">interface</span> <span class="cls">Sleepable</span> { <span class="kw">void</span> <span class="fn">sleep</span>(); }
+
+<span class="cmt">// implements only what actually applies — no stubs, no surprise exceptions</span>
+<span class="kw">class</span> <span class="cls">HumanWorker</span> <span class="kw">implements</span> <span class="cls">Workable</span>, <span class="cls">Eatable</span>, <span class="cls">Sleepable</span> {
+    <span class="kw">public void</span> <span class="fn">work</span>()  { System.out.<span class="fn">println</span>(<span class="str">"Coding..."</span>); }
+    <span class="kw">public void</span> <span class="fn">eat</span>()   { System.out.<span class="fn">println</span>(<span class="str">"Lunch break"</span>); }
+    <span class="kw">public void</span> <span class="fn">sleep</span>() { System.out.<span class="fn">println</span>(<span class="str">"Sleeping"</span>); }
+}
+
+<span class="kw">class</span> <span class="cls">RobotWorker</span> <span class="kw">implements</span> <span class="cls">Workable</span> { <span class="cmt">// honestly only does ONE of the three things</span>
+    <span class="kw">public void</span> <span class="fn">work</span>() { System.out.<span class="fn">println</span>(<span class="str">"Welding..."</span>); }
+}
+
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">static void</span> <span class="fn">lunchBreak</span>(<span class="cls">Eatable</span>[] eaters) {
+        <span class="kw">for</span> (<span class="cls">Eatable</span> e : eaters) e.<span class="fn">eat</span>(); <span class="cmt">// a RobotWorker can't even be passed here — compiler enforces it</span>
+    }
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="fn">lunchBreak</span>(<span class="kw">new</span> <span class="cls">Eatable</span>[]{ <span class="kw">new</span> <span class="cls">HumanWorker</span>() });
+    }
+}</pre>
+          </div>
+          <div class="gotcha-box"><strong>⚠️ Over-applying ISP:</strong> splitting every interface into single-method fragments "for purity" makes call sites depend on five tiny interfaces instead of one cohesive one. Group methods that are <strong>always used together by the same callers</strong> — segregate by actual usage pattern, not by method count.</div>
+        </div>
+
+        <div id="isp-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Spring Data's Repository family is ISP by design</h3>
+            <p><code>Repository</code> (marker, no methods), <code>CrudRepository</code> (adds save/find/delete), <code>PagingAndSortingRepository</code> (adds paging) — each layer adds capability, so you pick the smallest interface your class actually needs instead of inheriting a fat one.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring Data — pick the smallest interface you need</span></div>
+            <pre><span class="cmt">// Needs paging? Extend the interface that has it.</span>
+<span class="kw">public interface</span> <span class="cls">OrderRepository</span>
+        <span class="kw">extends</span> <span class="cls">PagingAndSortingRepository</span>&lt;<span class="cls">Order</span>, <span class="cls">Long</span>&gt; {
+    <span class="cls">List</span>&lt;<span class="cls">Order</span>&gt; <span class="fn">findByStatus</span>(String status);
+}
+
+<span class="cmt">// Only ever reads, never writes? Don't pull in CrudRepository's save()/delete() at all.</span>
+<span class="kw">public interface</span> <span class="cls">OrderReadRepository</span>
+        <span class="kw">extends</span> <span class="cls">Repository</span>&lt;<span class="cls">Order</span>, <span class="cls">Long</span>&gt; {
+    <span class="cls">Optional</span>&lt;<span class="cls">Order</span>&gt; <span class="fn">findById</span>(<span class="cls">Long</span> id);
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DIP -->
+    <div id="panel-dip" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number" style="color:var(--dip)">PRINCIPLE 05</div>
+        <div class="pattern-title">Dependency Inversion</div>
+        <div class="pattern-tagline">Depend on abstractions, not on concrete implementations.</div>
+        <div class="pattern-badges"><span class="badge" style="background:var(--dip-dim);color:var(--dip)">Decoupling</span><span class="badge badge-interview">Why Spring DI exists</span></div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active" style="color:var(--dip);border-bottom-color:var(--dip)" onclick="showPtab(this,'dip','analogy')">🏠 Analogy</button>
+          <button class="ptab" onclick="showPtab(this,'dip','code')">💻 Code</button>
+          <button class="ptab" onclick="showPtab(this,'dip','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="dip-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🔌 The Wall Socket</h3>
+            <p>A lamp doesn't wire itself directly into the power station. It plugs into a standard <span class="hl">socket</span> — an abstraction. Swap the power source behind the wall (grid, generator, solar) and the lamp never knows or cares. If the lamp were hard-wired to one specific generator, replacing it would mean re-wiring the lamp itself.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p><code>OrderService</code> does <code>private MySqlOrderRepository repo = new MySqlOrderRepository();</code> directly inside it. You cannot unit-test <code>OrderService</code> without a real MySQL connection, and switching databases means editing <code>OrderService</code> itself — the high-level business logic is now welded to a low-level storage detail.</p>
+          </div>
+          <div class="oneliner">"High-level modules shouldn't depend on low-level modules — both should depend on an abstraction, and that abstraction shouldn't depend on the details."</div>
+        </div>
+
+        <div id="dip-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-bad">❌ Before — high-level class wired to a concrete low-level class</span></div>
+            <pre><span class="kw">public class</span> <span class="cls">MySqlOrderRepository</span> {
+    <span class="kw">public void</span> <span class="fn">save</span>(String order) { System.out.<span class="fn">println</span>(<span class="str">"MySQL INSERT: "</span> + order); }
+}
+
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+    <span class="kw">private final</span> <span class="cls">MySqlOrderRepository</span> repo = <span class="kw">new</span> <span class="cls">MySqlOrderRepository</span>(); <span class="cmt">// welded — untestable</span>
+
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(String order) { repo.<span class="fn">save</span>(order); }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="kw">new</span> <span class="cls">OrderService</span>().<span class="fn">placeOrder</span>(<span class="str">"ORD-1001"</span>);
+        <span class="cmt">// to unit test placeOrder() you need a REAL MySQL connection — no way around it</span>
+    }
+}</pre>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ After — depend on the interface, get the implementation handed to you</span></div>
+            <pre><span class="kw">public interface</span> <span class="cls">OrderRepository</span> {
+    <span class="kw">void</span> <span class="fn">save</span>(String order);
+}
+<span class="kw">public class</span> <span class="cls">MySqlOrderRepository</span> <span class="kw">implements</span> <span class="cls">OrderRepository</span> {
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">save</span>(String order) { System.out.<span class="fn">println</span>(<span class="str">"MySQL INSERT: "</span> + order); }
+}
+<span class="cmt">// a fake for tests — no real DB needed, possible ONLY because OrderService depends on the interface</span>
+<span class="kw">public class</span> <span class="cls">InMemoryOrderRepository</span> <span class="kw">implements</span> <span class="cls">OrderRepository</span> {
+    <span class="kw">private final</span> List&lt;String&gt; saved = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">save</span>(String order) { saved.<span class="fn">add</span>(order); System.out.<span class="fn">println</span>(<span class="str">"in-memory save: "</span> + order); }
+}
+
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+    <span class="kw">private final</span> <span class="cls">OrderRepository</span> repo; <span class="cmt">// depends on the abstraction, not the detail</span>
+    <span class="cls">OrderService</span>(<span class="cls">OrderRepository</span> repo) { <span class="kw">this</span>.repo = repo; } <span class="cmt">// handed in, not constructed</span>
+
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(String order) { repo.<span class="fn">save</span>(order); }
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="kw">new</span> <span class="cls">OrderService</span>(<span class="kw">new</span> <span class="cls">InMemoryOrderRepository</span>()).<span class="fn">placeOrder</span>(<span class="str">"ORD-1001"</span>); <span class="cmt">// no DB needed</span>
+        <span class="kw">new</span> <span class="cls">OrderService</span>(<span class="kw">new</span> <span class="cls">MySqlOrderRepository</span>()).<span class="fn">placeOrder</span>(<span class="str">"ORD-1002"</span>);   <span class="cmt">// real DB in prod</span>
+    }
+}</pre>
+          </div>
+          <div class="gotcha-box"><strong>⚠️ Over-applying DIP:</strong> introducing an interface for a class that will only ever have one implementation forever (e.g. a math utility class) adds indirection with zero payoff. DIP earns its keep when you actually need to swap implementations — for tests, for environments, or for providers.</div>
+        </div>
+
+        <div id="dip-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 DIP is the whole reason Spring's IoC container exists</h3>
+            <p>Constructor injection of an interface field, with Spring deciding which <code>@Bean</code> satisfies it at startup, is DIP automated. You never write <code>new MySqlOrderRepository()</code> anywhere in business code — Spring wires the concrete implementation in from the outside.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring — DIP via constructor injection</span></div>
+            <pre><span class="ann">@Repository</span>
+<span class="kw">public class</span> <span class="cls">MySqlOrderRepository</span> <span class="kw">implements</span> <span class="cls">OrderRepository</span> { <span class="cmt">/* ... */</span> }
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+    <span class="kw">private final</span> <span class="cls">OrderRepository</span> repo; <span class="cmt">// the field type is the INTERFACE</span>
+
+    <span class="cmt">// Spring sees one bean implementing OrderRepository and injects it here —
+    // swap @Profile("test") to InMemoryOrderRepository and OrderService never changes</span>
+    <span class="kw">public</span> <span class="cls">OrderService</span>(<span class="cls">OrderRepository</span> repo) { <span class="kw">this</span>.repo = repo; }
+
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(String order) { repo.<span class="fn">save</span>(order); }
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function showPattern(id) {
+    document.querySelectorAll('.pattern-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('panel-' + id).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function showPtab(btn, pattern, tabId) {
+    const body = btn.closest('.pattern-body');
+    body.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+    body.querySelectorAll('.ptab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(pattern + '-' + tabId).classList.add('active');
+  }
+</script>
+</body>
+</html>
+

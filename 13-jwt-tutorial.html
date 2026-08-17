@@ -1,0 +1,1681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JWT Authentication — Complete Tutorial</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Sora:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #0a0e14;
+  --surface: #0f1318;
+  --surface2: #151b22;
+  --border: #1e2730;
+  --border2: #263040;
+  --accent: #4d9fff;
+  --accent2: #2563c4;
+  --green: #3ddc84;
+  --yellow: #ffcc44;
+  --red: #ff5a5a;
+  --purple: #b07fff;
+  --orange: #ff9944;
+  --text: #dde4ef;
+  --muted: #6b7b8f;
+  --muted2: #8898aa;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Sora', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Layout */
+.layout { display: flex; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 0;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  overflow-y: auto;
+}
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  padding: 0 20px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.nav-section { margin-bottom: 4px; }
+.nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  padding: 10px 20px 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 20px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted2);
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: #0d1825; }
+.nav-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border2); flex-shrink: 0;
+}
+.nav-item.active .nav-dot { background: var(--accent); }
+.nav-item.done .nav-dot { background: var(--green); }
+.nav-item.done { color: var(--muted2); }
+
+/* Main content */
+.main {
+  margin-left: 260px;
+  flex: 1;
+  padding: 48px 48px 80px;
+  max-width: 900px;
+}
+
+/* Section */
+.section { display: none; }
+.section.active { display: block; }
+
+/* Hero */
+.hero {
+  margin-bottom: 40px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+.hero-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.hero h1 {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  color: #fff;
+}
+.hero p {
+  color: var(--muted2);
+  font-size: 14px;
+  max-width: 600px;
+}
+
+/* Section header */
+.section-header { margin-bottom: 28px; }
+.section-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.section-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.section-header p { color: var(--muted2); font-size: 13px; max-width: 600px; }
+
+/* Prose */
+h3 { font-size: 15px; font-weight: 600; color: #fff; margin: 28px 0 10px; }
+h4 { font-size: 13px; font-weight: 600; color: var(--accent); margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+p { margin-bottom: 14px; color: var(--muted2); font-size: 13px; }
+p strong { color: var(--text); font-weight: 600; }
+
+/* Code */
+.file-label {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  padding: 8px 14px;
+  border-radius: 6px 6px 0 0;
+}
+.file-label span { color: var(--text); }
+pre {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  padding: 20px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  margin-bottom: 24px;
+  tab-size: 2;
+}
+pre.standalone { border-radius: 6px; }
+.kw { color: #ff7b72; }
+.cls { color: #ffa657; }
+.str { color: #a5d6ff; }
+.cmt { color: #4d5f70; font-style: italic; }
+.ann { color: #b07fff; }
+.fn { color: #79c0ff; }
+.num { color: #f0a050; }
+.bool { color: #ff7b72; }
+
+/* Callouts */
+.callout {
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  border-left: 3px solid;
+  line-height: 1.6;
+}
+.callout p { margin: 0; }
+.info { background: #0d1825; border-color: var(--accent); color: var(--muted2); }
+.info strong { color: var(--accent); }
+.success { background: #091a0f; border-color: var(--green); color: var(--muted2); }
+.success strong { color: var(--green); }
+.warn { background: #1a160a; border-color: var(--yellow); color: var(--muted2); }
+.warn strong { color: var(--yellow); }
+.tip { background: #130d1f; border-color: var(--purple); color: var(--muted2); }
+.tip strong { color: var(--purple); }
+
+/* Flow diagram */
+.flow { margin: 20px 0 28px; }
+.flow-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 0;
+}
+.flow-box {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 2px;
+}
+.flow-box.accent { border-color: var(--accent); background: #0d1825; }
+.flow-box.green { border-color: var(--green); background: #091a0f; }
+.flow-box.red { border-color: var(--red); background: #1a0909; }
+.flow-box.purple { border-color: var(--purple); background: #130d1f; }
+.flow-box.yellow { border-color: var(--yellow); background: #1a160a; }
+.flow-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.flow-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.flow-arrow {
+  text-align: center;
+  color: var(--border2);
+  font-size: 16px;
+  margin: 2px 0;
+  line-height: 1;
+}
+
+/* Steps */
+.steps { margin: 20px 0; }
+.step {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: flex-start;
+}
+.step-num {
+  width: 28px; height: 28px; min-width: 28px;
+  border-radius: 50%;
+  background: var(--accent2);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
+}
+.step-body { flex: 1; }
+.step-title { font-weight: 600; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+.step-desc { font-size: 12px; color: var(--muted2); line-height: 1.6; }
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  font-size: 12px;
+}
+th {
+  background: var(--surface2);
+  color: var(--accent);
+  padding: 10px 14px;
+  text-align: left;
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+td {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  color: var(--muted2);
+  vertical-align: top;
+  line-height: 1.5;
+}
+td strong { color: var(--text); }
+tr:nth-child(even) td { background: #0c1016; }
+.yes { color: var(--green); font-weight: 600; }
+.no { color: var(--red); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 2px 2px 0 0;
+}
+.tag-blue { background: #0d1825; color: var(--accent); border: 1px solid var(--accent2); }
+.tag-green { background: #091a0f; color: var(--green); border: 1px solid #1a5c30; }
+.tag-purple { background: #130d1f; color: var(--purple); border: 1px solid #4a2a8a; }
+.tag-yellow { background: #1a160a; color: var(--yellow); border: 1px solid #5a4a00; }
+.tag-red { background: #1a0909; color: var(--red); border: 1px solid #5a1a1a; }
+
+/* Nav buttons */
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: 'Sora', sans-serif;
+  transition: all 0.15s;
+}
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { background: #70b5ff; }
+.btn-ghost { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Progress */
+.progress-bar {
+  position: fixed;
+  top: 0; left: 260px; right: 0;
+  height: 2px;
+  background: var(--border);
+  z-index: 100;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.3s ease;
+}
+
+/* Inline code */
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--accent);
+}
+
+/* Divider */
+.divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+/* Scenario */
+.scenario {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.scenario-title {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scenario pre {
+  margin: 0;
+  border: none;
+  border-radius: 4px;
+  background: var(--bg);
+  padding: 12px 14px;
+  font-size: 11px;
+}
+
+/* File tree */
+.file-tree {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 16px 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 2;
+  margin-bottom: 24px;
+}
+.ft-dir { color: var(--accent); }
+.ft-file { color: var(--muted2); }
+.ft-comment { color: var(--muted); font-style: italic; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:14%"></div></div>
+
+<div class="layout">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-title">JWT Auth Tutorial</div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundation</div>
+    <div class="nav-item active" onclick="goTo(0)" id="nav-0"><div class="nav-dot"></div>Overview & Setup</div>
+    <div class="nav-item" onclick="goTo(1)" id="nav-1"><div class="nav-dot"></div>Project Structure</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Building Blocks</div>
+    <div class="nav-item" onclick="goTo(2)" id="nav-2"><div class="nav-dot"></div>JwtUtil</div>
+    <div class="nav-item" onclick="goTo(3)" id="nav-3"><div class="nav-dot"></div>JwtFilter</div>
+    <div class="nav-item" onclick="goTo(4)" id="nav-4"><div class="nav-dot"></div>SecurityConfig</div>
+    <div class="nav-item" onclick="goTo(5)" id="nav-5"><div class="nav-dot"></div>AuthController</div>
+    <div class="nav-item" onclick="goTo(6)" id="nav-6"><div class="nav-dot"></div>Protected Controller</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Putting it together</div>
+    <div class="nav-item" onclick="goTo(7)" id="nav-7"><div class="nav-dot"></div>Full Request Flow</div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+<!-- SECTION 0: Overview -->
+<div class="section active" id="section-0">
+  <div class="hero">
+    <div class="hero-eyebrow">Complete Step-by-Step Tutorial</div>
+    <h1>JWT Authentication<br/>in Spring Boot</h1>
+    <p>Build a working JWT auth system from scratch. Every file, every line explained. No steps skipped.</p>
+  </div>
+
+  <h3>What we are building</h3>
+  <p>A Spring Boot REST API where:</p>
+  <div class="flow">
+    <div class="flow-box yellow">
+      <div class="flow-title">POST /auth/login</div>
+      <div class="flow-desc">Public endpoint. User sends username + password. Gets back a JWT token.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">Client stores the token</div>
+      <div class="flow-desc">And sends it on every future request inside the Authorization header.</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box green">
+      <div class="flow-title">GET /api/orders (protected)</div>
+      <div class="flow-desc">Token is validated by JwtFilter. If valid, request reaches controller. If not, 401.</div>
+    </div>
+  </div>
+
+  <h3>How the pieces connect</h3>
+  <p>Here is the complete picture before we write a single line of code:</p>
+  <div class="flow">
+    <div class="flow-box">
+      <div class="flow-title">① JwtUtil</div>
+      <div class="flow-desc">Creates tokens on login. Validates + reads tokens on every request. Knows nothing about HTTP.</div>
+    </div>
+    <div class="flow-arrow">↓ used by</div>
+    <div class="flow-box accent">
+      <div class="flow-title">② JwtFilter (OncePerRequestFilter)</div>
+      <div class="flow-desc">Runs on every HTTP request. Reads the Authorization header, calls JwtUtil to validate, puts user into SecurityContext.</div>
+    </div>
+    <div class="flow-arrow">↓ registered in</div>
+    <div class="flow-box purple">
+      <div class="flow-title">③ SecurityConfig</div>
+      <div class="flow-desc">Wires everything together. Tells Spring Security which endpoints are public, registers JwtFilter into the chain, disables sessions.</div>
+    </div>
+    <div class="flow-arrow">↓ works alongside</div>
+    <div class="flow-box yellow">
+      <div class="flow-title">④ AuthController</div>
+      <div class="flow-desc">Handles /auth/login. Checks credentials, calls JwtUtil.generateToken(), returns token to client.</div>
+    </div>
+    <div class="flow-arrow">↓ protects</div>
+    <div class="flow-box green">
+      <div class="flow-title">⑤ Your @RestControllers</div>
+      <div class="flow-desc">Your actual business logic. Only reachable if JwtFilter put a valid user in SecurityContext.</div>
+    </div>
+  </div>
+
+  <h3>Maven dependency — add this first</h3>
+  <p>You need three things in your <code>pom.xml</code>: Spring Security, and the JJWT library (which handles JWT creation and parsing).</p>
+  <div class="file-label">📄 <span>pom.xml</span></div>
+  <pre><span class="cmt">&lt;!-- Spring Security --&gt;</span>
+<span class="kw">&lt;dependency&gt;</span>
+    <span class="kw">&lt;groupId&gt;</span>org.springframework.boot<span class="kw">&lt;/groupId&gt;</span>
+    <span class="kw">&lt;artifactId&gt;</span>spring-boot-starter-security<span class="kw">&lt;/artifactId&gt;</span>
+<span class="kw">&lt;/dependency&gt;</span>
+
+<span class="cmt">&lt;!-- JJWT — the library that creates and parses JWT tokens --&gt;</span>
+<span class="cmt">&lt;!-- jjwt-api: the interfaces and classes you use in code --&gt;</span>
+<span class="kw">&lt;dependency&gt;</span>
+    <span class="kw">&lt;groupId&gt;</span>io.jsonwebtoken<span class="kw">&lt;/groupId&gt;</span>
+    <span class="kw">&lt;artifactId&gt;</span>jjwt-api<span class="kw">&lt;/artifactId&gt;</span>
+    <span class="kw">&lt;version&gt;</span>0.12.3<span class="kw">&lt;/version&gt;</span>
+<span class="kw">&lt;/dependency&gt;</span>
+
+<span class="cmt">&lt;!-- jjwt-impl: the actual implementation — runtime only, not needed at compile time --&gt;</span>
+<span class="kw">&lt;dependency&gt;</span>
+    <span class="kw">&lt;groupId&gt;</span>io.jsonwebtoken<span class="kw">&lt;/groupId&gt;</span>
+    <span class="kw">&lt;artifactId&gt;</span>jjwt-impl<span class="kw">&lt;/artifactId&gt;</span>
+    <span class="kw">&lt;version&gt;</span>0.12.3<span class="kw">&lt;/version&gt;</span>
+    <span class="kw">&lt;scope&gt;</span>runtime<span class="kw">&lt;/scope&gt;</span>
+<span class="kw">&lt;/dependency&gt;</span>
+
+<span class="cmt">&lt;!-- jjwt-jackson: lets JJWT use Jackson to read/write JSON inside tokens --&gt;</span>
+<span class="kw">&lt;dependency&gt;</span>
+    <span class="kw">&lt;groupId&gt;</span>io.jsonwebtoken<span class="kw">&lt;/groupId&gt;</span>
+    <span class="kw">&lt;artifactId&gt;</span>jjwt-jackson<span class="kw">&lt;/artifactId&gt;</span>
+    <span class="kw">&lt;version&gt;</span>0.12.3<span class="kw">&lt;/version&gt;</span>
+    <span class="kw">&lt;scope&gt;</span>runtime<span class="kw">&lt;/scope&gt;</span>
+<span class="kw">&lt;/dependency&gt;</span></pre>
+
+  <div class="callout warn">
+    <p><strong>Why three JJWT jars?</strong> JJWT splits itself into API + implementation. This is a common Java pattern — you code against the API, the impl does the actual work at runtime. You never import from jjwt-impl in your code.</p>
+  </div>
+
+  <h3>application.yml — your config file</h3>
+  <p>Store your JWT secret here. Never hardcode it directly in Java files.</p>
+  <div class="file-label">📄 <span>src/main/resources/application.yml</span></div>
+  <pre><span class="kw">jwt:</span>
+  <span class="kw">secret:</span> <span class="str">404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970</span>
+  <span class="cmt"># This must be at least 256 bits (32 characters) for HMAC-SHA256</span>
+  <span class="cmt"># Generate your own with: openssl rand -hex 32</span>
+  <span class="kw">expiration:</span> <span class="num">3600000</span>
+  <span class="cmt"># Token expiry in milliseconds — 3600000 = 1 hour</span></pre>
+
+  <h3>The application entry point — and how to actually run it</h3>
+  <p>Every Spring Boot app needs exactly one class with a <code>main()</code> method. This is what Maven/your IDE actually executes.</p>
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/DemoApplication.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo;
+
+<span class="kw">import</span> org.springframework.boot.SpringApplication;
+<span class="kw">import</span> org.springframework.boot.autoconfigure.SpringBootApplication;
+
+<span class="ann">@SpringBootApplication</span>
+<span class="cmt">// @SpringBootApplication = @Configuration + @EnableAutoConfiguration + @ComponentScan
+// This single annotation is why JwtUtil, JwtFilter, SecurityConfig etc. all get
+// picked up automatically — component scanning starts from this package down.</span>
+<span class="kw">public class</span> <span class="cls">DemoApplication</span> {
+
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">SpringApplication</span>.<span class="fn">run</span>(<span class="cls">DemoApplication</span>.<span class="kw">class</span>, args);
+        <span class="cmt">// .run() starts the embedded Tomcat server, builds the ApplicationContext,
+        // creates every @Component / @Service / @Configuration bean (including
+        // the SecurityFilterChain from SecurityConfig), and starts listening
+        // on port 8080 by default.</span>
+    }
+}</pre>
+
+  <div class="callout info">
+    <p><strong>How to start it:</strong> <code>mvn spring-boot:run</code> from the project root, or just run <code>DemoApplication.main()</code> from your IDE. Watch the console for <code>Tomcat started on port(s): 8080</code> — that's your signal it's ready for the curl commands later in this tutorial.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" disabled>← Previous</button>
+    <button class="btn btn-primary" onclick="goTo(1)">Project Structure →</button>
+  </div>
+</div>
+
+<!-- SECTION 1: Project Structure -->
+<div class="section" id="section-1">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 1</div>
+    <h2>Project Structure</h2>
+    <p>Organize your files before writing any code. This structure separates concerns cleanly.</p>
+  </div>
+
+  <div class="file-tree">
+<span class="ft-dir">src/main/java/com/example/demo/</span>
+│
+├── <span class="ft-file">DemoApplication.java</span>          <span class="ft-comment">← @SpringBootApplication, the main() entry point</span>
+│
+├── <span class="ft-dir">auth/</span>                          <span class="ft-comment">← login endpoint lives here</span>
+│   ├── <span class="ft-file">AuthController.java</span>        <span class="ft-comment">← handles POST /auth/login</span>
+│   └── <span class="ft-file">LoginRequest.java</span>          <span class="ft-comment">← request body (username + password)</span>
+│
+├── <span class="ft-dir">config/</span>                        <span class="ft-comment">← all Spring configuration</span>
+│   └── <span class="ft-file">SecurityConfig.java</span>        <span class="ft-comment">← wires JWT filter into Spring Security</span>
+│
+├── <span class="ft-dir">filter/</span>                        <span class="ft-comment">← our custom filter</span>
+│   └── <span class="ft-file">JwtFilter.java</span>             <span class="ft-comment">← reads token, validates, sets SecurityContext</span>
+│
+├── <span class="ft-dir">orders/</span>                        <span class="ft-comment">← example protected resource</span>
+│   └── <span class="ft-file">OrderController.java</span>       <span class="ft-comment">← protected endpoint GET /api/orders</span>
+│
+└── <span class="ft-dir">util/</span>                          <span class="ft-comment">← helper classes</span>
+    └── <span class="ft-file">JwtUtil.java</span>               <span class="ft-comment">← creates and validates tokens</span>
+
+<span class="ft-dir">src/main/resources/</span>
+└── <span class="ft-file">application.yml</span>                <span class="ft-comment">← JWT secret and config</span>
+  </div>
+
+  <h3>Why this structure?</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">auth/ — login only</div>
+        <div class="step-desc">Everything to do with authentication (login, register) lives here. Separated from your business logic.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">config/ — Spring wiring</div>
+        <div class="step-desc">All <code>@Configuration</code> classes live here. Makes it easy to find where the app is configured.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">filter/ — HTTP interceptors</div>
+        <div class="step-desc">Custom filters live here. In bigger apps you might have LoggingFilter, RateLimitFilter, etc. alongside JwtFilter.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">util/ — reusable helpers</div>
+        <div class="step-desc">JwtUtil is a utility class. It has no HTTP knowledge — just pure token logic. Easy to test in isolation.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <p><strong>Build order matters.</strong> We build in this order: JwtUtil → JwtFilter → SecurityConfig → AuthController → OrderController. Each step depends on the previous one.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(0)">← Overview</button>
+    <button class="btn btn-primary" onclick="goTo(2)">JwtUtil →</button>
+  </div>
+</div>
+
+<!-- SECTION 2: JwtUtil -->
+<div class="section" id="section-2">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 2</div>
+    <h2>JwtUtil — Token Factory</h2>
+    <p>This class handles everything token-related. It creates tokens, validates them, and reads data from them. It knows nothing about HTTP requests.</p>
+  </div>
+
+  <h3>What a JWT token actually looks like</h3>
+  <p>A JWT is three Base64-encoded strings separated by dots:</p>
+  <pre class="standalone"><span class="cmt">// A real JWT token looks like this:</span>
+eyJhbGciOiJIUzI1NiJ9           <span class="cmt">← HEADER  (algorithm info)</span>
+.
+eyJzdWIiOiJzYW5kZWVwIiwiaWF0IjoxNjk5MDAwMDAwLCJleHAiOjE2OTkwMDM2MDB9
+                                <span class="cmt">← PAYLOAD (username, issued-at, expiry)</span>
+.
+SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+                                <span class="cmt">← SIGNATURE (proves nobody tampered with it)</span>
+
+<span class="cmt">// When decoded, the PAYLOAD contains:</span>
+{
+  <span class="str">"sub"</span>: <span class="str">"sandeep"</span>,     <span class="cmt">← subject = username</span>
+  <span class="str">"iat"</span>: <span class="num">1699000000</span>,  <span class="cmt">← issued at (unix timestamp)</span>
+  <span class="str">"exp"</span>: <span class="num">1699003600</span>   <span class="cmt">← expires at (1 hour later)</span>
+}</pre>
+
+  <div class="callout info">
+    <p><strong>Important:</strong> The payload is NOT encrypted — anyone can decode it. The SIGNATURE is what proves the token is genuine. If someone modifies the payload, the signature won't match and validation fails.</p>
+  </div>
+
+  <h3>The complete JwtUtil class</h3>
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/util/JwtUtil.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.util;
+
+<span class="kw">import</span> io.jsonwebtoken.Claims;
+<span class="kw">import</span> io.jsonwebtoken.Jwts;
+<span class="kw">import</span> io.jsonwebtoken.security.Keys;
+<span class="kw">import</span> org.springframework.beans.factory.annotation.Value;
+<span class="kw">import</span> org.springframework.stereotype.Component;
+
+<span class="kw">import</span> javax.crypto.SecretKey;
+<span class="kw">import</span> java.util.Date;
+
+<span class="ann">@Component</span>
+<span class="cmt">// @Component makes Spring manage this as a bean so we can inject it anywhere</span>
+<span class="kw">public class</span> <span class="cls">JwtUtil</span> {
+
+    <span class="ann">@Value</span>(<span class="str">"${jwt.secret}"</span>)
+    <span class="kw">private</span> <span class="cls">String</span> secret;
+    <span class="cmt">// @Value reads the jwt.secret from application.yml and injects it here</span>
+    <span class="cmt">// Never hardcode secrets in Java files — always use config</span>
+
+    <span class="ann">@Value</span>(<span class="str">"${jwt.expiration}"</span>)
+    <span class="kw">private long</span> expiration;
+    <span class="cmt">// Token expiry in milliseconds — read from application.yml</span>
+    <span class="cmt">// 3600000 = 1 hour</span>
+
+    <span class="cmt">// ─────────────────────────────────────────────────────────────────
+    // PUBLIC METHODS — called by JwtFilter and AuthController
+    // ─────────────────────────────────────────────────────────────────</span>
+
+    <span class="cmt">/**
+     * Generates a JWT token for a given username.
+     * Called by AuthController when user successfully logs in.
+     *
+     * @param username  the authenticated user's username
+     * @return          the JWT token string
+     */</span>
+    <span class="kw">public</span> <span class="cls">String</span> <span class="fn">generateToken</span>(<span class="cls">String</span> username) {
+        <span class="kw">return</span> Jwts.builder()
+            .<span class="fn">subject</span>(username)
+            <span class="cmt">// .subject() sets the "sub" claim — who this token belongs to</span>
+
+            .<span class="fn">issuedAt</span>(<span class="kw">new</span> <span class="cls">Date</span>())
+            <span class="cmt">// .issuedAt() sets the "iat" claim — when was this token created</span>
+
+            .<span class="fn">expiration</span>(<span class="kw">new</span> <span class="cls">Date</span>(<span class="cls">System</span>.<span class="fn">currentTimeMillis</span>() + expiration))
+            <span class="cmt">// .expiration() sets the "exp" claim — when does this token expire
+            // currentTimeMillis() = now in milliseconds
+            // + expiration adds 1 hour (3600000 ms)</span>
+
+            .<span class="fn">signWith</span>(<span class="fn">getSigningKey</span>())
+            <span class="cmt">// .signWith() creates the SIGNATURE using our secret key
+            // This is what prevents tampering — only our server knows the secret</span>
+
+            .<span class="fn">compact</span>();
+            <span class="cmt">// .compact() builds the final token string: "header.payload.signature"</span>
+    }
+
+    <span class="cmt">/**
+     * Extracts the username from a token.
+     * Called by JwtFilter after it reads the token from the request header.
+     *
+     * @param token  the JWT token string
+     * @return       the username stored inside the token
+     */</span>
+    <span class="kw">public</span> <span class="cls">String</span> <span class="fn">extractUsername</span>(<span class="cls">String</span> token) {
+        <span class="kw">return</span> <span class="fn">parseClaims</span>(token).<span class="fn">getSubject</span>();
+        <span class="cmt">// parseClaims() decodes the token and returns all its data
+        // .getSubject() reads the "sub" field — which is the username we stored</span>
+    }
+
+    <span class="cmt">/**
+     * Checks if a token is valid (genuine and not expired).
+     * Called by JwtFilter to decide whether to allow the request.
+     *
+     * @param token  the JWT token string
+     * @return       true if valid, false if expired or tampered
+     */</span>
+    <span class="kw">public boolean</span> <span class="fn">isTokenValid</span>(<span class="cls">String</span> token) {
+        <span class="kw">try</span> {
+            <span class="fn">parseClaims</span>(token);
+            <span class="cmt">// parseClaims() will throw an exception if:
+            // - the signature doesn't match (token was tampered with)
+            // - the token is expired (exp < now)
+            // If no exception is thrown, the token is valid</span>
+            <span class="kw">return true</span>;
+        } <span class="kw">catch</span> (<span class="cls">Exception</span> e) {
+            <span class="cmt">// Any exception means the token is invalid
+            // ExpiredJwtException   → token expired
+            // SignatureException    → token was tampered with
+            // MalformedJwtException → token is not a valid JWT format</span>
+            <span class="kw">return false</span>;
+        }
+    }
+
+    <span class="cmt">// ─────────────────────────────────────────────────────────────────
+    // PRIVATE METHODS — internal helpers
+    // ─────────────────────────────────────────────────────────────────</span>
+
+    <span class="cmt">/**
+     * Parses the token and returns all its claims (the payload data).
+     * This method does the actual validation — it checks signature and expiry.
+     * If anything is wrong, it throws an exception.
+     */</span>
+    <span class="kw">private</span> <span class="cls">Claims</span> <span class="fn">parseClaims</span>(<span class="cls">String</span> token) {
+        <span class="kw">return</span> Jwts.parser()
+            .<span class="fn">verifyWith</span>(<span class="fn">getSigningKey</span>())
+            <span class="cmt">// verifyWith() tells the parser which key to use to verify the signature</span>
+
+            .<span class="fn">build</span>()
+            <span class="cmt">// build() creates the parser</span>
+
+            .<span class="fn">parseSignedClaims</span>(token)
+            <span class="cmt">// parseSignedClaims() does the actual work:
+            // 1. Decodes the Base64 header + payload
+            // 2. Re-computes the signature using our secret key
+            // 3. Compares it with the signature in the token
+            // 4. Checks if expiry date has passed
+            // Throws exception if any check fails</span>
+
+            .<span class="fn">getPayload</span>();
+            <span class="cmt">// .getPayload() returns the Claims object — the actual data inside the token</span>
+    }
+
+    <span class="cmt">/**
+     * Converts the secret string from application.yml into a cryptographic key
+     * that JJWT can use for signing and verification.
+     */</span>
+    <span class="kw">private</span> <span class="cls">SecretKey</span> <span class="fn">getSigningKey</span>() {
+        <span class="kw">byte</span>[] keyBytes = <span class="cls">HexFormat</span>.<span class="fn">of</span>().<span class="fn">parseHex</span>(secret);
+        <span class="cmt">// Convert the hex string from application.yml into raw bytes
+        // Our secret "404E635266..." is hex-encoded — HexFormat decodes it</span>
+
+        <span class="kw">return</span> Keys.<span class="fn">hmacShaKeyFor</span>(keyBytes);
+        <span class="cmt">// Keys.hmacShaKeyFor() creates an HMAC-SHA key from the bytes
+        // HMAC-SHA256 is the algorithm used to sign the token</span>
+    }
+}</pre>
+
+  <div class="callout success">
+    <p><strong>JwtUtil has no Spring Security imports.</strong> It only knows about tokens. This makes it easy to unit test — just create a new JwtUtil() and test generateToken() and isTokenValid() directly.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(1)">← Project Structure</button>
+    <button class="btn btn-primary" onclick="goTo(3)">JwtFilter →</button>
+  </div>
+</div>
+
+<!-- SECTION 3: JwtFilter -->
+<div class="section" id="section-3">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 3</div>
+    <h2>JwtFilter — The Gatekeeper</h2>
+    <p>This filter runs on every single HTTP request. Its job is to read the token, validate it, and tell Spring Security who the user is.</p>
+  </div>
+
+  <h3>What it needs to do — step by step</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Read the Authorization header</div>
+        <div class="step-desc">Every authenticated request should have: <code>Authorization: Bearer &lt;token&gt;</code></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Check header exists and starts with "Bearer "</div>
+        <div class="step-desc">If not — no token present. Pass the request along. Spring Security will handle unauthenticated access.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Strip "Bearer " to get the raw token</div>
+        <div class="step-desc"><code>"Bearer eyJhbGci..."</code> → <code>"eyJhbGci..."</code> (substring from index 7)</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">Call JwtUtil.isTokenValid()</div>
+        <div class="step-desc">If invalid or expired — pass along. SecurityContext stays empty. Spring Security returns 401.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <div class="step-title">Extract username from token</div>
+        <div class="step-desc">Call <code>JwtUtil.extractUsername()</code> to read who this token belongs to.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-body">
+        <div class="step-title">Put user into SecurityContext</div>
+        <div class="step-desc">Create a <code>UsernamePasswordAuthenticationToken</code> and set it in <code>SecurityContextHolder</code>. Spring Security will see this and allow the request.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-body">
+        <div class="step-title">Call chain.doFilter()</div>
+        <div class="step-desc">Always pass the request to the next filter in the chain.</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>The complete JwtFilter class</h3>
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/filter/JwtFilter.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.filter;
+
+<span class="kw">import</span> com.example.demo.util.JwtUtil;
+<span class="kw">import</span> jakarta.servlet.FilterChain;
+<span class="kw">import</span> jakarta.servlet.ServletException;
+<span class="kw">import</span> jakarta.servlet.http.HttpServletRequest;
+<span class="kw">import</span> jakarta.servlet.http.HttpServletResponse;
+<span class="kw">import</span> org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+<span class="kw">import</span> org.springframework.security.core.context.SecurityContextHolder;
+<span class="kw">import</span> org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+<span class="kw">import</span> org.springframework.stereotype.Component;
+<span class="kw">import</span> org.springframework.web.filter.OncePerRequestFilter;
+
+<span class="kw">import</span> java.io.IOException;
+<span class="kw">import</span> java.util.List;
+
+<span class="ann">@Component</span>
+<span class="cmt">// @Component registers this as a Spring bean so we can inject it into SecurityConfig</span>
+<span class="kw">public class</span> <span class="cls">JwtFilter</span> <span class="kw">extends</span> <span class="cls">OncePerRequestFilter</span> {
+<span class="cmt">// extends OncePerRequestFilter — guarantees this runs EXACTLY once per request
+// even if the request is internally forwarded within Spring</span>
+
+    <span class="kw">private final</span> <span class="cls">JwtUtil</span> jwtUtil;
+
+    <span class="cmt">// Constructor injection — Spring injects JwtUtil automatically</span>
+    <span class="kw">public</span> <span class="cls">JwtFilter</span>(<span class="cls">JwtUtil</span> jwtUtil) {
+        <span class="kw">this</span>.jwtUtil = jwtUtil;
+    }
+
+    <span class="cmt">/**
+     * This method runs for every HTTP request.
+     * We override doFilterInternal (not doFilter) because OncePerRequestFilter
+     * handles the "run only once" guarantee for us. We just write our logic here.
+     */</span>
+    <span class="ann">@Override</span>
+    <span class="kw">protected void</span> <span class="fn">doFilterInternal</span>(
+            <span class="cls">HttpServletRequest</span> request,
+            <span class="cls">HttpServletResponse</span> response,
+            <span class="cls">FilterChain</span> chain
+    ) <span class="kw">throws</span> <span class="cls">ServletException</span>, <span class="cls">IOException</span> {
+
+        <span class="cmt">// ── STEP 1: Read Authorization header ────────────────────────────</span>
+        <span class="cls">String</span> authHeader = request.<span class="fn">getHeader</span>(<span class="str">"Authorization"</span>);
+        <span class="cmt">// request.getHeader("Authorization") reads the value of the header
+        // If the client sends: Authorization: Bearer eyJhbGci...
+        // authHeader will be: "Bearer eyJhbGci..."
+        // If the client sends no Authorization header, authHeader will be null</span>
+
+        <span class="cmt">// ── STEP 2: Check header exists and has Bearer token ─────────────</span>
+        <span class="kw">if</span> (authHeader == <span class="kw">null</span> || !authHeader.<span class="fn">startsWith</span>(<span class="str">"Bearer "</span>)) {
+            <span class="cmt">// No token present in this request.
+            // This is fine — maybe this is the /auth/login request,
+            // or maybe the user is hitting a public endpoint.
+            // We do NOT return 401 here — that's Spring Security's job.
+            // We just pass the request along with an empty SecurityContext.</span>
+            chain.<span class="fn">doFilter</span>(request, response);
+            <span class="kw">return</span>;
+            <span class="cmt">// return here so we don't execute any code below</span>
+        }
+
+        <span class="cmt">// ── STEP 3: Extract the raw token ────────────────────────────────</span>
+        <span class="cls">String</span> token = authHeader.<span class="fn">substring</span>(<span class="num">7</span>);
+        <span class="cmt">// "Bearer " is exactly 7 characters
+        // substring(7) removes the first 7 characters
+        // "Bearer eyJhbGci..." → "eyJhbGci..."</span>
+
+        <span class="cmt">// ── STEP 4: Validate the token ───────────────────────────────────</span>
+        <span class="kw">if</span> (!jwtUtil.<span class="fn">isTokenValid</span>(token)) {
+            <span class="cmt">// Token is invalid (expired, tampered, malformed).
+            // Again — we don't return 401 directly.
+            // We just pass along with an empty SecurityContext.
+            // Spring Security's AuthorizationFilter will return 401.</span>
+            chain.<span class="fn">doFilter</span>(request, response);
+            <span class="kw">return</span>;
+        }
+
+        <span class="cmt">// ── STEP 5: Extract username from the token ──────────────────────</span>
+        <span class="cls">String</span> username = jwtUtil.<span class="fn">extractUsername</span>(token);
+        <span class="cmt">// At this point the token is valid, so we can trust the username inside it
+        // username will be something like "sandeep"</span>
+
+        <span class="cmt">// ── STEP 6: Check SecurityContext is not already set ─────────────</span>
+        <span class="kw">if</span> (<span class="cls">SecurityContextHolder</span>.<span class="fn">getContext</span>().<span class="fn">getAuthentication</span>() == <span class="kw">null</span>) {
+            <span class="cmt">// We only set authentication if it's not already set.
+            // In theory, no other filter should have set it before us,
+            // but this is a safety check to avoid overwriting valid auth.</span>
+
+            <span class="cmt">// ── STEP 7: Create the authentication object ─────────────────────</span>
+            <span class="cls">UsernamePasswordAuthenticationToken</span> authToken =
+                <span class="kw">new</span> <span class="cls">UsernamePasswordAuthenticationToken</span>(
+                    username,       <span class="cmt">// principal — who the user is (the username string)</span>
+                    <span class="kw">null</span>,           <span class="cmt">// credentials — we don't need the password here, token proved identity</span>
+                    <span class="cls">List</span>.<span class="fn">of</span>()       <span class="cmt">// authorities — roles (empty for now, add roles here later)</span>
+                );
+
+            authToken.<span class="fn">setDetails</span>(
+                <span class="kw">new</span> <span class="cls">WebAuthenticationDetailsSource</span>().<span class="fn">buildDetails</span>(request)
+            );
+            <span class="cmt">// setDetails() attaches extra info like the user's IP address
+            // and the session ID to the authentication object.
+            // Not required, but good practice — useful for audit logging.</span>
+
+            <span class="cmt">// ── STEP 8: Set authentication in SecurityContext ─────────────────</span>
+            <span class="cls">SecurityContextHolder</span>.<span class="fn">getContext</span>().<span class="fn">setAuthentication</span>(authToken);
+            <span class="cmt">// SecurityContextHolder is a thread-local storage.
+            // "Thread-local" means each request thread has its own copy.
+            // So setting auth here doesn't affect other concurrent requests.
+            //
+            // This is the KEY line — Spring Security's AuthorizationFilter
+            // checks SecurityContextHolder.getContext().getAuthentication()
+            // If it's not null and isAuthenticated() is true → request is allowed
+            // If it's null → 401 Unauthorized</span>
+        }
+
+        <span class="cmt">// ── STEP 9: Always pass request to next filter ───────────────────</span>
+        chain.<span class="fn">doFilter</span>(request, response);
+        <span class="cmt">// We ALWAYS call this — even after setting auth.
+        // The request must continue through the filter chain.
+        // After this line, everything downstream runs (other filters, controller).
+        // When they all finish and return, execution comes back here and the
+        // method ends, sending the response back to the client.</span>
+    }
+
+    <span class="cmt">/**
+     * Tell OncePerRequestFilter to SKIP this filter for /auth/** paths.
+     * These are public endpoints — user doesn't have a token yet.
+     * No need to even try reading a token for login/register requests.
+     */</span>
+    <span class="ann">@Override</span>
+    <span class="kw">protected boolean</span> <span class="fn">shouldNotFilter</span>(<span class="cls">HttpServletRequest</span> request) {
+        <span class="cls">String</span> path = request.<span class="fn">getRequestURI</span>();
+        <span class="kw">return</span> path.<span class="fn">startsWith</span>(<span class="str">"/auth/"</span>);
+        <span class="cmt">// return true = skip this filter for this request
+        // return false = run this filter (default behaviour)</span>
+    }
+}</pre>
+
+  <h3>Three scenarios — what happens in each case</h3>
+
+  <div class="scenario">
+    <div class="scenario-title"><span class="tag tag-red">Scenario A</span> No Authorization header</div>
+    <pre>Request: GET /api/orders
+         (no Authorization header)
+   ↓
+JwtFilter:
+   authHeader == null → chain.doFilter() → return
+   ↓
+SecurityContext: empty
+   ↓
+Spring Security: 401 Unauthorized</pre>
+  </div>
+
+  <div class="scenario">
+    <div class="scenario-title"><span class="tag tag-red">Scenario B</span> Expired or invalid token</div>
+    <pre>Request: GET /api/orders
+         Authorization: Bearer expiredToken123
+   ↓
+JwtFilter:
+   header exists, starts with Bearer ✓
+   token = "expiredToken123"
+   jwtUtil.isTokenValid(token) → false (expired)
+   → chain.doFilter() → return
+   ↓
+SecurityContext: empty
+   ↓
+Spring Security: 401 Unauthorized</pre>
+  </div>
+
+  <div class="scenario">
+    <div class="scenario-title"><span class="tag tag-green">Scenario C</span> Valid token</div>
+    <pre>Request: GET /api/orders
+         Authorization: Bearer validToken456
+   ↓
+JwtFilter:
+   header exists, starts with Bearer ✓
+   token = "validToken456"
+   jwtUtil.isTokenValid(token) → true ✓
+   username = "sandeep"
+   SecurityContextHolder.getContext().setAuthentication(authToken) ✓
+   → chain.doFilter()
+   ↓
+SecurityContext: Authentication { principal: "sandeep", authenticated: true }
+   ↓
+Spring Security: allows through ✓
+   ↓
+OrderController.getOrders() runs ✓</pre>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(2)">← JwtUtil</button>
+    <button class="btn btn-primary" onclick="goTo(4)">SecurityConfig →</button>
+  </div>
+</div>
+
+<!-- SECTION 4: SecurityConfig -->
+<div class="section" id="section-4">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 4</div>
+    <h2>SecurityConfig — Wiring It Together</h2>
+    <p>This is where you register JwtFilter into Spring Security's chain and define which endpoints are public vs protected.</p>
+  </div>
+
+  <div class="callout warn">
+    <p><strong>Spring Boot 3+ only.</strong> The old <code>WebSecurityConfigurerAdapter</code> is removed in Spring Boot 3. You now use a <code>SecurityFilterChain</code> bean instead. If you are on Spring Boot 2.x the syntax is different.</p>
+  </div>
+
+  <h3>The complete SecurityConfig class</h3>
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/config/SecurityConfig.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.config;
+
+<span class="kw">import</span> com.example.demo.filter.JwtFilter;
+<span class="kw">import</span> org.springframework.context.annotation.Bean;
+<span class="kw">import</span> org.springframework.context.annotation.Configuration;
+<span class="kw">import</span> org.springframework.security.authentication.AuthenticationManager;
+<span class="kw">import</span> org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+<span class="kw">import</span> org.springframework.security.config.annotation.web.builders.HttpSecurity;
+<span class="kw">import</span> org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+<span class="kw">import</span> org.springframework.security.config.http.SessionCreationPolicy;
+<span class="kw">import</span> org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+<span class="kw">import</span> org.springframework.security.crypto.password.PasswordEncoder;
+<span class="kw">import</span> org.springframework.security.web.SecurityFilterChain;
+<span class="kw">import</span> org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+<span class="ann">@Configuration</span>
+<span class="cmt">// @Configuration tells Spring: this class contains @Bean definitions
+// Spring reads this class on startup and creates all the beans defined inside</span>
+
+<span class="ann">@EnableWebSecurity</span>
+<span class="cmt">// @EnableWebSecurity activates Spring Security's web security support
+// Without this, Spring Security won't protect your endpoints</span>
+
+<span class="kw">public class</span> <span class="cls">SecurityConfig</span> {
+
+    <span class="kw">private final</span> <span class="cls">JwtFilter</span> jwtFilter;
+
+    <span class="kw">public</span> <span class="cls">SecurityConfig</span>(<span class="cls">JwtFilter</span> jwtFilter) {
+        <span class="kw">this</span>.jwtFilter = jwtFilter;
+        <span class="cmt">// JwtFilter is injected here by Spring (it's a @Component)
+        // We need it so we can register it in the security filter chain below</span>
+    }
+
+    <span class="cmt">/**
+     * The main security configuration bean.
+     * This defines the entire security behaviour of your app:
+     * - which endpoints are public
+     * - which need authentication
+     * - what kind of auth (JWT in our case)
+     * - session management
+     */</span>
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="cls">SecurityFilterChain</span> <span class="fn">filterChain</span>(<span class="cls">HttpSecurity</span> http) <span class="kw">throws</span> <span class="cls">Exception</span> {
+
+        http
+
+            <span class="cmt">// ── CSRF: disable ────────────────────────────────────────────────</span>
+            .<span class="fn">csrf</span>(csrf -> csrf.<span class="fn">disable</span>())
+            <span class="cmt">// CSRF = Cross Site Request Forgery
+            // CSRF protection is needed for session-based apps where browsers
+            // automatically send cookies. With JWT, the client manually sets
+            // the Authorization header — a malicious site cannot do this.
+            // So CSRF protection is not needed and we disable it.</span>
+
+            <span class="cmt">// ── Sessions: stateless ──────────────────────────────────────────</span>
+            .<span class="fn">sessionManagement</span>(session -> session
+                .<span class="fn">sessionCreationPolicy</span>(<span class="cls">SessionCreationPolicy</span>.STATELESS)
+            )
+            <span class="cmt">// STATELESS means Spring Security will NOT create HTTP sessions.
+            // Each request must prove its identity via JWT — there is no
+            // "remember me between requests" on the server side.
+            // This makes our API scalable — any server instance can handle
+            // any request because no session state is stored server-side.</span>
+
+            <span class="cmt">// ── Endpoint authorization rules ─────────────────────────────────</span>
+            .<span class="fn">authorizeHttpRequests</span>(auth -> auth
+
+                .<span class="fn">requestMatchers</span>(<span class="str">"/auth/**"</span>).<span class="fn">permitAll</span>()
+                <span class="cmt">// /auth/login, /auth/register etc. are public — no token needed
+                // ** means "any path starting with /auth/"</span>
+
+                .<span class="fn">requestMatchers</span>(<span class="str">"/actuator/health"</span>).<span class="fn">permitAll</span>()
+                <span class="cmt">// Health check endpoint — Kubernetes/load balancers need this without auth</span>
+
+                .<span class="fn">anyRequest</span>().<span class="fn">authenticated</span>()
+                <span class="cmt">// Every other endpoint requires authentication
+                // If SecurityContext is empty → Spring Security returns 401
+                // If SecurityContext has a user (set by JwtFilter) → request allowed</span>
+            )
+
+            <span class="cmt">// ── Register our JwtFilter ───────────────────────────────────────</span>
+            .<span class="fn">addFilterBefore</span>(jwtFilter, <span class="cls">UsernamePasswordAuthenticationFilter</span>.<span class="kw">class</span>);
+            <span class="cmt">// addFilterBefore(A, B) = run A before B in the filter chain
+            //
+            // UsernamePasswordAuthenticationFilter is Spring Security's default
+            // filter that handles form-based login. We don't use it (we use JWT),
+            // but we use it as a position marker to insert our filter before it.
+            //
+            // Spring Security's internal filter chain order (simplified):
+            //   ... → JwtFilter (ours) → UsernamePasswordAuthenticationFilter → AuthorizationFilter → ...
+            //
+            // By the time AuthorizationFilter checks SecurityContext,
+            // our JwtFilter has already validated the token and set the user.</span>
+
+        <span class="kw">return</span> http.<span class="fn">build</span>();
+        <span class="cmt">// .build() creates the SecurityFilterChain bean from the configuration above</span>
+    }
+
+    <span class="cmt">/**
+     * AuthenticationManager bean.
+     * Used by AuthController to authenticate username/password during login.
+     * Spring Security provides this — we just expose it as a bean.
+     */</span>
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="cls">AuthenticationManager</span> <span class="fn">authenticationManager</span>(
+            <span class="cls">AuthenticationConfiguration</span> config) <span class="kw">throws</span> <span class="cls">Exception</span> {
+        <span class="kw">return</span> config.<span class="fn">getAuthenticationManager</span>();
+        <span class="cmt">// AuthenticationManager is what actually checks username + password
+        // It delegates to UserDetailsService to load the user,
+        // then checks the password using PasswordEncoder</span>
+    }
+
+    <span class="cmt">/**
+     * PasswordEncoder bean.
+     * BCrypt is the standard password hashing algorithm.
+     * NEVER store plain text passwords — always hash them.
+     * BCrypt adds a random "salt" so the same password hashes differently each time.
+     */</span>
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="cls">PasswordEncoder</span> <span class="fn">passwordEncoder</span>() {
+        <span class="kw">return new</span> <span class="cls">BCryptPasswordEncoder</span>();
+    }
+}</pre>
+
+  <h3>Where JwtFilter sits in the chain</h3>
+  <div class="flow">
+    <div class="flow-box">
+      <div class="flow-title">SecurityContextPersistenceFilter</div>
+      <div class="flow-desc">Spring's built-in — loads/saves SecurityContext per request</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter ← YOUR FILTER GOES HERE</div>
+      <div class="flow-desc">Reads token → validates → sets SecurityContext</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">UsernamePasswordAuthenticationFilter</div>
+      <div class="flow-desc">Spring's default form login — we don't use this for JWT</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box green">
+      <div class="flow-title">AuthorizationFilter</div>
+      <div class="flow-desc">Checks SecurityContext — allows or returns 401</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">DispatcherServlet → Your Controller</div>
+      <div class="flow-desc">Only reached if AuthorizationFilter allowed the request</div>
+    </div>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(3)">← JwtFilter</button>
+    <button class="btn btn-primary" onclick="goTo(5)">AuthController →</button>
+  </div>
+</div>
+
+<!-- SECTION 5: AuthController -->
+<div class="section" id="section-5">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 5</div>
+    <h2>AuthController — The Login Endpoint</h2>
+    <p>This is the only public endpoint. The user sends their credentials here and gets back a JWT token.</p>
+  </div>
+
+  <h3>LoginRequest — the request body class</h3>
+  <p>First we need a simple class to hold what the client sends:</p>
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/auth/LoginRequest.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.auth;
+
+<span class="kw">public class</span> <span class="cls">LoginRequest</span> {
+
+    <span class="kw">private</span> <span class="cls">String</span> username;
+    <span class="kw">private</span> <span class="cls">String</span> password;
+
+    <span class="cmt">// Default constructor — required for Jackson to deserialize JSON into this object</span>
+    <span class="kw">public</span> <span class="cls">LoginRequest</span>() {}
+
+    <span class="kw">public</span> <span class="cls">String</span> <span class="fn">getUsername</span>() { <span class="kw">return</span> username; }
+    <span class="kw">public void</span> <span class="fn">setUsername</span>(<span class="cls">String</span> username) { <span class="kw">this</span>.username = username; }
+
+    <span class="kw">public</span> <span class="cls">String</span> <span class="fn">getPassword</span>() { <span class="kw">return</span> password; }
+    <span class="kw">public void</span> <span class="fn">setPassword</span>(<span class="cls">String</span> password) { <span class="kw">this</span>.password = password; }
+}</pre>
+
+  <h3>The AuthController</h3>
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/auth/AuthController.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.auth;
+
+<span class="kw">import</span> com.example.demo.util.JwtUtil;
+<span class="kw">import</span> org.springframework.http.ResponseEntity;
+<span class="kw">import</span> org.springframework.security.authentication.AuthenticationManager;
+<span class="kw">import</span> org.springframework.security.authentication.BadCredentialsException;
+<span class="kw">import</span> org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+<span class="kw">import</span> org.springframework.security.core.Authentication;
+<span class="kw">import</span> org.springframework.web.bind.annotation.*;
+
+<span class="kw">import</span> java.util.Map;
+
+<span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="str">"/auth"</span>)
+<span class="kw">public class</span> <span class="cls">AuthController</span> {
+
+    <span class="kw">private final</span> <span class="cls">AuthenticationManager</span> authenticationManager;
+    <span class="kw">private final</span> <span class="cls">JwtUtil</span> jwtUtil;
+
+    <span class="kw">public</span> <span class="cls">AuthController</span>(<span class="cls">AuthenticationManager</span> authenticationManager,
+                          <span class="cls">JwtUtil</span> jwtUtil) {
+        <span class="kw">this</span>.authenticationManager = authenticationManager;
+        <span class="kw">this</span>.jwtUtil = jwtUtil;
+    }
+
+    <span class="ann">@PostMapping</span>(<span class="str">"/login"</span>)
+    <span class="kw">public</span> <span class="cls">ResponseEntity</span>&lt;<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">String</span>&gt;&gt; <span class="fn">login</span>(<span class="ann">@RequestBody</span> <span class="cls">LoginRequest</span> request) {
+
+        <span class="kw">try</span> {
+            <span class="cmt">// ── STEP 1: Authenticate username and password ────────────────────</span>
+            <span class="cls">Authentication</span> authentication = authenticationManager.<span class="fn">authenticate</span>(
+                <span class="kw">new</span> <span class="cls">UsernamePasswordAuthenticationToken</span>(
+                    request.<span class="fn">getUsername</span>(),   <span class="cmt">// username from request body</span>
+                    request.<span class="fn">getPassword</span>()    <span class="cmt">// password from request body</span>
+                )
+            );
+            <span class="cmt">// authenticationManager.authenticate() does the following:
+            // 1. Calls UserDetailsService.loadUserByUsername(username)
+            //    to load the user from your database (or in-memory store)
+            // 2. Compares the provided password with the stored hashed password
+            //    using PasswordEncoder (BCrypt in our case)
+            // 3. If credentials are correct → returns Authentication object
+            // 4. If credentials are wrong → throws BadCredentialsException</span>
+
+            <span class="cmt">// ── STEP 2: Generate JWT token ────────────────────────────────────</span>
+            <span class="cls">String</span> username = authentication.<span class="fn">getName</span>();
+            <span class="cmt">// authentication.getName() returns the username of the authenticated user</span>
+
+            <span class="cls">String</span> token = jwtUtil.<span class="fn">generateToken</span>(username);
+            <span class="cmt">// Generate a JWT token with the username embedded in it
+            // This token is valid for 1 hour (as configured in application.yml)</span>
+
+            <span class="cmt">// ── STEP 3: Return token to client ───────────────────────────────</span>
+            <span class="kw">return</span> <span class="cls">ResponseEntity</span>.<span class="fn">ok</span>(
+                <span class="cls">Map</span>.<span class="fn">of</span>(<span class="str">"token"</span>, token)
+            );
+            <span class="cmt">// Response body: { "token": "eyJhbGci..." }
+            // The client stores this and sends it on every future request</span>
+
+        } <span class="kw">catch</span> (<span class="cls">BadCredentialsException</span> e) {
+            <span class="cmt">// Wrong username or password
+            // Return 401 with a clear error message</span>
+            <span class="kw">return</span> <span class="cls">ResponseEntity</span>
+                .<span class="fn">status</span>(<span class="num">401</span>)
+                .<span class="fn">body</span>(<span class="cls">Map</span>.<span class="fn">of</span>(<span class="str">"error"</span>, <span class="str">"Invalid username or password"</span>));
+        }
+    }
+}</pre>
+
+  <h3>But wait — where do users come from?</h3>
+  <p>The <code>AuthenticationManager</code> needs a <code>UserDetailsService</code> to load users. For this tutorial we use an in-memory user. In a real app you load from a database.</p>
+
+  <div class="callout info">
+    <p><strong>Add this bean to SecurityConfig:</strong> This creates a user "sandeep" with password "password" stored in memory.</p>
+  </div>
+
+  <div class="file-label">📄 <span>SecurityConfig.java — add this bean</span></div>
+  <pre><span class="cmt">// Add this inside SecurityConfig class</span>
+
+<span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">UserDetailsService</span> <span class="fn">userDetailsService</span>(<span class="cls">PasswordEncoder</span> passwordEncoder) {
+    <span class="cls">UserDetails</span> user = <span class="cls">User</span>.<span class="fn">builder</span>()
+        .<span class="fn">username</span>(<span class="str">"sandeep"</span>)
+        .<span class="fn">password</span>(passwordEncoder.<span class="fn">encode</span>(<span class="str">"password"</span>))
+        <span class="cmt">// passwordEncoder.encode() hashes the password with BCrypt
+        // We never store plain text — even in-memory users use hashed passwords</span>
+        .<span class="fn">roles</span>(<span class="str">"USER"</span>)
+        .<span class="fn">build</span>();
+
+    <span class="kw">return new</span> <span class="cls">InMemoryUserDetailsManager</span>(user);
+    <span class="cmt">// InMemoryUserDetailsManager holds users in memory
+    // In a real app: implement UserDetailsService and load from your DB</span>
+}</pre>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(4)">← SecurityConfig</button>
+    <button class="btn btn-primary" onclick="goTo(6)">Protected Controller →</button>
+  </div>
+</div>
+
+<!-- SECTION 6: Protected Controller -->
+<div class="section" id="section-6">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 6</div>
+    <h2>Protected Controller — Your Actual API</h2>
+    <p>This is a normal @RestController. It does nothing special for JWT. The filter has already done all the auth work before this runs.</p>
+  </div>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/orders/OrderController.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.orders;
+
+<span class="kw">import</span> org.springframework.http.ResponseEntity;
+<span class="kw">import</span> org.springframework.security.core.Authentication;
+<span class="kw">import</span> org.springframework.security.core.context.SecurityContextHolder;
+<span class="kw">import</span> org.springframework.web.bind.annotation.*;
+
+<span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.Map;
+
+<span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="str">"/api"</span>)
+<span class="kw">public class</span> <span class="cls">OrderController</span> {
+
+    <span class="cmt">/**
+     * GET /api/orders
+     * Protected endpoint — only reachable with a valid JWT token.
+     * JwtFilter has already validated the token and set the user
+     * in SecurityContext before this method ever runs.
+     */</span>
+    <span class="ann">@GetMapping</span>(<span class="str">"/orders"</span>)
+    <span class="kw">public</span> <span class="cls">ResponseEntity</span>&lt;<span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt;&gt; <span class="fn">getOrders</span>() {
+
+        <span class="cmt">// How to get the currently logged-in user inside a controller:</span>
+        <span class="cls">Authentication</span> auth = <span class="cls">SecurityContextHolder</span>.<span class="fn">getContext</span>().<span class="fn">getAuthentication</span>();
+        <span class="cls">String</span> username = auth.<span class="fn">getName</span>();
+        <span class="cmt">// auth.getName() returns the username we stored in SecurityContext
+        // back in JwtFilter — which was extracted from the JWT token</span>
+
+        <span class="kw">return</span> <span class="cls">ResponseEntity</span>.<span class="fn">ok</span>(<span class="cls">Map</span>.<span class="fn">of</span>(
+            <span class="str">"user"</span>, username,
+            <span class="str">"orders"</span>, <span class="cls">List</span>.<span class="fn">of</span>(<span class="str">"Order #1001"</span>, <span class="str">"Order #1002"</span>, <span class="str">"Order #1003"</span>)
+        ));
+    }
+
+    <span class="cmt">/**
+     * Alternative: use @AuthenticationPrincipal to inject the user directly
+     * Spring resolves this from SecurityContextHolder automatically
+     */</span>
+    <span class="ann">@GetMapping</span>(<span class="str">"/me"</span>)
+    <span class="kw">public</span> <span class="cls">ResponseEntity</span>&lt;<span class="cls">String</span>&gt; <span class="fn">whoAmI</span>(
+            <span class="ann">@AuthenticationPrincipal</span> <span class="cls">String</span> username) {
+        <span class="cmt">// @AuthenticationPrincipal is a shortcut for:
+        // SecurityContextHolder.getContext().getAuthentication().getPrincipal()
+        // In our case the principal is the username string we passed to
+        // UsernamePasswordAuthenticationToken in JwtFilter</span>
+        <span class="kw">return</span> <span class="cls">ResponseEntity</span>.<span class="fn">ok</span>(<span class="str">"Hello, "</span> + username);
+    }
+}</pre>
+
+  <h3>Testing with curl</h3>
+  <p>Once your app is running, test it like this:</p>
+
+  <h4>Step 1 — Login and get a token</h4>
+  <pre class="standalone">curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"sandeep","password":"password"}'
+
+<span class="cmt"># Response:</span>
+{
+  <span class="str">"token"</span>: <span class="str">"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzYW5kZWVwIn0.abc123"</span>
+}</pre>
+
+  <h4>Step 2 — Use the token to call a protected endpoint</h4>
+  <pre class="standalone">curl -X GET http://localhost:8080/api/orders \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzYW5kZWVwIn0.abc123"
+
+<span class="cmt"># Response:</span>
+{
+  <span class="str">"user"</span>: <span class="str">"sandeep"</span>,
+  <span class="str">"orders"</span>: [<span class="str">"Order #1001"</span>, <span class="str">"Order #1002"</span>, <span class="str">"Order #1003"</span>]
+}</pre>
+
+  <h4>Step 3 — Try without a token</h4>
+  <pre class="standalone">curl -X GET http://localhost:8080/api/orders
+
+<span class="cmt"># Response: 401 Unauthorized</span></pre>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(5)">← AuthController</button>
+    <button class="btn btn-primary" onclick="goTo(7)">Full Request Flow →</button>
+  </div>
+</div>
+
+<!-- SECTION 7: Full Flow -->
+<div class="section" id="section-7">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 7</div>
+    <h2>Full Request Flow — Everything Together</h2>
+    <p>Two complete traces showing exactly what happens from browser to controller and back.</p>
+  </div>
+
+  <h3>Flow A — Login (getting a token)</h3>
+  <div class="flow">
+    <div class="flow-box yellow">
+      <div class="flow-title">Client: POST /auth/login</div>
+      <div class="flow-desc">Body: { "username": "sandeep", "password": "password" }</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">Tomcat receives the HTTP request</div>
+      <div class="flow-desc">Parses the raw HTTP text into an HttpServletRequest Java object</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter.doFilterInternal()</div>
+      <div class="flow-desc">shouldNotFilter() returns true for /auth/ path → filter is SKIPPED entirely → chain.doFilter() called immediately</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">Spring Security: AuthorizationFilter</div>
+      <div class="flow-desc">/auth/login matches .permitAll() rule → allowed without authentication</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">DispatcherServlet</div>
+      <div class="flow-desc">Looks up handler map → finds AuthController.login() for POST /auth/login</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box green">
+      <div class="flow-title">AuthController.login() runs</div>
+      <div class="flow-desc">authenticationManager.authenticate() → checks "sandeep" / "password" → valid ✓ → jwtUtil.generateToken("sandeep") → returns { "token": "eyJ..." }</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box yellow">
+      <div class="flow-title">Client receives token</div>
+      <div class="flow-desc">Stores it. Will send it on every future request in the Authorization header.</div>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <h3>Flow B — Accessing a protected endpoint</h3>
+  <div class="flow">
+    <div class="flow-box accent">
+      <div class="flow-title">Client: GET /api/orders</div>
+      <div class="flow-desc">Header: Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">Tomcat receives the HTTP request</div>
+      <div class="flow-desc">Wraps in HttpServletRequest, passes to filter chain</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter.doFilterInternal() — RUNS</div>
+      <div class="flow-desc">shouldNotFilter() → false (not /auth/ path) → filter runs</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter: reads Authorization header</div>
+      <div class="flow-desc">authHeader = "Bearer eyJhbGci..." → starts with "Bearer " ✓ → token = "eyJhbGci..."</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter: validates token</div>
+      <div class="flow-desc">jwtUtil.isTokenValid(token) → parseClaims() → signature OK ✓ → not expired ✓ → returns true</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter: extracts username</div>
+      <div class="flow-desc">jwtUtil.extractUsername(token) → parseClaims().getSubject() → "sandeep"</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter: sets SecurityContext</div>
+      <div class="flow-desc">new UsernamePasswordAuthenticationToken("sandeep", null, []) → SecurityContextHolder.getContext().setAuthentication(authToken)</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box accent">
+      <div class="flow-title">JwtFilter: chain.doFilter() — passes to next filter</div>
+      <div class="flow-desc">JwtFilter is now waiting for everything downstream to finish</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box green">
+      <div class="flow-title">Spring Security: AuthorizationFilter</div>
+      <div class="flow-desc">SecurityContextHolder.getContext().getAuthentication() → not null, isAuthenticated() = true ✓ → ALLOWS request</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">DispatcherServlet</div>
+      <div class="flow-desc">Finds OrderController.getOrders() for GET /api/orders</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box green">
+      <div class="flow-title">OrderController.getOrders() runs</div>
+      <div class="flow-desc">SecurityContextHolder.getContext().getAuthentication().getName() → "sandeep" → returns orders list</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box">
+      <div class="flow-title">Response travels back up through filters</div>
+      <div class="flow-desc">JwtFilter resumes after chain.doFilter() returns → method ends → response sent to client</div>
+    </div>
+    <div class="flow-arrow">↓</div>
+    <div class="flow-box green">
+      <div class="flow-title">Client receives: 200 OK</div>
+      <div class="flow-desc">{ "user": "sandeep", "orders": ["Order #1001", "Order #1002", "Order #1003"] }</div>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+
+  <h3>Summary — every class and its job</h3>
+  <table>
+    <tr>
+      <th>Class</th>
+      <th>Job</th>
+      <th>Called by</th>
+    </tr>
+    <tr>
+      <td><strong>JwtUtil</strong></td>
+      <td>Creates tokens, validates tokens, extracts username. Pure logic, no HTTP.</td>
+      <td>JwtFilter, AuthController</td>
+    </tr>
+    <tr>
+      <td><strong>JwtFilter</strong></td>
+      <td>Runs on every request. Reads header → validates → sets SecurityContext.</td>
+      <td>Spring Security (automatically)</td>
+    </tr>
+    <tr>
+      <td><strong>SecurityConfig</strong></td>
+      <td>Registers JwtFilter. Defines public vs protected endpoints. Disables sessions.</td>
+      <td>Spring Boot (on startup)</td>
+    </tr>
+    <tr>
+      <td><strong>AuthController</strong></td>
+      <td>Handles POST /auth/login. Checks credentials. Returns token.</td>
+      <td>Client (browser/Postman)</td>
+    </tr>
+    <tr>
+      <td><strong>OrderController</strong></td>
+      <td>Your actual business logic. Reads username from SecurityContext.</td>
+      <td>Client (after auth)</td>
+    </tr>
+    <tr>
+      <td><strong>LoginRequest</strong></td>
+      <td>DTO — holds username + password from request body JSON.</td>
+      <td>AuthController</td>
+    </tr>
+  </table>
+
+  <div class="callout success">
+    <p><strong>You built a complete JWT system.</strong> Every request is now stateless — no sessions, no cookies. The token proves identity on every call. The server only needs the secret key to verify any token it issues.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(6)">← Protected Controller</button>
+    <button class="btn btn-ghost" disabled>Done ✓</button>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const TOTAL = 8;
+let current = 0;
+
+function goTo(index) {
+  // Hide current
+  document.getElementById('section-' + current).classList.remove('active');
+  document.getElementById('nav-' + current).classList.remove('active');
+  if (index > current) {
+    document.getElementById('nav-' + current).classList.add('done');
+  }
+
+  // Show new
+  current = index;
+  document.getElementById('section-' + current).classList.add('active');
+  document.getElementById('nav-' + current).classList.add('active');
+
+  // Update progress
+  const pct = Math.round(((current + 1) / TOTAL) * 100);
+  document.getElementById('progress').style.width = pct + '%';
+
+  // Scroll to top
+  document.querySelector('.main').scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>

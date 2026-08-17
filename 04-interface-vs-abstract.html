@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interface vs Abstract Class</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2336;
+    --border: #2a3050;
+    --interface-color: #4f9cf9;
+    --interface-dim: #1a2d4a;
+    --abstract-color: #f97b4f;
+    --abstract-dim: #3a1f12;
+    --text: #e4e8f5;
+    --muted: #7a82a0;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --code-bg: #0a0d14;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* HERO */
+  .hero {
+    padding: 48px 24px 32px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 60% 60% at 30% 50%, rgba(79,156,249,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 60% at 70% 50%, rgba(249,123,79,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: clamp(22px, 5vw, 36px);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    margin-bottom: 10px;
+  }
+  .hero h1 .i { color: var(--interface-color); }
+  .hero h1 .a { color: var(--abstract-color); }
+  .hero-sub {
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px 24px 0;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 10px 18px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--interface-color); }
+
+  /* PANELS */
+  .panel { display: none; padding: 32px 24px; max-width: 900px; margin: 0 auto; }
+  .panel.active { display: block; }
+
+  /* SECTION TITLE */
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  /* COMPARISON TABLE */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .cg-header {
+    padding: 14px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .cg-header.feature { background: var(--surface); color: var(--muted); }
+  .cg-header.iface { background: var(--interface-dim); color: var(--interface-color); text-align: center; }
+  .cg-header.abst { background: var(--abstract-dim); color: var(--abstract-color); text-align: center; }
+
+  .cg-cell {
+    padding: 12px 16px;
+    font-size: 13px;
+    background: var(--surface);
+  }
+  .cg-cell.feature { color: var(--text); font-weight: 500; }
+  .cg-cell.iface { background: rgba(79,156,249,0.04); text-align: center; color: var(--text); }
+  .cg-cell.abst { background: rgba(249,123,79,0.04); text-align: center; color: var(--text); }
+  .yes { color: var(--green); font-weight: 600; }
+  .no  { color: var(--red);   font-weight: 600; }
+  .partial { color: var(--yellow); font-weight: 600; }
+
+  /* WHY ACCORDION */
+  .why-accordion { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .why-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+  }
+  .why-item.open { border-color: var(--muted); }
+  .why-q {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 600;
+    text-align: left;
+    padding: 15px 18px;
+    cursor: pointer;
+  }
+  .why-q:hover { background: var(--surface2); }
+  .why-q-icon { color: var(--yellow); margin-right: 6px; }
+  .why-chevron { color: var(--muted); font-size: 13px; flex-shrink: 0; transition: transform 0.25s ease; }
+  .why-item.open .why-chevron { transform: rotate(180deg); color: var(--text); }
+  .why-a { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .why-item.open .why-a { max-height: 600px; }
+  .why-a-inner { padding: 0 18px 16px; }
+  .why-a p { font-size: 12.5px; color: var(--muted); line-height: 1.7; margin-bottom: 10px; }
+  .why-a p:last-child { margin-bottom: 0; }
+  .why-a strong { color: var(--text); }
+  .why-a code { color: var(--interface-color); font-family: var(--mono); font-size: 12px; background: rgba(79,156,249,0.08); padding: 1px 5px; border-radius: 4px; }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .code-lang {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .code-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .tag-iface { background: var(--interface-dim); color: var(--interface-color); }
+  .tag-abst  { background: var(--abstract-dim);  color: var(--abstract-color); }
+  .tag-both  { background: #1e2a1e; color: var(--green); }
+  pre {
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    overflow-x: auto;
+    color: #c9d1e8;
+  }
+  .kw  { color: #79b8ff; }
+  .cls { color: #f9c74f; }
+  .str { color: #f97b4f; }
+  .cmt { color: #4a5570; font-style: italic; }
+  .ann { color: #c792ea; }
+  .fn  { color: #4ade80; }
+  .num { color: #f9c74f; }
+
+  /* SCENARIO CARDS */
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .scenario-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+  .scenario-card:hover { transform: translateY(-2px); border-color: var(--muted); }
+  .scenario-card.selected-iface { border-color: var(--interface-color); background: rgba(79,156,249,0.05); }
+  .scenario-card.selected-abst  { border-color: var(--abstract-color);  background: rgba(249,123,79,0.05); }
+  .scenario-icon { font-size: 26px; margin-bottom: 10px; }
+  .scenario-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .scenario-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .scenario-answer {
+    display: none;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .scenario-card.selected-iface .scenario-answer,
+  .scenario-card.selected-abst  .scenario-answer { display: block; }
+  .answer-iface { color: var(--interface-color); }
+  .answer-abst  { color: var(--abstract-color); }
+
+  /* DECISION TOOL */
+  .decision-tool {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+  .decision-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 20px;
+  }
+  .question-block { margin-bottom: 16px; }
+  .question-text { font-size: 13px; color: var(--text); margin-bottom: 8px; }
+  .options { display: flex; gap: 8px; flex-wrap: wrap; }
+  .opt-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .opt-btn:hover { color: var(--text); border-color: var(--muted); }
+  .opt-btn.active-iface { background: var(--interface-dim); border-color: var(--interface-color); color: var(--interface-color); }
+  .opt-btn.active-abst  { background: var(--abstract-dim);  border-color: var(--abstract-color);  color: var(--abstract-color); }
+
+  .verdict-box {
+    margin-top: 20px;
+    padding: 16px;
+    border-radius: 8px;
+    display: none;
+    font-size: 13px;
+  }
+  .verdict-box.show { display: block; }
+  .verdict-iface { background: var(--interface-dim); border: 1px solid var(--interface-color); }
+  .verdict-abst  { background: var(--abstract-dim);  border: 1px solid var(--abstract-color); }
+  .verdict-label { font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+  .verdict-iface .verdict-label { color: var(--interface-color); }
+  .verdict-abst  .verdict-label { color: var(--abstract-color); }
+
+  /* CONSTRUCTOR SECTION */
+  .info-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .info-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .info-card p  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .highlight { color: var(--text); font-weight: 500; }
+
+  /* RULE CALLOUT */
+  .rule-box {
+    background: linear-gradient(135deg, rgba(79,156,249,0.08), rgba(249,123,79,0.08));
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    text-align: center;
+  }
+  .rule-box strong { color: var(--yellow); }
+
+  /* INTERVIEW BADGE */
+  .interview-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+  .interview-badge .badge-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--yellow);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .interview-badge p {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ============ SLIDE DECK ============ */
+  .slide-deck { max-width: 720px; margin: 0 auto; }
+  .slide-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .slide-progress-track {
+    flex: 1;
+    max-width: 260px;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .slide-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--interface-color), var(--abstract-color));
+    border-radius: 2px;
+    transition: width 0.35s ease;
+  }
+  .slide-progress-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .slide-viewport {
+    position: relative;
+    min-height: 460px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 28px;
+    overflow: hidden;
+  }
+  .slide { display: none; }
+  .slide.active { display: block; animation: slideFade 0.45s ease; }
+  @keyframes slideFade {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .slide-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .slide-title {
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  .slide-caption {
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 480px;
+    margin: 18px auto 0;
+    line-height: 1.6;
+  }
+  .slide-caption strong { color: var(--text); }
+  .caption-hook {
+    display: block;
+    color: var(--yellow);
+    font-weight: 700;
+    font-size: 14.5px;
+    margin-bottom: 8px;
+    line-height: 1.4;
+  }
+
+  .slide-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .slide-nav-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 9px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .slide-nav-btn:hover:not(:disabled) { border-color: var(--muted); transform: translateY(-1px); }
+  .slide-nav-btn:disabled { opacity: 0.35; cursor: default; }
+  .slide-dots { display: flex; gap: 7px; }
+  .slide-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s;
+  }
+  .slide-dot.active { background: var(--text); width: 20px; border-radius: 4px; }
+
+  /* Slide 1: intro cards */
+  .intro-cards { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; margin: 12px 0 8px; }
+  .intro-card {
+    width: 210px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 18px;
+    text-align: center;
+    opacity: 0;
+    animation: cardIn 0.5s ease forwards;
+  }
+  .intro-card.iface { border-color: var(--interface-color); animation-delay: 0.1s; }
+  .intro-card.abst  { border-color: var(--abstract-color);  animation-delay: 0.4s; }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .intro-card .big-icon { font-size: 36px; margin-bottom: 10px; }
+  .intro-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .intro-card.iface h4 { color: var(--interface-color); }
+  .intro-card.abst h4  { color: var(--abstract-color); }
+  .intro-card p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .intro-vs {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    opacity: 0;
+    animation: cardIn 0.4s ease forwards;
+    animation-delay: 0.25s;
+  }
+
+  /* Slide 2: plug-in diagram */
+  .plug-stage { position: relative; height: 230px; display: flex; align-items: center; justify-content: center; }
+  .duck-box {
+    width: 150px; height: 100px;
+    background: var(--surface2);
+    border: 2px solid var(--interface-color);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    font-weight: 600; font-size: 13px;
+    box-shadow: 0 0 26px rgba(79,156,249,0.18);
+    z-index: 2;
+  }
+  .plug {
+    position: absolute;
+    background: var(--interface-dim);
+    border: 1px solid var(--interface-color);
+    color: var(--interface-color);
+    font-size: 11px; font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 20px;
+    opacity: 0;
+    white-space: nowrap;
+  }
+  .plug.p1 { top: 6px;    left: 8%;  animation: plugFromTop 0.5s ease forwards; animation-delay: 0.4s; }
+  .plug.p2 { bottom: 6px; left: 4%;  animation: plugFromBottom 0.5s ease forwards; animation-delay: 0.8s; }
+  .plug.p3 { top: 40%;    right: 2%; animation: plugFromRight 0.5s ease forwards; animation-delay: 1.2s; }
+  @keyframes plugFromTop    { from { opacity:0; transform: translateY(-16px); } to { opacity:1; transform: translateY(0); } }
+  @keyframes plugFromBottom { from { opacity:0; transform: translateY(16px); }  to { opacity:1; transform: translateY(0); } }
+  @keyframes plugFromRight  { from { opacity:0; transform: translateX(16px); }  to { opacity:1; transform: translateX(0); } }
+  .plug-check {
+    display: inline-block;
+    color: var(--green);
+    opacity: 0;
+    animation: fadeIn 0.3s ease forwards;
+  }
+  .plug.p1 .plug-check { animation-delay: 0.85s; }
+  .plug.p2 .plug-check { animation-delay: 1.25s; }
+  .plug.p3 .plug-check { animation-delay: 1.65s; }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  /* Slide 3: pour / foundation diagram */
+  .pour-stage { display: flex; flex-direction: column; align-items: center; padding: 8px 0; }
+  .pour-box {
+    width: 300px;
+    border-radius: 12px;
+    padding: 14px 18px;
+    text-align: center;
+    font-size: 12.5px;
+  }
+  .pour-box.parent {
+    background: var(--abstract-dim);
+    border: 2px solid var(--abstract-color);
+    opacity: 0;
+    animation: cardIn 0.4s ease forwards;
+  }
+  .pour-box.child {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    opacity: 0;
+    animation: cardIn 0.4s ease forwards;
+    animation-delay: 1.5s;
+  }
+  .pour-box strong { display: block; margin-bottom: 4px; font-size: 13px; }
+  .pour-channel { position: relative; width: 2px; height: 56px; background: var(--border); margin: 2px 0; }
+  .pour-dot {
+    position: absolute;
+    left: 50%; transform: translateX(-50%);
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--abstract-color);
+    top: -8px;
+    opacity: 0;
+    animation: pourDown 1s ease-in infinite;
+  }
+  .pour-dot.d2 { animation-delay: 0.33s; }
+  .pour-dot.d3 { animation-delay: 0.66s; }
+  @keyframes pourDown {
+    0%   { top: -8px; opacity: 0; }
+    15%  { opacity: 1; }
+    85%  { opacity: 1; }
+    100% { top: 56px; opacity: 0; }
+  }
+  .pour-received {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--green);
+    opacity: 0;
+    animation: fadeIn 0.4s ease forwards;
+    animation-delay: 1.9s;
+  }
+
+  /* Slide 4: diamond problem comparison */
+  .diamond-row { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; }
+  .diamond-col {
+    flex: 1; min-width: 230px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    text-align: center;
+  }
+  .diamond-col-label { font-size: 12px; font-weight: 600; margin-bottom: 14px; }
+  .diamond-col.bad .diamond-col-label  { color: var(--red); }
+  .diamond-col.good .diamond-col-label { color: var(--green); }
+  .diamond-parents { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; }
+  .diamond-chip {
+    font-size: 11px; font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 8px;
+    opacity: 0;
+    animation: cardIn 0.4s ease forwards;
+  }
+  .diamond-col.bad .diamond-chip { background: var(--abstract-dim); border: 1px solid var(--abstract-color); color: var(--abstract-color); }
+  .diamond-col.good .diamond-chip { background: var(--interface-dim); border: 1px solid var(--interface-color); color: var(--interface-color); }
+  .diamond-chip:nth-child(2) { animation-delay: 0.15s; }
+  .diamond-arrow-down { font-size: 16px; color: var(--muted); margin: 4px 0; }
+  .diamond-target {
+    display: inline-block;
+    font-size: 11px; font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .diamond-col.bad .diamond-target {
+    animation: shakeX 0.5s ease 0.6s;
+  }
+  .diamond-result { margin-top: 12px; font-size: 18px; }
+  .diamond-col.bad .diamond-result::after  { content: '❌ Won\'t compile'; font-size: 11px; display:block; color: var(--red); margin-top: 4px; }
+  .diamond-col.good .diamond-result::after { content: '✅ Compiles fine'; font-size: 11px; display:block; color: var(--green); margin-top: 4px; }
+  @keyframes shakeX {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+
+  /* Slide 5: constructor chain — two-lane swimlane diagram */
+  .chain-swim {
+    display: grid;
+    grid-template-columns: 1fr 38px 1fr;
+    column-gap: 10px;
+    row-gap: 12px;
+    align-items: center;
+    max-width: 560px;
+    margin: 4px auto 0;
+  }
+  .chain-lane-header {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+    padding: 7px 6px;
+    border-radius: 8px;
+    border: 1px dashed var(--border);
+  }
+  .chain-lane-header small { display: block; font-size: 9px; color: var(--muted); letter-spacing: 0.5px; text-transform: none; margin-top: 2px; }
+  .chain-lane-header.child  { color: var(--green); border-color: var(--green); }
+  .chain-lane-header.parent { color: var(--abstract-color); border-color: var(--abstract-color); }
+
+  .chain-step {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    opacity: 0.35;
+    transition: opacity 0.3s ease, border-color 0.3s ease;
+  }
+  .chain-step.lane-child  { border-left: 3px solid var(--green); }
+  .chain-step.lane-parent { border-left: 3px solid var(--abstract-color); }
+  .chain-step.lane-final  {
+    border-left: 3px solid var(--yellow);
+    background: linear-gradient(135deg, rgba(74,222,128,0.07), rgba(249,123,79,0.07));
+    justify-content: center;
+    text-align: center;
+  }
+  .chain-step.active { opacity: 1; border-color: var(--yellow); }
+  .chain-step.done { opacity: 0.8; }
+
+  .chain-num {
+    width: 24px; height: 24px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 11px; font-weight: 600;
+    color: var(--muted);
+    transition: all 0.3s ease;
+  }
+  .chain-step.active .chain-num { background: var(--yellow); border-color: var(--yellow); color: #1a1a05; transform: scale(1.15); }
+  .chain-step.lane-child.done .chain-num  { background: var(--green); border-color: var(--green); color: #06280f; }
+  .chain-step.lane-parent.done .chain-num { background: var(--abstract-color); border-color: var(--abstract-color); color: #1a0d05; }
+  .chain-step.lane-final.done .chain-num  { background: var(--yellow); border-color: var(--yellow); color: #1a1a05; }
+  .chain-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .chain-text code { color: var(--abstract-color); font-family: var(--mono); font-size: 11.5px; }
+
+  .chain-arrow {
+    text-align: center;
+    font-size: 20px;
+    color: var(--border);
+    transition: color 0.3s ease, transform 0.3s ease;
+  }
+  .chain-arrow.active { color: var(--yellow); transform: scale(1.3); }
+  .chain-arrow.done { color: var(--muted); }
+  .chain-arrow-label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .chain-play-row { display: flex; justify-content: center; margin-top: 18px; }
+  .chain-play-btn {
+    background: var(--abstract-dim);
+    border: 1px solid var(--abstract-color);
+    color: var(--abstract-color);
+    font-family: var(--sans);
+    font-size: 12.5px; font-weight: 600;
+    padding: 8px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chain-play-btn:hover { background: var(--abstract-color); color: #1a0d05; }
+
+  /* Slide 6: recap */
+  .recap-cols { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+  .recap-col { flex: 1; min-width: 220px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .recap-col h4 { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .recap-col.iface h4 { color: var(--interface-color); }
+  .recap-col.abst h4  { color: var(--abstract-color); }
+  .recap-col ul { list-style: none; }
+  .recap-col li {
+    font-size: 12px; color: var(--muted);
+    padding: 4px 0;
+    opacity: 0;
+    animation: recapIn 0.35s ease forwards;
+  }
+  .recap-col li::before { content: '✓ '; color: var(--green); font-weight: 700; }
+  .recap-col li:nth-child(1) { animation-delay: 0.1s; }
+  .recap-col li:nth-child(2) { animation-delay: 0.25s; }
+  .recap-col li:nth-child(3) { animation-delay: 0.4s; }
+  .recap-col li:nth-child(4) { animation-delay: 0.55s; }
+  @keyframes recapIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-label">Java OOP — Core Concepts</div>
+  <h1><span class="i">Interface</span> vs <span class="a">Abstract Class</span></h1>
+  <p class="hero-sub">Contract vs Blueprint — understand the difference that Java interviews love to test</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('story')">🎬 Visual Story</button>
+  <button class="tab" onclick="showTab('compare')">📊 Comparison</button>
+  <button class="tab" onclick="showTab('code')">💻 Code Side-by-Side</button>
+  <button class="tab" onclick="showTab('constructor')">🏗️ Constructor Deep Dive</button>
+  <button class="tab" onclick="showTab('scenarios')">🎯 Scenarios</button>
+  <button class="tab" onclick="showTab('decide')">🧭 Decision Tool</button>
+</div>
+
+<!-- TAB 0: VISUAL STORY (SLIDE DECK) -->
+<div id="tab-story" class="panel active">
+  <div class="slide-deck">
+
+    <div class="slide-progress">
+      <span class="slide-progress-count" id="slideCount">1 / 6</span>
+      <div class="slide-progress-track"><div class="slide-progress-fill" id="slideProgressFill" style="width:16.6%"></div></div>
+      <div class="slide-dots" id="slideDots">
+        <button class="slide-dot active" onclick="goToSlide(1)"></button>
+        <button class="slide-dot" onclick="goToSlide(2)"></button>
+        <button class="slide-dot" onclick="goToSlide(3)"></button>
+        <button class="slide-dot" onclick="goToSlide(4)"></button>
+        <button class="slide-dot" onclick="goToSlide(5)"></button>
+        <button class="slide-dot" onclick="goToSlide(6)"></button>
+      </div>
+    </div>
+
+    <div class="slide-viewport">
+
+      <!-- SLIDE 1 -->
+      <div class="slide active" data-slide="1">
+        <p class="slide-eyebrow">The Core Idea</p>
+        <h2 class="slide-title">Two ways to say "class," two different jobs</h2>
+        <div class="intro-cards">
+          <div class="intro-card iface">
+            <div class="big-icon">📜</div>
+            <h4>Interface</h4>
+            <p>A <strong>contract</strong>. "Any class that signs this must be able to do X." No state, no setup — pure capability.</p>
+          </div>
+          <div class="intro-vs">VS</div>
+          <div class="intro-card abst">
+            <div class="big-icon">🏗️</div>
+            <h4>Abstract Class</h4>
+            <p>A <strong>half-built blueprint</strong>. Shares fields, a constructor, and some finished rooms — subclasses finish the rest.</p>
+          </div>
+        </div>
+        <p class="slide-caption"><span class="caption-hook">🔑 "Can it do X?" → interface. "Is it partly built already?" → abstract class.</span>Every row in the comparison table you're about to see is just a consequence of that one question.</p>
+      </div>
+
+      <!-- SLIDE 2 -->
+      <div class="slide" data-slide="2">
+        <p class="slide-eyebrow">Interface in Action</p>
+        <h2 class="slide-title">Capabilities snap in from anywhere</h2>
+        <div class="plug-stage">
+          <div class="duck-box">Duck<br>class</div>
+          <div class="plug p1">🦆 Swimmable <span class="plug-check">✓</span></div>
+          <div class="plug p2">🛫 Flyable <span class="plug-check">✓</span></div>
+          <div class="plug p3">⚖️ Comparable&lt;Duck&gt; <span class="plug-check">✓</span></div>
+        </div>
+        <p class="slide-caption"><span class="caption-hook">🔑 Empty-handed contracts don't fight.</span>An interface owns zero state, so there's nothing for two of them to disagree about — plug in as many as the class needs.</p>
+      </div>
+
+      <!-- SLIDE 3 -->
+      <div class="slide" data-slide="3">
+        <p class="slide-eyebrow">Abstract Class in Action</p>
+        <h2 class="slide-title">Shared state pours down, once</h2>
+        <div class="pour-stage">
+          <div class="pour-box parent">
+            <strong>BasePaymentProcessor</strong>
+            fields: merchantId, apiKey · constructor · logTransaction()
+          </div>
+          <div class="pour-channel">
+            <div class="pour-dot d1"></div>
+            <div class="pour-dot d2"></div>
+            <div class="pour-dot d3"></div>
+          </div>
+          <div class="pour-box child">
+            <strong>StripeProcessor</strong>
+            extends the base — inherits fields + constructor + logTransaction() for free
+            <span class="pour-received">✓ received</span>
+          </div>
+        </div>
+        <p class="slide-caption"><span class="caption-hook">🔑 You only pour a foundation once.</span>Fields and a constructor live in exactly one place — the parent — and every subclass just inherits that single pour for free.</p>
+      </div>
+
+      <!-- SLIDE 4 -->
+      <div class="slide" data-slide="4">
+        <p class="slide-eyebrow">Why the Rule Exists</p>
+        <h2 class="slide-title">Two foundations can't share one building</h2>
+        <div class="diamond-row">
+          <div class="diamond-col bad">
+            <div class="diamond-col-label">❌ Two abstract classes</div>
+            <div class="diamond-parents">
+              <div class="diamond-chip">GpsDevice<br>{ location }</div>
+              <div class="diamond-chip">Phone<br>{ contacts }</div>
+            </div>
+            <div class="diamond-arrow-down">↓ ↓</div>
+            <div class="diamond-target">SmartWatch</div>
+            <div class="diamond-result"></div>
+          </div>
+          <div class="diamond-col good">
+            <div class="diamond-col-label">✅ Two interfaces</div>
+            <div class="diamond-parents">
+              <div class="diamond-chip">Locatable</div>
+              <div class="diamond-chip">Callable</div>
+            </div>
+            <div class="diamond-arrow-down">↓ ↓</div>
+            <div class="diamond-target">SmartWatch</div>
+            <div class="diamond-result"></div>
+          </div>
+        </div>
+        <p class="slide-caption"><span class="caption-hook">🔑 One foundation per building — full stop.</span>Two abstract parents means two competing sets of fields, and Java refuses to guess which one wins. That's the whole reason <code>extends</code> is capped at one.</p>
+      </div>
+
+      <!-- SLIDE 5 -->
+      <div class="slide" data-slide="5">
+        <p class="slide-eyebrow">Constructor Deep Dive</p>
+        <h2 class="slide-title">Watch the call chain fire, in order</h2>
+        <div class="chain-swim" id="chainList">
+          <div class="chain-lane-header child">🧑‍🍳 TorontoChef<small>subclass</small></div>
+          <div></div>
+          <div class="chain-lane-header parent">🏛️ RestaurantChef<small>parent</small></div>
+
+          <div class="chain-step lane-child" data-step="1" style="grid-column:1; grid-row:2;">
+            <div class="chain-num">1</div>
+            <div class="chain-text"><code>new TorontoChef("Downtown Kitchen", 5)</code> is called</div>
+          </div>
+
+          <div class="chain-step lane-child" data-step="2" style="grid-column:1; grid-row:3;">
+            <div class="chain-num">2</div>
+            <div class="chain-text">constructor's <strong>first line</strong> calls <code>super(name, exp)</code></div>
+          </div>
+          <div class="chain-arrow" data-step="2" style="grid-column:2; grid-row:3;">➜<span class="chain-arrow-label">super()</span></div>
+
+          <div class="chain-step lane-parent" data-step="3" style="grid-column:3; grid-row:4;">
+            <div class="chain-num">3</div>
+            <div class="chain-text">runs <strong>first</strong> — sets <code>kitchenName</code>, <code>yearsExperience</code></div>
+          </div>
+
+          <div class="chain-step lane-child" data-step="4" style="grid-column:1; grid-row:5;">
+            <div class="chain-num">4</div>
+            <div class="chain-text">control returns here — the rest of TorontoChef's constructor body finishes</div>
+          </div>
+          <div class="chain-arrow" data-step="4" style="grid-column:2; grid-row:5;">⬅<span class="chain-arrow-label">returns</span></div>
+
+          <div class="chain-step lane-final" data-step="5" style="grid-column:1 / -1; grid-row:6;">
+            <div class="chain-num">5</div>
+            <div class="chain-text">Object is ready — <code>chef.doMorningPrep()</code> <em>(inherited from RestaurantChef)</em> and <code>chef.cookSignatureDish()</code> <em>(TorontoChef's own)</em> both work</div>
+          </div>
+        </div>
+        <p class="slide-caption"><span class="caption-hook">🔑 Parent finishes building first — the child only starts once its foundation is done.</span>That's why <code>super()</code> must be the first line: you can't decorate a floor that doesn't exist yet.</p>
+        <div class="chain-play-row">
+          <button class="chain-play-btn" onclick="playChain()">▶ Play the chain</button>
+        </div>
+      </div>
+
+      <!-- SLIDE 6 -->
+      <div class="slide" data-slide="6">
+        <p class="slide-eyebrow">Recap</p>
+        <h2 class="slide-title">The one-line rule</h2>
+        <div class="rule-box" style="margin-bottom:0;">
+          👉 <strong>Start with Interface.</strong> Switch to Abstract Class only when you need shared <strong>fields</strong> or a <strong>constructor</strong>.
+        </div>
+        <div class="recap-cols">
+          <div class="recap-col iface">
+            <h4>🔵 Interface</h4>
+            <ul>
+              <li>Pure capability, no state</li>
+              <li>Multiple per class</li>
+              <li>Unrelated classes welcome</li>
+              <li>Default in modern Java</li>
+            </ul>
+          </div>
+          <div class="recap-col abst">
+            <h4>🟠 Abstract Class</h4>
+            <ul>
+              <li>Shared fields + constructor</li>
+              <li>Single parent only</li>
+              <li>Related types, one hierarchy</li>
+              <li>Reach for it when state is shared</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="slide-controls">
+      <button class="slide-nav-btn" id="slidePrevBtn" onclick="changeSlide(-1)">← Prev</button>
+      <button class="slide-nav-btn" id="slideNextBtn" onclick="changeSlide(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 1: COMPARISON -->
+<div id="tab-compare" class="panel">
+  <p class="section-title">Feature-by-Feature Breakdown</p>
+
+  <div class="compare-grid">
+    <div class="cg-header feature">Feature</div>
+    <div class="cg-header iface">🔵 Interface</div>
+    <div class="cg-header abst">🟠 Abstract Class</div>
+
+    <div class="cg-cell feature">Think of it as</div>
+    <div class="cg-cell iface">Job contract</div>
+    <div class="cg-cell abst">Half-built blueprint</div>
+
+    <div class="cg-cell feature">Keyword</div>
+    <div class="cg-cell iface"><code>implements</code></div>
+    <div class="cg-cell abst"><code>extends</code></div>
+
+    <div class="cg-cell feature">Multiple inheritance</div>
+    <div class="cg-cell iface"><span class="yes">✔ Yes</span> (many)</div>
+    <div class="cg-cell abst"><span class="no">✘ No</span> (one only)</div>
+
+    <div class="cg-cell feature">Instance variables</div>
+    <div class="cg-cell iface"><span class="no">✘ No</span></div>
+    <div class="cg-cell abst"><span class="yes">✔ Yes</span></div>
+
+    <div class="cg-cell feature">Constructor</div>
+    <div class="cg-cell iface"><span class="no">✘ No</span></div>
+    <div class="cg-cell abst"><span class="yes">✔ Yes</span> (via super)</div>
+
+    <div class="cg-cell feature">Abstract methods</div>
+    <div class="cg-cell iface"><span class="yes">✔ Yes</span></div>
+    <div class="cg-cell abst"><span class="yes">✔ Yes</span></div>
+
+    <div class="cg-cell feature">Concrete methods</div>
+    <div class="cg-cell iface"><span class="partial">⚡ default only</span></div>
+    <div class="cg-cell abst"><span class="yes">✔ Yes</span></div>
+
+    <div class="cg-cell feature">Access modifiers</div>
+    <div class="cg-cell iface"><span class="partial">public only</span></div>
+    <div class="cg-cell abst"><span class="yes">✔ Any</span></div>
+
+    <div class="cg-cell feature">Can be instantiated</div>
+    <div class="cg-cell iface"><span class="no">✘ No</span></div>
+    <div class="cg-cell abst"><span class="no">✘ No</span></div>
+
+    <div class="cg-cell feature">Static methods</div>
+    <div class="cg-cell iface"><span class="yes">✔ Yes</span> (Java 8+)</div>
+    <div class="cg-cell abst"><span class="yes">✔ Yes</span></div>
+
+    <div class="cg-cell feature">Defines</div>
+    <div class="cg-cell iface">Capability (what it <em>can do</em>)</div>
+    <div class="cg-cell abst">Identity (what it <em>is</em>)</div>
+  </div>
+
+  <p class="section-title">🤔 Understanding the Why</p>
+  <div class="why-accordion" id="whyAccordion">
+
+    <div class="why-item">
+      <button class="why-q" onclick="toggleWhy(this)">
+        <span><span class="why-q-icon">❓</span>What exactly <em>is</em> an "abstract method"?</span>
+        <span class="why-chevron">⌄</span>
+      </button>
+      <div class="why-a"><div class="why-a-inner">
+        <p>An abstract method is a method with <strong>no body</strong> — just a signature ending in a semicolon: <code>abstract void cookSignatureDish();</code>. It's a promise, not an implementation: "every concrete subclass must supply this behaviour, but I'm not going to say how."</p>
+        <p>Because it has no body, it can't run. That's precisely why <strong>any class containing an abstract method must itself be declared abstract</strong>, and why it can never be instantiated — Java can't create an object that might have a method with nothing to execute. Every method you declare in an interface (other than <code>default</code>/<code>static</code>) is implicitly abstract for the exact same reason: interfaces exist to declare <em>what</em> must be done, never <em>how</em>.</p>
+      </div></div>
+    </div>
+
+    <div class="why-item">
+      <button class="why-q" onclick="toggleWhy(this)">
+        <span><span class="why-q-icon">❓</span>Why do interfaces only allow <code>default</code>/<code>static</code> concrete methods, not regular ones?</span>
+        <span class="why-chevron">⌄</span>
+      </button>
+      <div class="why-a"><div class="why-a-inner">
+        <p>Before Java 8, interfaces had <strong>zero implementation</strong> on purpose — a pure contract, nothing to inherit but a signature. That's what let a class implement five unrelated interfaces without any risk: there was no behaviour to collide over.</p>
+        <p><code>default</code> methods were added in Java 8 purely as a <strong>backward-compatibility escape hatch</strong> — so library authors could add a new method (like <code>forEach()</code> to <code>Collection</code>) without breaking every class that already implemented that interface. They were never meant to carry core design logic the way abstract-class methods do.</p>
+        <p>And you can still see the old danger peeking through: if a class implements two interfaces that both define the <em>same</em> default method, Java <strong>refuses to compile</strong> until you manually resolve the conflict. Ordinary concrete methods (with real fields to work against) would make that collision the norm instead of the rare exception — so Java deliberately keeps interfaces state-free and restricts them to <code>default</code>/<code>static</code> only.</p>
+      </div></div>
+    </div>
+
+    <div class="why-item">
+      <button class="why-q" onclick="toggleWhy(this)">
+        <span><span class="why-q-icon">❓</span>Why can abstract classes use <em>any</em> access modifier, but interface members are always public?</span>
+        <span class="why-chevron">⌄</span>
+      </button>
+      <div class="why-a"><div class="why-a-inner">
+        <p>An interface <strong>is</strong> the public contract — every method on it exists so that outside code can call it through the type. A <code>private</code> or <code>protected</code> method on an interface would make no sense: nobody holding a reference to the interface could ever invoke it, which defeats the entire point of declaring it there. So Java makes every interface member <code>public</code> implicitly (Java 9 added true <code>private</code> methods, but only as internal helpers <em>for</em> default methods — never part of the contract itself).</p>
+        <p>An abstract class is a different animal — it's a <strong>partial implementation</strong>, not a pure contract. Subclasses interact with it through inheritance, not just through a public reference, so it legitimately needs the same access-control toolkit as any normal class: <code>private</code> helper methods hidden even from subclasses, <code>protected</code> members visible only inside the family, and <code>public</code> members for the real external contract.</p>
+      </div></div>
+    </div>
+
+    <div class="why-item">
+      <button class="why-q" onclick="toggleWhy(this)">
+        <span><span class="why-q-icon">❓</span>Why does an abstract class have a constructor if you can never <code>new</code> it directly?</span>
+        <span class="why-chevron">⌄</span>
+      </button>
+      <div class="why-a"><div class="why-a-inner">
+        <p>You never call it yourself — the <strong>subclass</strong> calls it, via <code>super(...)</code>, as the first line of its own constructor. Its job is to initialize the fields that live in the abstract class, before the subclass's own fields and logic are set up.</p>
+        <p>This falls straight out of the "shared state" answer above: the moment an abstract class is allowed to hold instance fields, <em>something</em> has to initialize them reliably, exactly once, before any subclass code runs. A constructor is that something. Interfaces skip this entirely because they hold <strong>zero fields</strong> — there's nothing to initialize, so there's nothing for a constructor to do. See the <strong>Constructor Deep Dive</strong> tab for the full call-chain walkthrough.</p>
+      </div></div>
+    </div>
+
+  </div>
+
+  <div class="rule-box">
+    👉 <strong>Start with Interface.</strong> Switch to Abstract Class only when you need shared <strong>fields</strong> or a <strong>constructor</strong>.
+  </div>
+
+  <div class="interview-badge">
+    <div class="badge-label">🎤 Interview One-Liner</div>
+    <p>"Interface defines a contract for what a class <em>can do</em>; abstract class defines a partial implementation of what a class <em>is</em>. Use interface for capability and multiple inheritance; use abstract class when subclasses need shared state or construction logic."</p>
+  </div>
+</div>
+
+<!-- TAB 2: CODE -->
+<div id="tab-code" class="panel">
+  <p class="section-title">Same Problem, Two Approaches</p>
+
+  <p style="font-size:13px; color:var(--muted); margin-bottom:20px;">Scenario: You're building a payment system. See how each construct handles the same requirement.</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">Java</span>
+      <span class="code-tag tag-iface">Interface Approach</span>
+    </div>
+    <pre><span class="cmt">// ✅ Interface — defines the CAPABILITY contract</span>
+<span class="kw">public interface</span> <span class="cls">PaymentProcessor</span> {
+
+    <span class="cmt">// All methods are public + abstract by default</span>
+    <span class="kw">void</span> <span class="fn">processPayment</span>(<span class="kw">double</span> amount);
+    <span class="kw">void</span> <span class="fn">refund</span>(<span class="kw">double</span> amount);
+    <span class="kw">boolean</span> <span class="fn">validateCard</span>(String cardNumber);
+
+    <span class="cmt">// Java 8+ default method (backward compat, not design intent)</span>
+    <span class="kw">default void</span> <span class="fn">logTransaction</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"Transaction: $"</span> + amount);
+    }
+}
+
+<span class="cmt">// A second, unrelated interface — to show multiple inheritance below</span>
+<span class="kw">public interface</span> <span class="cls">Loggable</span> {
+    <span class="kw">void</span> <span class="fn">logTransaction</span>(<span class="kw">double</span> amount); <span class="cmt">// re-declared here on purpose — see note below</span>
+}
+
+<span class="cmt">// A class can implement MULTIPLE interfaces</span>
+<span class="kw">public class</span> <span class="cls">StripeProcessor</span> <span class="kw">implements</span> <span class="cls">PaymentProcessor</span>, <span class="cls">Loggable</span> {
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">processPayment</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"Stripe: processing $"</span> + amount);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">refund</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"Stripe: refunding $"</span> + amount);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">validateCard</span>(String cardNumber) {
+        <span class="kw">return</span> cardNumber.<span class="fn">length</span>() == <span class="num">16</span>;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">logTransaction</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"[Stripe audit log] $"</span> + amount);
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">PaymentProcessor</span> processor = <span class="kw">new</span> <span class="cls">StripeProcessor</span>();
+
+        <span class="kw">boolean</span> valid = processor.<span class="fn">validateCard</span>(<span class="str">"4242424242424242"</span>);
+        System.out.<span class="fn">println</span>(<span class="str">"Card valid? "</span> + valid);   <span class="cmt">// true</span>
+
+        <span class="kw">if</span> (valid) processor.<span class="fn">processPayment</span>(<span class="num">99.99</span>); <span class="cmt">// Stripe: processing $99.99</span>
+    }
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">Java</span>
+      <span class="code-tag tag-abst">Abstract Class Approach</span>
+    </div>
+    <pre><span class="cmt">// ✅ Abstract Class — shared state + shared behaviour</span>
+<span class="kw">public abstract class</span> <span class="cls">BasePaymentProcessor</span> {
+
+    <span class="cmt">// Shared FIELDS — this is the key advantage over interface</span>
+    <span class="kw">protected</span> String merchantId;
+    <span class="kw">protected</span> String apiKey;
+    <span class="kw">private</span> <span class="kw">int</span> retryCount = <span class="num">3</span>;
+
+    <span class="cmt">// Constructor — sets up shared state</span>
+    <span class="kw">public</span> <span class="cls">BasePaymentProcessor</span>(String merchantId, String apiKey) {
+        <span class="kw">this</span>.merchantId = merchantId;
+        <span class="kw">this</span>.apiKey = apiKey;
+    }
+
+    <span class="cmt">// Shared CONCRETE method — same for every subclass</span>
+    <span class="kw">public void</span> <span class="fn">logTransaction</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"[Merchant: "</span> + merchantId + <span class="str">"] $"</span> + amount);
+    }
+
+    <span class="cmt">// Left blank — each provider defines their own</span>
+    <span class="kw">public abstract void</span> <span class="fn">processPayment</span>(<span class="kw">double</span> amount);
+    <span class="kw">public abstract void</span> <span class="fn">refund</span>(<span class="kw">double</span> amount);
+}
+
+<span class="cmt">// Subclass extends — gets fields + logTransaction() for FREE</span>
+<span class="kw">public class</span> <span class="cls">StripeProcessor</span> <span class="kw">extends</span> <span class="cls">BasePaymentProcessor</span> {
+
+    <span class="kw">public</span> <span class="cls">StripeProcessor</span>(String merchantId, String apiKey) {
+        <span class="kw">super</span>(merchantId, apiKey); <span class="cmt">// 👈 calls abstract class constructor</span>
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">processPayment</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"Stripe charging $"</span> + amount);
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">refund</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"Stripe refunding $"</span> + amount);
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">BasePaymentProcessor</span> processor = <span class="kw">new</span> <span class="cls">StripeProcessor</span>(<span class="str">"merchant-001"</span>, <span class="str">"sk_test_abc123"</span>);
+
+        processor.<span class="fn">processPayment</span>(<span class="num">99.99</span>);     <span class="cmt">// Stripe charging $99.99</span>
+        processor.<span class="fn">logTransaction</span>(<span class="num">99.99</span>);     <span class="cmt">// [Merchant: merchant-001] $99.99 — inherited for FREE</span>
+    }
+}</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">Java</span>
+      <span class="code-tag tag-both">Best of Both Worlds</span>
+    </div>
+    <pre><span class="cmt">// 💡 Real-world pattern: use BOTH together</span>
+<span class="cmt">// Interface for the public contract</span>
+<span class="kw">public interface</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">void</span> <span class="fn">processPayment</span>(<span class="kw">double</span> amount);
+    <span class="kw">void</span> <span class="fn">refund</span>(<span class="kw">double</span> amount);
+}
+
+<span class="cmt">// Abstract class implements interface partially, adds shared state</span>
+<span class="kw">public abstract class</span> <span class="cls">BasePaymentProcessor</span> <span class="kw">implements</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">protected</span> String merchantId;
+
+    <span class="kw">public</span> <span class="cls">BasePaymentProcessor</span>(String merchantId) {
+        <span class="kw">this</span>.merchantId = merchantId;
+    }
+
+    <span class="kw">public void</span> <span class="fn">refund</span>(<span class="kw">double</span> amount) {  <span class="cmt">// shared refund logic</span>
+        System.out.<span class="fn">println</span>(<span class="str">"Refunding $"</span> + amount + <span class="str">" to merchant: "</span> + merchantId);
+    }
+    <span class="cmt">// processPayment still abstract — each provider must define it</span>
+}
+
+<span class="cmt">// Concrete class — just fills in the gap</span>
+<span class="kw">public class</span> <span class="cls">StripeProcessor</span> <span class="kw">extends</span> <span class="cls">BasePaymentProcessor</span> {
+    <span class="kw">public</span> <span class="cls">StripeProcessor</span>(String id) { <span class="kw">super</span>(id); }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public void</span> <span class="fn">processPayment</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"Stripe: $"</span> + amount);
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">PaymentProcessor</span> processor = <span class="kw">new</span> <span class="cls">StripeProcessor</span>(<span class="str">"merchant-001"</span>);
+
+        processor.<span class="fn">processPayment</span>(<span class="num">75.00</span>); <span class="cmt">// Stripe: $75.0 — own implementation</span>
+        processor.<span class="fn">refund</span>(<span class="num">20.00</span>);       <span class="cmt">// Refunding $20.0 to merchant: merchant-001 — inherited</span>
+    }
+}</pre>
+  </div>
+</div>
+
+<!-- TAB 3: CONSTRUCTOR -->
+<div id="tab-constructor" class="panel">
+  <p class="section-title">Constructor in Abstract Class</p>
+
+  <div class="info-card">
+    <h3>🤔 "You can't instantiate it — so why have a constructor?"</h3>
+    <p>The constructor isn't called <span class="highlight">by you</span> — it's called <span class="highlight">by the subclass</span> via <code>super()</code>. It exists to initialize the shared fields that live in the abstract class.</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">Java</span>
+      <span class="code-tag tag-abst">Abstract Class with Constructor</span>
+    </div>
+    <pre><span class="kw">abstract class</span> <span class="cls">RestaurantChef</span> {
+
+    <span class="cmt">// Fields live here — subclasses inherit them</span>
+    String kitchenName;
+    <span class="kw">int</span> yearsExperience;
+
+    <span class="cmt">// Constructor — initializes shared fields</span>
+    <span class="cls">RestaurantChef</span>(String kitchenName, <span class="kw">int</span> yearsExperience) {
+        <span class="kw">this</span>.kitchenName = kitchenName;
+        <span class="kw">this</span>.yearsExperience = yearsExperience;
+        System.out.<span class="fn">println</span>(<span class="str">"Chef initialized for: "</span> + kitchenName);
+    }
+
+    <span class="cmt">// Shared concrete method</span>
+    <span class="kw">void</span> <span class="fn">doMorningPrep</span>() {
+        System.out.<span class="fn">println</span>(kitchenName + <span class="str">": sharpening knives..."</span>);
+    }
+
+    <span class="cmt">// Must be implemented by subclass</span>
+    <span class="kw">abstract void</span> <span class="fn">cookSignatureDish</span>();
+}
+
+<span class="kw">class</span> <span class="cls">TorontoChef</span> <span class="kw">extends</span> <span class="cls">RestaurantChef</span> {
+
+    <span class="cls">TorontoChef</span>(String name, <span class="kw">int</span> exp) {
+        <span class="kw">super</span>(name, exp);  <span class="cmt">// 👈 MUST call parent constructor first</span>
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">void</span> <span class="fn">cookSignatureDish</span>() {
+        System.out.<span class="fn">println</span>(kitchenName + <span class="str">": butter chicken poutine! 🍛"</span>);
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">TorontoChef</span> chef = <span class="kw">new</span> <span class="cls">TorontoChef</span>(<span class="str">"Downtown Kitchen"</span>, <span class="num">5</span>);
+        chef.<span class="fn">doMorningPrep</span>();      <span class="cmt">// inherited — free!</span>
+        chef.<span class="fn">cookSignatureDish</span>();  <span class="cmt">// own implementation</span>
+    }
+}
+
+<span class="cmt">// Output:</span>
+<span class="cmt">// Chef initialized for: Downtown Kitchen   ← runs FIRST, before TorontoChef's body</span>
+<span class="cmt">// Downtown Kitchen: sharpening knives...</span>
+<span class="cmt">// Downtown Kitchen: butter chicken poutine! 🍛</span></pre>
+  </div>
+
+  <div class="info-card" style="border-color: var(--abstract-color);">
+    <h3 style="color:var(--abstract-color);">🏗️ The Mental Model</h3>
+    <p>When you build a <code>TorontoChef</code>, Java runs <strong>up the chain first</strong> — it initializes the parent's fields before the child even starts. The abstract class constructor is the <strong>foundation pour</strong> before the building goes up.</p>
+  </div>
+
+  <div class="info-card" style="border-color: var(--interface-color);">
+    <h3 style="color:var(--interface-color);">❌ Interface has no constructor — why?</h3>
+    <p>Because interfaces have <strong>no instance fields to initialize</strong>. A constructor's job is to set up state. No state = no constructor needed. This is the clearest way to remember the difference between the two.</p>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">
+      <span class="code-lang">Java</span>
+      <span class="code-tag tag-abst">Multiple Constructors — Overloading</span>
+    </div>
+    <pre><span class="kw">abstract class</span> <span class="cls">BaseService</span> {
+    String serviceName;
+    String version;
+
+    <span class="cmt">// Constructor 1 — minimal</span>
+    <span class="cls">BaseService</span>(String serviceName) {
+        <span class="kw">this</span>(serviceName, <span class="str">"1.0"</span>);  <span class="cmt">// delegates to Constructor 2</span>
+    }
+
+    <span class="cmt">// Constructor 2 — full</span>
+    <span class="cls">BaseService</span>(String serviceName, String version) {
+        <span class="kw">this</span>.serviceName = serviceName;
+        <span class="kw">this</span>.version = version;
+    }
+
+    <span class="kw">abstract void</span> <span class="fn">start</span>();
+}
+
+<span class="kw">class</span> <span class="cls">PaymentService</span> <span class="kw">extends</span> <span class="cls">BaseService</span> {
+    <span class="cls">PaymentService</span>() {
+        <span class="kw">super</span>(<span class="str">"PaymentService"</span>, <span class="str">"2.1"</span>);  <span class="cmt">// picks which parent constructor</span>
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">void</span> <span class="fn">start</span>() {
+        System.out.<span class="fn">println</span>(serviceName + <span class="str">" v"</span> + version + <span class="str">" starting..."</span>);
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="kw">new</span> <span class="cls">PaymentService</span>().<span class="fn">start</span>(); <span class="cmt">// PaymentService v2.1 starting...</span>
+    }
+}</pre>
+  </div>
+</div>
+
+<!-- TAB 4: SCENARIOS -->
+<div id="tab-scenarios" class="panel">
+  <p class="section-title">Click a scenario — guess which to use</p>
+
+  <div class="scenario-grid" id="scenario-grid">
+
+    <div class="scenario-card" onclick="revealScenario(this,'iface')">
+      <div class="scenario-icon">🔌</div>
+      <div class="scenario-title">Serializable marker</div>
+      <div class="scenario-desc">You want to mark a class as "this object can be saved to a file." No methods needed.</div>
+      <div class="scenario-answer answer-iface">→ Interface — pure capability marker, no state needed.</div>
+    </div>
+
+    <div class="scenario-card" onclick="revealScenario(this,'abst')">
+      <div class="scenario-icon">🗄️</div>
+      <div class="scenario-title">Base repository</div>
+      <div class="scenario-desc">All your repos share a database connection URL and a common findById() implementation.</div>
+      <div class="scenario-answer answer-abst">→ Abstract Class — needs shared fields (dbUrl) and shared method (findById).</div>
+    </div>
+
+    <div class="scenario-card" onclick="revealScenario(this,'iface')">
+      <div class="scenario-icon">⚖️</div>
+      <div class="scenario-title">Comparable sorting</div>
+      <div class="scenario-desc">You want your Employee class to be sortable by salary.</div>
+      <div class="scenario-answer answer-iface">→ Interface — Comparable&lt;T&gt; is a capability contract. Implements perfectly.</div>
+    </div>
+
+    <div class="scenario-card" onclick="revealScenario(this,'abst')">
+      <div class="scenario-icon">💳</div>
+      <div class="scenario-title">Payment processors</div>
+      <div class="scenario-desc">Stripe, PayPal, Razorpay all share merchantId, apiKey, and a logTransaction() method.</div>
+      <div class="scenario-answer answer-abst">→ Abstract Class — shared state (fields) + shared concrete method = abstract class.</div>
+    </div>
+
+    <div class="scenario-card" onclick="revealScenario(this,'iface')">
+      <div class="scenario-icon">🦆</div>
+      <div class="scenario-title">Duck typing — Flyable</div>
+      <div class="scenario-desc">Birds, planes, and superheroes can all fly — but they're completely different things.</div>
+      <div class="scenario-answer answer-iface">→ Interface — unrelated classes sharing a capability. Multiple impl works great.</div>
+    </div>
+
+    <div class="scenario-card" onclick="revealScenario(this,'abst')">
+      <div class="scenario-icon">🎮</div>
+      <div class="scenario-title">Game characters</div>
+      <div class="scenario-desc">Warrior, Mage, Archer all have health, mana, and a shared takeDamage() method. Each has a unique attack().</div>
+      <div class="scenario-answer answer-abst">→ Abstract Class — shared fields (health, mana) + partial implementation pattern.</div>
+    </div>
+
+    <div class="scenario-card" onclick="revealScenario(this,'iface')">
+      <div class="scenario-icon">📦</div>
+      <div class="scenario-title">Spring @Repository</div>
+      <div class="scenario-desc">You want to define a contract that any data-access layer class must honour.</div>
+      <div class="scenario-answer answer-iface">→ Interface — Spring's own JpaRepository is an interface for exactly this reason.</div>
+    </div>
+
+    <div class="scenario-card" onclick="revealScenario(this,'abst')">
+      <div class="scenario-icon">📧</div>
+      <div class="scenario-title">Notification sender</div>
+      <div class="scenario-desc">Email, SMS, Push share an app name, sender ID, and a format() helper. Each has its own send() logic.</div>
+      <div class="scenario-answer answer-abst">→ Abstract Class — shared fields + shared helper method + one abstract method.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TAB 5: DECISION TOOL -->
+<div id="tab-decide" class="panel">
+  <p class="section-title">What should I use?</p>
+
+  <div class="decision-tool">
+    <div class="decision-title">Answer a few questions about your design:</div>
+
+    <div class="question-block">
+      <div class="question-text">1. Do your classes need to share <strong>instance variables</strong> (fields)?</div>
+      <div class="options">
+        <button class="opt-btn" onclick="setAnswer(this, 'q1', 'abst')">Yes, shared state needed</button>
+        <button class="opt-btn" onclick="setAnswer(this, 'q1', 'iface')">No, just behaviour</button>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">2. Do you need a <strong>constructor</strong> to initialize shared setup?</div>
+      <div class="options">
+        <button class="opt-btn" onclick="setAnswer(this, 'q2', 'abst')">Yes, setup needed</button>
+        <button class="opt-btn" onclick="setAnswer(this, 'q2', 'iface')">No setup required</button>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">3. Will <strong>unrelated classes</strong> need to implement this?</div>
+      <div class="options">
+        <button class="opt-btn" onclick="setAnswer(this, 'q3', 'iface')">Yes (e.g. Flyable — birds, planes)</button>
+        <button class="opt-btn" onclick="setAnswer(this, 'q3', 'abst')">No, they're related types</button>
+      </div>
+    </div>
+
+    <div class="question-block">
+      <div class="question-text">4. Does a class need to be <strong>"multiple things"</strong> at once?</div>
+      <div class="options">
+        <button class="opt-btn" onclick="setAnswer(this, 'q4', 'iface')">Yes, multiple inheritance needed</button>
+        <button class="opt-btn" onclick="setAnswer(this, 'q4', 'abst')">No, single hierarchy is fine</button>
+      </div>
+    </div>
+
+    <div class="verdict-box" id="verdict"></div>
+  </div>
+</div>
+
+<script>
+  // TAB SWITCHING
+  function showTab(id) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  // WHY ACCORDION
+  function toggleWhy(btn) {
+    btn.closest('.why-item').classList.toggle('open');
+  }
+
+  // SCENARIO REVEAL
+  function revealScenario(card, type) {
+    card.classList.remove('selected-iface', 'selected-abst');
+    card.classList.add('selected-' + type);
+  }
+
+  // DECISION TOOL
+  const answers = {};
+
+  function setAnswer(btn, question, value) {
+    // Clear siblings
+    btn.parentElement.querySelectorAll('.opt-btn').forEach(b => {
+      b.classList.remove('active-iface', 'active-abst');
+    });
+    btn.classList.add('active-' + value);
+    answers[question] = value;
+    updateVerdict();
+  }
+
+  function updateVerdict() {
+    if (Object.keys(answers).length < 2) return;
+
+    const vals = Object.values(answers);
+    const abstractCount = vals.filter(v => v === 'abst').length;
+    const ifaceCount    = vals.filter(v => v === 'iface').length;
+
+    const box = document.getElementById('verdict');
+    box.classList.add('show');
+    box.classList.remove('verdict-iface', 'verdict-abst');
+
+    if (abstractCount >= ifaceCount && (answers.q1 === 'abst' || answers.q2 === 'abst')) {
+      box.classList.add('verdict-abst');
+      box.innerHTML = `
+        <div class="verdict-label">🟠 Use Abstract Class</div>
+        <p>Your design needs shared state (fields) or a constructor — these are only possible in an abstract class. Define your common fields and shared methods there, and leave the unique behaviour as abstract methods for subclasses to implement.</p>
+      `;
+    } else {
+      box.classList.add('verdict-iface');
+      box.innerHTML = `
+        <div class="verdict-label">🔵 Use Interface</div>
+        <p>Your design is focused on capability — what something <em>can do</em>, not what it <em>is</em>. Interface is the right tool. It allows multiple inheritance, keeps things loosely coupled, and is the preferred default in modern Java design.</p>
+      `;
+    }
+  }
+
+  // SLIDE DECK
+  const totalSlides = 6;
+  let currentSlide = 1;
+
+  function renderSlide() {
+    document.querySelectorAll('.slide').forEach(s => {
+      s.classList.toggle('active', Number(s.dataset.slide) === currentSlide);
+    });
+    document.querySelectorAll('.slide-dot').forEach((d, i) => {
+      d.classList.toggle('active', i + 1 === currentSlide);
+    });
+    document.getElementById('slideCount').textContent = currentSlide + ' / ' + totalSlides;
+    document.getElementById('slideProgressFill').style.width = (currentSlide / totalSlides * 100) + '%';
+    document.getElementById('slidePrevBtn').disabled = currentSlide === 1;
+    document.getElementById('slideNextBtn').disabled = currentSlide === totalSlides;
+    document.getElementById('slideNextBtn').textContent = currentSlide === totalSlides ? 'Done ✓' : 'Next →';
+  }
+
+  function changeSlide(delta) {
+    const next = currentSlide + delta;
+    if (next < 1 || next > totalSlides) return;
+    currentSlide = next;
+    renderSlide();
+  }
+
+  function goToSlide(n) {
+    currentSlide = n;
+    renderSlide();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('tab-story').classList.contains('active')) return;
+    if (e.key === 'ArrowRight') changeSlide(1);
+    if (e.key === 'ArrowLeft') changeSlide(-1);
+  });
+
+  // CONSTRUCTOR CHAIN PLAYBACK (slide 5)
+  function playChain() {
+    const steps = Array.from(document.querySelectorAll('#chainList .chain-step'));
+    const arrows = Array.from(document.querySelectorAll('#chainList .chain-arrow'));
+    steps.forEach(s => s.classList.remove('active', 'done'));
+    arrows.forEach(a => a.classList.remove('active', 'done'));
+
+    steps.forEach((step, i) => {
+      setTimeout(() => {
+        steps.forEach(s => s.classList.remove('active'));
+        if (i > 0) steps[i - 1].classList.add('done');
+
+        const stepNum = step.dataset.step;
+        arrows.forEach(a => {
+          a.classList.remove('active');
+          if (a.dataset.step === stepNum) a.classList.add('active');
+          else if (Number(a.dataset.step) < Number(stepNum)) a.classList.add('done');
+        });
+
+        step.classList.add('active');
+        if (i === steps.length - 1) {
+          setTimeout(() => step.classList.add('done'), 700);
+        }
+      }, i * 750);
+    });
+  }
+</script>
+</body>
+</html>

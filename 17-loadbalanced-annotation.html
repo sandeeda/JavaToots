@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>@LoadBalanced — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#06100D; --surface:#0D1C17; --surface2:#12261F; --border:#1C3A30; --border2:#26503F;
+  --accent:#10B981; --accent2:#34D399; --accent3:#6EE7B7; --glow:rgba(16,185,129,0.18);
+  --text:#E7F6EF; --muted:#7FA391; --muted2:#4F6E5D;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(16,185,129,.13) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(52,211,153,.07) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(16,185,129,.1);
+  border:1px solid rgba(16,185,129,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#D1FAE5 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(6,16,13,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(16,185,129,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(16,185,129,.12),0 0 16px rgba(16,185,129,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(16,185,129,.35); box-shadow:0 0 0 1px rgba(16,185,129,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(16,185,129,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#050B08; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(16,185,129,.1); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#030805; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3D4; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(16,185,129,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(16,185,129,.2); border:1px solid rgba(16,185,129,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(16,185,129,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(16,185,129,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Spring Cloud LoadBalancer — Visual Guide</div>
+  <h1>Master<br><em>@LoadBalanced</em><br>Visually</h1>
+  <p class="hero-sub">7 concepts. From zero to senior-interview-ready. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">7</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">7</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 7</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">What @LoadBalanced Does</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>@LoadBalanced</code> is a qualifier annotation you drop on a <strong>RestTemplate</strong> (or <strong>WebClient.Builder</strong>) <code>@Bean</code>. It tells Spring Cloud LoadBalancer to intercept every outgoing HTTP call made through that client and resolve a <strong>logical service name</strong> — like <code>http://inventory-service/...</code> — into a real <code>host:port</code> picked from the service registry, instead of doing a literal DNS lookup that would fail.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F695;</div><p><strong>Hotel concierge:</strong> you say "get me a taxi" and the concierge picks one from a rotating pool of cars out front — you never need a specific driver's phone number, and if that driver is busy, the concierge just picks the next one.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.cloud.client.loadbalancer.LoadBalanced;
+<span class="kw">import</span> org.springframework.context.annotation.Bean;
+<span class="kw">import</span> org.springframework.context.annotation.Configuration;
+<span class="kw">import</span> org.springframework.web.client.RestTemplate;
+
+<span class="ann">@Configuration</span>
+<span class="kw">public class</span> <span class="cl">ClientConfig</span> {
+
+  <span class="ann">@Bean</span>
+<span class="hl">  <span class="ann">@LoadBalanced</span> <span class="cm">// marks this RestTemplate for service-discovery-aware calls</span></span>
+  <span class="kw">public</span> <span class="cl">RestTemplate</span> <span class="fn">restTemplate</span>() {
+    <span class="kw">return new</span> <span class="cl">RestTemplate</span>();
+  }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">StockService</span> {
+
+  <span class="kw">private final</span> <span class="cl">RestTemplate</span> restTemplate;
+
+  <span class="kw">public</span> <span class="cl">StockService</span>(<span class="cl">RestTemplate</span> restTemplate) {
+    <span class="kw">this</span>.restTemplate = restTemplate;
+  }
+
+  <span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStock</span>(String sku) {
+    <span class="cm">// "inventory-service" isn't a DNS name — it's the app's spring.application.name,</span>
+    <span class="cm">// resolved to a real instance by the LoadBalancerInterceptor before the call goes out</span>
+<span class="hl">    <span class="kw">return</span> restTemplate.<span class="fn">getForObject</span>(</span>
+        <span class="st">"http://inventory-service/api/stock/{sku}"</span>, Integer.<span class="kw">class</span>, sku);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output (log)</div>
+            <div class="output-box"><span class="ok">DEBUG LoadBalancerInterceptor : Resolved 'inventory-service' -> 10.0.4.12:8082</span>
+<span class="ok">DEBUG RestTemplate            : GET http://10.0.4.12:8082/api/stock/SKU-8841</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Without <code>@LoadBalanced</code>, that exact same call throws <code>UnknownHostException: inventory-service</code> — because "inventory-service" isn't a real DNS name, it's just the identity the app registered itself under.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Call two services by name</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Wire up a <code>@LoadBalanced RestTemplate</code> bean and use it to call two different fictitious downstream services — <code>inventory-service</code> and <code>pricing-service</code> — by their logical names.</p>
+              <div class="practice-hints"><span class="hint-chip">@LoadBalanced RestTemplate</span><span class="hint-chip">logical service name as host</span><span class="hint-chip">getForObject()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Wiring It Up</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Full setup: add <code>spring-cloud-starter-loadbalancer</code> plus a discovery client (e.g. <code>spring-cloud-starter-netflix-eureka-client</code>) so there's an actual registry to resolve against, register the app under a <code>spring.application.name</code>, and expose the <code>@LoadBalanced</code> bean. Without a discovery client on the classpath, <code>@LoadBalanced</code> has nothing to balance across.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Maven</span><button class="copy-btn">Copy</button></div>
+            <pre><code>&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-loadbalancer&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-netflix-eureka-client&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@SpringBootApplication</span>
+<span class="kw">public class</span> <span class="cl">InventoryClientApplication</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+    <span class="cl">SpringApplication</span>.<span class="fn">run</span>(InventoryClientApplication.<span class="kw">class</span>, args);
+  }
+
+  <span class="ann">@Bean</span>
+  <span class="ann">@LoadBalanced</span>
+  <span class="kw">public</span> <span class="cl">RestTemplate</span> <span class="fn">restTemplate</span>() {
+    <span class="kw">return new</span> <span class="cl">RestTemplate</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">YAML</span><button class="copy-btn">Copy</button></div>
+            <pre><code>spring:
+  application:
+    name: order-service     <span class="cm"># this is the "logical name" other services call you by</span>
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>@LoadBalanced</code> does nothing on its own — it needs a <code>DiscoveryClient</code> implementation on the classpath (Eureka, Consul, Zookeeper...) so there are actual service instances to balance across. No registry means no instances means every call fails.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Fix the missing discovery client</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a service missing the Eureka client dependency, explain why a <code>@LoadBalanced RestTemplate</code> call fails at runtime with <strong>"No instances available"</strong>, then fix the build file.</p>
+              <div class="practice-hints"><span class="hint-chip">missing discovery client</span><span class="hint-chip">"No instances available"</span><span class="hint-chip">add starter dependency</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">How It Works Under the Hood</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>@LoadBalanced RestTemplate</code> gets a <code>LoadBalancerInterceptor</code> added to its interceptor chain by Spring Cloud's auto-configuration. On every request, the interceptor asks the <code>LoadBalancerClient</code> for a <code>ServiceInstance</code> matching the host portion of the URI, then rewrites the URI with that instance's real host:port before the actual HTTP call goes out.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Roughly what Spring Cloud does for you behind @LoadBalanced — NOT code you write yourself</span>
+<span class="kw">public class</span> <span class="cl">LoadBalancerInterceptor</span> <span class="kw">implements</span> <span class="cl">ClientHttpRequestInterceptor</span> {
+
+  <span class="kw">private final</span> <span class="cl">LoadBalancerClient</span> loadBalancerClient;
+
+  <span class="ann">@Override</span>
+  <span class="kw">public</span> <span class="cl">ClientHttpResponse</span> <span class="fn">intercept</span>(<span class="cl">HttpRequest</span> request, <span class="kw">byte</span>[] body,
+                                       <span class="cl">ClientHttpRequestExecution</span> execution) <span class="kw">throws</span> <span class="cl">IOException</span> {
+    <span class="cl">URI</span> original = request.<span class="fn">getURI</span>();
+    String serviceId = original.<span class="fn">getHost</span>();              <span class="cm">// e.g. "inventory-service"</span>
+
+<span class="hl">    <span class="cl">ServiceInstance</span> instance = loadBalancerClient.<span class="fn">choose</span>(serviceId); <span class="cm">// picks one, load-balanced</span></span>
+    <span class="cl">URI</span> resolved = loadBalancerClient.<span class="fn">reconstructURI</span>(instance, original);
+
+    <span class="cl">HttpRequest</span> wrapped = <span class="kw">new</span> <span class="cl">HttpRequestWrapper</span>(request) {
+      <span class="ann">@Override</span> <span class="kw">public</span> <span class="cl">URI</span> <span class="fn">getURI</span>() { <span class="kw">return</span> resolved; }  <span class="cm">// now points at 10.0.4.12:8082</span>
+    };
+    <span class="kw">return</span> execution.<span class="fn">execute</span>(wrapped, body);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>This is why <code>@LoadBalanced</code> is a marker/qualifier, not a class with load-balancing logic in it — the actual work happens in this auto-configured interceptor, invisible to your code.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Trace the call chain</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Trace, in comments, the exact call sequence from <code>restTemplate.getForObject()</code> down to the <code>ServiceInstance</code> being chosen — name every class involved.</p>
+              <div class="practice-hints"><span class="hint-chip">LoadBalancerInterceptor</span><span class="hint-chip">LoadBalancerClient.choose()</span><span class="hint-chip">reconstructURI()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Load Balancing Strategies</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Spring Cloud LoadBalancer picks instances via a pluggable <code>ReactorLoadBalancer</code>: <code>RoundRobinLoadBalancer</code> is the default, <code>RandomLoadBalancer</code> is built in, and you can register your own (weighted, zone-aware) via a <code>@LoadBalancerClient</code>-scoped configuration class.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Configuration</span>
+<span class="kw">public class</span> <span class="cl">RandomLoadBalancerConfig</span> {
+
+  <span class="ann">@Bean</span>
+  <span class="kw">public</span> <span class="cl">ReactorLoadBalancer</span>&lt;ServiceInstance&gt; <span class="fn">randomLoadBalancer</span>(
+      <span class="cl">Environment</span> environment, <span class="cl">LoadBalancerClientFactory</span> factory) {
+    String name = environment.<span class="fn">getProperty</span>(LoadBalancerClientFactory.PROPERTY_NAME);
+    <span class="kw">return new</span> <span class="cl">RandomLoadBalancer</span>(
+        factory.<span class="fn">getLazyProvider</span>(name, ServiceInstanceListSupplier.<span class="kw">class</span>), name);
+  }
+}
+
+<span class="cm">// Scope the custom strategy to ONE named client — everything else stays round robin</span>
+<span class="ann">@Configuration</span>
+<span class="hl"><span class="ann">@LoadBalancerClient</span>(name = <span class="st">"inventory-service"</span>, configuration = RandomLoadBalancerConfig.<span class="kw">class</span>)</span>
+<span class="kw">public class</span> <span class="cl">LoadBalancerClientConfig</span> {
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Requests to pricing-service (default RoundRobinLoadBalancer)</div>
+            <div class="output-box"><span class="ok">1 -> instance-A</span>
+<span class="ok">2 -> instance-B</span>
+<span class="ok">3 -> instance-C</span>
+<span class="ok">4 -> instance-A</span>
+<span class="ok">5 -> instance-B</span>
+<span class="ok">6 -> instance-C</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Round robin is the sane default for stateless services. Reach for a custom strategy only when you have a specific traffic-shaping need — e.g. weighting a bigger instance, or keeping a client sticky to one zone.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Scope a custom strategy</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Configure <code>inventory-service</code> specifically to use <code>RandomLoadBalancer</code> while every other client keeps the default round robin behavior.</p>
+              <div class="practice-hints"><span class="hint-chip">@LoadBalancerClient(name=...)</span><span class="hint-chip">RandomLoadBalancer bean</span><span class="hint-chip">scoped, not global</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">@LoadBalanced vs Feign Clients</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Declarative Spring Cloud OpenFeign gives you load balancing for free — a <code>@FeignClient(name = "...")</code> interface resolves the logical name and balances across instances automatically, using the exact same LoadBalancer machinery under the hood, with none of the RestTemplate boilerplate.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Imperative — @LoadBalanced RestTemplate</span>
+<span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStockImperative</span>(String sku) {
+  <span class="kw">return</span> restTemplate.<span class="fn">getForObject</span>(
+      <span class="st">"http://inventory-service/api/stock/{sku}"</span>, Integer.<span class="kw">class</span>, sku);
+}
+
+<span class="cm">// Declarative — Feign, load-balanced automatically, no @LoadBalanced needed</span>
+<span class="hl"><span class="ann">@FeignClient</span>(name = <span class="st">"inventory-service"</span>)</span>
+<span class="kw">public interface</span> <span class="cl">InventoryClient</span> {
+
+  <span class="ann">@GetMapping</span>(<span class="st">"/api/stock/{sku}"</span>)
+  <span class="cl">Integer</span> <span class="fn">getStock</span>(<span class="ann">@PathVariable</span>(<span class="st">"sku"</span>) String sku);
+}
+
+<span class="cm">// usage — inject and call like any other bean</span>
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">PricingService</span> {
+
+  <span class="kw">private final</span> <span class="cl">InventoryClient</span> inventoryClient;
+
+  <span class="kw">public</span> <span class="cl">PricingService</span>(<span class="cl">InventoryClient</span> inventoryClient) {
+    <span class="kw">this</span>.inventoryClient = inventoryClient;
+  }
+
+  <span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStock</span>(String sku) {
+    <span class="kw">return</span> inventoryClient.<span class="fn">getStock</span>(sku);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Feign is generally preferred for new code — less boilerplate, type-safe method signatures instead of string URLs. But RestTemplate/WebClient-based code is still common in existing codebases, and Feign uses the same <code>LoadBalancerClient</code> underneath — understanding <code>@LoadBalanced</code> explains both.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Convert to Feign</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Convert the <code>getStockImperative()</code> RestTemplate call above into an equivalent <code>@FeignClient</code> interface method.</p>
+              <div class="practice-hints"><span class="hint-chip">@FeignClient(name=...)</span><span class="hint-chip">@GetMapping</span><span class="hint-chip">@PathVariable</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Common Pitfalls</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Three classics: forgetting <code>@LoadBalanced</code> (a confusing <code>UnknownHostException</code> in prod for what looks like a valid URL), pointing that same RestTemplate at a real external hostname (the interceptor tries to resolve it against the service registry too, and fails), and skipping retry/timeout config so one flaky instance cascades into failures for every caller.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="ann">@Configuration</span>
+<span class="kw">public class</span> <span class="cl">RestTemplateConfig</span> {
+
+  <span class="ann">@Bean</span>
+  <span class="ann">@LoadBalanced</span>
+  <span class="kw">public</span> <span class="cl">RestTemplate</span> <span class="fn">internalRestTemplate</span>() {
+    <span class="kw">return new</span> <span class="cl">RestTemplate</span>(); <span class="cm">// for calls to OTHER services in the registry, by logical name</span>
+  }
+
+<span class="hl">  <span class="ann">@Bean</span></span>
+<span class="hl">  <span class="ann">@Qualifier</span>(<span class="st">"external"</span>)</span>
+  <span class="kw">public</span> <span class="cl">RestTemplate</span> <span class="fn">externalRestTemplate</span>() {
+    <span class="kw">return new</span> <span class="cl">RestTemplate</span>(); <span class="cm">// for real DNS hosts — Stripe, S3, anything outside the registry</span>
+  }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">PaymentService</span> {
+
+  <span class="kw">private final</span> <span class="cl">RestTemplate</span> internalRestTemplate;
+  <span class="kw">private final</span> <span class="cl">RestTemplate</span> externalRestTemplate;
+
+  <span class="kw">public</span> <span class="cl">PaymentService</span>(<span class="cl">RestTemplate</span> internalRestTemplate,
+                         <span class="ann">@Qualifier</span>(<span class="st">"external"</span>) <span class="cl">RestTemplate</span> externalRestTemplate) {
+    <span class="kw">this</span>.internalRestTemplate = internalRestTemplate;
+    <span class="kw">this</span>.externalRestTemplate = externalRestTemplate;
+  }
+
+  <span class="kw">public void</span> <span class="fn">charge</span>(String orderId, <span class="kw">double</span> amount) {
+    <span class="cm">// real external host — MUST use the non-load-balanced client</span>
+    externalRestTemplate.<span class="fn">postForObject</span>(<span class="st">"https://api.stripe.com/v1/charges"</span>, request, String.<span class="kw">class</span>);
+    <span class="cm">// internal microservice — MUST use the load-balanced client</span>
+    internalRestTemplate.<span class="fn">postForObject</span>(<span class="st">"http://order-service/api/orders/{id}/paid"</span>, request, Void.<span class="kw">class</span>, orderId);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>@LoadBalanced</code> is an all-or-nothing switch per RestTemplate instance. Never mix service-discovery calls and raw external calls on the same bean — split them and disambiguate with <code>@Qualifier</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Split the misused bean</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given a service that buggily uses <strong>one</strong> <code>@LoadBalanced RestTemplate</code> for both Stripe API calls and internal <code>order-service</code> calls, refactor it into two properly qualified beans (as above), and explain which call would fail before the fix, and why.</p>
+              <div class="practice-hints"><span class="hint-chip">split into 2 beans</span><span class="hint-chip">@Qualifier("external")</span><span class="hint-chip">Stripe call fails first</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Five questions interviewers love, with the answer a senior candidate is expected to give.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "What problem does @LoadBalanced solve that plain DNS/hostnames can't?"</span>
+<span class="cm">// A: Microservice instances are ephemeral — they scale up/down and get rescheduled with new</span>
+<span class="cm">//    IPs constantly. DNS can't keep up with that churn cheaply. @LoadBalanced resolves a</span>
+<span class="cm">//    stable LOGICAL name against a live service registry on every call, so routing always</span>
+<span class="cm">//    reflects which instances are actually up right now.</span>
+
+<span class="cm">// Q: "What actually intercepts the HTTP call — where does the load balancing logic live?"</span>
+<span class="cm">// A: A LoadBalancerInterceptor added to the RestTemplate's interceptor chain by Spring Cloud's</span>
+<span class="cm">//    auto-configuration. It's the interceptor that calls the LoadBalancerClient and rewrites</span>
+<span class="cm">//    the request URI — @LoadBalanced itself is just a marker annotation with no logic in it.</span>
+
+<span class="cm">// Q: "Client-side load balancing (this) vs server-side load balancing (a gateway) — what's</span>
+<span class="cm">//     the difference?"</span>
+<span class="cm">// A: Client-side: the calling service itself knows about all instances and picks one directly</span>
+<span class="cm">//    (what @LoadBalanced does) — no extra network hop, but every client needs registry access.</span>
+<span class="cm">//    Server-side: callers hit one stable address (a reverse proxy / API gateway / hardware LB)</span>
+<span class="cm">//    which does the instance selection for them — simpler clients, but an extra hop and a</span>
+<span class="cm">//    potential bottleneck/single point of failure at the proxy.</span>
+
+<span class="cm">// Q: "What breaks if you call a public third-party API through a @LoadBalanced RestTemplate?"</span>
+<span class="cm">// A: The interceptor tries to resolve the real hostname (e.g. api.stripe.com) against your</span>
+<span class="cm">//    service registry instead of doing a normal DNS lookup — since no such service is</span>
+<span class="cm">//    registered, you get "No instances available" or a similar load-balancer error, not a</span>
+<span class="cm">//    real HTTP response.</span>
+
+<span class="cm">// Q: "Why might a team choose Feign over @LoadBalanced RestTemplate for new services?"</span>
+<span class="cm">// A: Feign gives you a type-safe interface instead of hand-built URL strings, less boilerplate</span>
+<span class="cm">//    per call, and load balancing "for free" with no annotation to remember — while using the</span>
+<span class="cm">//    exact same LoadBalancerClient machinery underneath.</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Interviewers aren't testing whether you memorized the annotation name — they're testing whether you understand client-side vs server-side load balancing, and whether you've been bitten by pointing a load-balanced client at the wrong kind of host.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Final boss: design the bean layout</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Design the RestTemplate/WebClient bean layout — which beans exist, which qualifiers, which are <code>@LoadBalanced</code> — for a service that talks to 2 internal microservices (<code>order-service</code>, <code>inventory-service</code>) and 1 external payment API (Stripe). Write it as actual code.</p>
+              <div class="practice-hints"><span class="hint-chip">1 @LoadBalanced bean for internal</span><span class="hint-chip">1 @Qualifier("external") bean</span><span class="hint-chip">no annotation confusion</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Add a <code>Retry</code> + <code>timeout</code> config around the external Stripe call only — explain why you would <strong>not</strong> apply the same aggressive retry policy to the internal load-balanced calls.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; @LoadBalanced mastered!</h2>
+    <p>From "what's a logical service name?" to designing multi-client bean layouts like a senior engineer.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> What @LoadBalanced Does</div>
+      <div class="grid-item"><span class="grid-num">02</span> Wiring It Up</div>
+      <div class="grid-item"><span class="grid-num">03</span> Under the Hood</div>
+      <div class="grid-item"><span class="grid-num">04</span> Load Balancing Strategies</div>
+      <div class="grid-item"><span class="grid-num">05</span> vs Feign Clients</div>
+      <div class="grid-item"><span class="grid-num">06</span> Common Pitfalls</div>
+      <div class="grid-item"><span class="grid-num">07</span> Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 7) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 7';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

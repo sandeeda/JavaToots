@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Design Patterns</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0c0e14;
+  --surface: #13161f;
+  --surface2: #1a1e2d;
+  --border: #242840;
+  --text: #dde3f5;
+  --muted: #6b7494;
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', sans-serif;
+
+  /* Pattern family colors */
+  --creational: #7c6af7;
+  --creational-dim: #1e1a3a;
+  --structural: #2eb88a;
+  --structural-dim: #0d2b22;
+  --behavioural: #f5a623;
+  --behavioural-dim: #2e1f00;
+
+  --code-bg: #090b10;
+  --green: #4ade80;
+  --red: #f87171;
+  --blue: #60a5fa;
+  --purple: #a78bfa;
+  --orange: #fb923c;
+  --yellow: #fbbf24;
+  --pink: #f472b6;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ── HERO ── */
+.hero {
+  padding: 44px 24px 36px;
+  text-align: center;
+  position: relative;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 50% 80% at 20% 50%, rgba(124,106,247,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 80% at 80% 50%, rgba(245,166,35,0.07) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 50% 100%, rgba(46,184,138,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.hero h1 {
+  font-size: clamp(24px, 5vw, 40px);
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 10px;
+  line-height: 1.1;
+}
+.hero-sub {
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 500px;
+  margin: 0 auto 24px;
+}
+.family-pills {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+.pill-c { background: var(--creational-dim); color: var(--creational); border: 1px solid var(--creational); }
+.pill-s { background: var(--structural-dim); color: var(--structural); border: 1px solid var(--structural); }
+.pill-b { background: var(--behavioural-dim); color: var(--behavioural); border: 1px solid var(--behavioural); }
+
+/* ── LAYOUT ── */
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 200px);
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+.sidebar-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  padding: 0 16px 10px;
+}
+.nav-group { margin-bottom: 6px; }
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 6px 16px 4px;
+}
+.nav-group-label.c { color: var(--creational); }
+.nav-group-label.s { color: var(--structural); }
+.nav-group-label.b { color: var(--behavioural); }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+  user-select: none;
+}
+.nav-item:hover { color: var(--text); background: var(--surface); }
+.nav-item.active { color: var(--text); background: var(--surface); }
+.nav-item.active.c { border-left-color: var(--creational); }
+.nav-item.active.s { border-left-color: var(--structural); }
+.nav-item.active.b { border-left-color: var(--behavioural); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+/* ── MAIN ── */
+.main {
+  overflow-y: auto;
+}
+
+/* ── PATTERN PANEL ── */
+.pattern-panel { display: none; }
+.pattern-panel.active { display: block; }
+
+.pattern-header {
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.pattern-number {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.pattern-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+.pattern-tagline {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.pattern-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: var(--mono);
+}
+.badge-family-c { background: var(--creational-dim); color: var(--creational); }
+.badge-family-s { background: var(--structural-dim); color: var(--structural); }
+.badge-family-b { background: var(--behavioural-dim); color: var(--behavioural); }
+.badge-spring { background: #0d2a1a; color: #34d399; }
+.badge-interview { background: #1f1500; color: var(--yellow); }
+
+.pattern-body { padding: 24px 32px; }
+
+/* ── TABS ── */
+.ptabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+.ptab {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.ptab:hover { color: var(--text); }
+.ptab.active { color: var(--text); border-bottom-color: currentColor; }
+.ptab.active.c { color: var(--creational); }
+.ptab.active.s { color: var(--structural); }
+.ptab.active.b { color: var(--behavioural); }
+
+.ptab-content { display: none; }
+.ptab-content.active { display: block; }
+
+/* ── ANALOGY ── */
+.analogy-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.analogy-box h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.analogy-box p { font-size: 13px; line-height: 1.7; }
+.analogy-box p + p { margin-top: 8px; }
+.hl { font-weight: 600; color: var(--text); }
+
+.problem-box {
+  background: rgba(248,113,113,0.05);
+  border: 1px solid rgba(248,113,113,0.2);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.problem-box h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-bottom: 10px;
+}
+.problem-box p { font-size: 13px; line-height: 1.7; color: var(--muted); }
+
+/* ── CODE ── */
+.code-block {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.code-lang { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+.code-label { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 3px; }
+.cl-good { background: #0d2a1a; color: #34d399; }
+.cl-bad  { background: #2a0d0d; color: var(--red); }
+.cl-spring { background: #0d2a1a; color: #34d399; }
+.cl-tip { background: #1f1500; color: var(--yellow); }
+
+pre {
+  padding: 16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.75;
+  overflow-x: auto;
+  color: #b8c2e0;
+}
+.kw  { color: #79b8ff; }
+.cls { color: #f9c74f; }
+.str { color: #f97b4f; }
+.cmt { color: #3d4a6a; font-style: italic; }
+.ann { color: #c792ea; }
+.fn  { color: #4ade80; }
+.num { color: #f9c74f; }
+.ret { color: #60a5fa; }
+
+/* ── SPRING SECTION ── */
+.spring-box {
+  background: linear-gradient(135deg, rgba(46,184,138,0.05), rgba(46,184,138,0.02));
+  border: 1px solid rgba(46,184,138,0.2);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.spring-box h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--structural);
+  margin-bottom: 10px;
+}
+.spring-box p { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.spring-box p + p { margin-top: 6px; }
+
+/* ── GOTCHA ── */
+.gotcha-box {
+  background: rgba(251,191,36,0.05);
+  border: 1px solid rgba(251,191,36,0.2);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.gotcha-box strong { color: var(--yellow); }
+
+/* ── ONE LINER ── */
+.oneliner {
+  background: var(--surface2);
+  border-left: 3px solid;
+  border-radius: 0 8px 8px 0;
+  padding: 14px 18px;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.oneliner-c { border-color: var(--creational); }
+.oneliner-s { border-color: var(--structural); }
+.oneliner-b { border-color: var(--behavioural); }
+
+/* ── OVERVIEW GRID ── */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  padding: 24px 32px;
+}
+.overview-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.overview-card:hover { transform: translateY(-2px); }
+.overview-card.fc:hover { border-color: var(--creational); }
+.overview-card.fs:hover { border-color: var(--structural); }
+.overview-card.fb:hover { border-color: var(--behavioural); }
+.oc-icon { font-size: 28px; margin-bottom: 10px; }
+.oc-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.oc-tagline { font-size: 12px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+.oc-spring { font-size: 11px; font-family: var(--mono); }
+.oc-spring.c { color: var(--creational); }
+.oc-spring.s { color: var(--structural); }
+.oc-spring.b { color: var(--behavioural); }
+
+/* ── COMPARISON TABLE ── */
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.compare-table th {
+  background: var(--surface2);
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.compare-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: top;
+  line-height: 1.5;
+}
+.compare-table tr:last-child td { border-bottom: none; }
+.compare-table tr:hover td { background: var(--surface); }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── MOBILE ── */
+@media (max-width: 640px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .pattern-body { padding: 16px; }
+  .pattern-header { padding: 20px 16px 16px; }
+  .overview-grid { padding: 16px; grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">Java · Spring Boot · Gang of Four</div>
+  <h1>Design Patterns</h1>
+  <p class="hero-sub">8 patterns every Java developer must know — with real-world analogies and Spring Boot examples</p>
+  <div class="family-pills">
+    <span class="pill pill-c">🏗️ Creational</span>
+    <span class="pill pill-s">🔗 Structural</span>
+    <span class="pill pill-b">🔄 Behavioural</span>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-label">Patterns</div>
+
+    <div class="nav-group">
+      <div class="nav-group-label c">🏗️ Creational</div>
+      <div class="nav-item c active" onclick="showPattern('overview')">
+        <span class="nav-icon">🗺️</span> Overview
+      </div>
+      <div class="nav-item c" onclick="showPattern('singleton')">
+        <span class="nav-icon">1️⃣</span> Singleton
+      </div>
+      <div class="nav-item c" onclick="showPattern('builder')">
+        <span class="nav-icon">2️⃣</span> Builder
+      </div>
+      <div class="nav-item c" onclick="showPattern('factory')">
+        <span class="nav-icon">7️⃣</span> Factory
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label s">🔗 Structural</div>
+      <div class="nav-item s" onclick="showPattern('proxy')">
+        <span class="nav-icon">4️⃣</span> Proxy
+      </div>
+      <div class="nav-item s" onclick="showPattern('decorator')">
+        <span class="nav-icon">8️⃣</span> Decorator
+      </div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label b">🔄 Behavioural</div>
+      <div class="nav-item b" onclick="showPattern('strategy')">
+        <span class="nav-icon">3️⃣</span> Strategy
+      </div>
+      <div class="nav-item b" onclick="showPattern('template')">
+        <span class="nav-icon">5️⃣</span> Template Method
+      </div>
+      <div class="nav-item b" onclick="showPattern('observer')">
+        <span class="nav-icon">6️⃣</span> Observer
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- OVERVIEW -->
+    <div id="panel-overview" class="pattern-panel active">
+      <div class="pattern-header">
+        <div class="pattern-number">ALL PATTERNS</div>
+        <div class="pattern-title">Quick Reference</div>
+        <div class="pattern-tagline">Click any card to dive in</div>
+      </div>
+      <div style="padding: 20px 32px 0;">
+        <div class="gotcha-box" style="margin-bottom: 0;">
+          <strong>🧠 Mnemonic:</strong> "Sher Biriyani Free Par Dal Se Thoda Over"
+          <div style="margin-top: 8px; font-family: var(--mono); font-size: 12px; letter-spacing: 0.5px;">
+            <span class="hl">S</span>her → Singleton &nbsp;·&nbsp;
+            <span class="hl">B</span>iriyani → Builder &nbsp;·&nbsp;
+            <span class="hl">F</span>ree → Factory &nbsp;·&nbsp;
+            <span class="hl">P</span>ar → Proxy &nbsp;·&nbsp;
+            <span class="hl">D</span>al → Decorator &nbsp;·&nbsp;
+            <span class="hl">Se</span> → Strategy &nbsp;·&nbsp;
+            <span class="hl">T</span>hoda → Template Method &nbsp;·&nbsp;
+            <span class="hl">O</span>ver → Observer
+          </div>
+        </div>
+      </div>
+      <div class="overview-grid">
+        <div class="overview-card fc" onclick="showPattern('singleton')">
+          <div class="oc-icon">🔒</div>
+          <div class="oc-name">Singleton</div>
+          <div class="oc-tagline">One instance, shared everywhere. No duplicates allowed.</div>
+          <div class="oc-spring c">@Service · @Component</div>
+        </div>
+        <div class="overview-card fc" onclick="showPattern('builder')">
+          <div class="oc-icon">🏗️</div>
+          <div class="oc-name">Builder</div>
+          <div class="oc-tagline">Build complex objects step by step. No messy constructors.</div>
+          <div class="oc-spring c">ResponseEntity · @Builder</div>
+        </div>
+        <div class="overview-card fc" onclick="showPattern('factory')">
+          <div class="oc-icon">🏭</div>
+          <div class="oc-name">Factory</div>
+          <div class="oc-tagline">Ask what you want. Factory decides how to create it.</div>
+          <div class="oc-spring c">ApplicationContext · BeanFactory</div>
+        </div>
+        <div class="overview-card fs" onclick="showPattern('proxy')">
+          <div class="oc-icon">🛡️</div>
+          <div class="oc-name">Proxy</div>
+          <div class="oc-tagline">Wrap an object to control access. Add extras before/after.</div>
+          <div class="oc-spring s">@Transactional · @Cacheable · @Async</div>
+        </div>
+        <div class="overview-card fs" onclick="showPattern('decorator')">
+          <div class="oc-icon">🎂</div>
+          <div class="oc-name">Decorator</div>
+          <div class="oc-tagline">Layer behaviour on top without changing the original.</div>
+          <div class="oc-spring s">Security FilterChain · Java IO</div>
+        </div>
+        <div class="overview-card fb" onclick="showPattern('strategy')">
+          <div class="oc-icon">🗺️</div>
+          <div class="oc-name">Strategy</div>
+          <div class="oc-tagline">Swap algorithms at runtime. No if-else chains.</div>
+          <div class="oc-spring b">Comparator · Payment providers</div>
+        </div>
+        <div class="overview-card fb" onclick="showPattern('template')">
+          <div class="oc-icon">📋</div>
+          <div class="oc-name">Template Method</div>
+          <div class="oc-tagline">Fixed skeleton. Subclasses fill in the specific steps.</div>
+          <div class="oc-spring b">JdbcTemplate · RestTemplate</div>
+        </div>
+        <div class="overview-card fb" onclick="showPattern('observer')">
+          <div class="oc-icon">📡</div>
+          <div class="oc-name">Observer</div>
+          <div class="oc-tagline">One changes, many get notified. Event-driven foundation.</div>
+          <div class="oc-spring b">@EventListener · Kafka</div>
+        </div>
+      </div>
+
+      <!-- Comparison table -->
+      <div style="padding: 0 32px 32px;">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 14px;">Pattern Comparison</div>
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Pattern</th>
+              <th>Solves</th>
+              <th>Key Keyword</th>
+              <th>Spring Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>🔒 Singleton</td><td>One shared instance</td><td>private constructor</td><td>Every Spring bean</td></tr>
+            <tr><td>🏗️ Builder</td><td>Complex object construction</td><td>.build()</td><td>ResponseEntity, @Builder</td></tr>
+            <tr><td>🏭 Factory</td><td>Centralise object creation</td><td>create() / getBean()</td><td>ApplicationContext</td></tr>
+            <tr><td>🛡️ Proxy</td><td>Control access / add cross-cutting logic</td><td>implements same interface</td><td>@Transactional, @Cacheable</td></tr>
+            <tr><td>🎂 Decorator</td><td>Stack behaviours at runtime</td><td>wraps same interface</td><td>FilterChain, Java IO</td></tr>
+            <tr><td>🗺️ Strategy</td><td>Swap algorithms at runtime</td><td>implements interface</td><td>Comparator, payment providers</td></tr>
+            <tr><td>📋 Template Method</td><td>Fixed process, variable steps</td><td>abstract + final</td><td>JdbcTemplate</td></tr>
+            <tr><td>📡 Observer</td><td>Notify many when one changes</td><td>publish / subscribe</td><td>@EventListener, Kafka</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SINGLETON -->
+    <div id="panel-singleton" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 01 · CREATIONAL</div>
+        <div class="pattern-title">Singleton</div>
+        <div class="pattern-tagline">One instance. Shared everywhere. No duplicates allowed.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-c">Creational</span>
+          <span class="badge badge-spring">Spring beans</span>
+          <span class="badge badge-interview">Interview favourite</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active c" onclick="showPtab(this,'singleton','analogy')">🏠 Analogy</button>
+          <button class="ptab c" onclick="showPtab(this,'singleton','code')">💻 Code</button>
+          <button class="ptab c" onclick="showPtab(this,'singleton','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="singleton-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🏠 The Analogy</h3>
+            <p>Your house has <span class="hl">one main electricity meter</span>. It doesn't matter how many rooms you have, how many appliances are running — there is only one meter for the whole house. You can't create a second one. Everyone shares the same single meter.</p>
+            <p>That's Singleton — <span class="hl">one instance, shared everywhere.</span></p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>Every class creates its own DB connection — expensive, wasteful, and unnecessary. UserService → new DBConnection() 💸, PaymentService → new DBConnection() 💸, OrderService → new DBConnection() 💸. All doing the same expensive work.</p>
+          </div>
+          <div class="oneliner oneliner-c">"Singleton ensures only one instance of a class exists, with a global access point — useful for shared resources like DB connections, config, or thread pools."</div>
+        </div>
+
+        <div id="singleton-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Singleton</span></div>
+            <pre><span class="kw">public class</span> <span class="cls">DatabaseConnection</span> {
+
+    <span class="cmt">// The one and only instance</span>
+    <span class="kw">private static final</span> <span class="cls">DatabaseConnection</span> instance
+        = <span class="kw">new</span> <span class="cls">DatabaseConnection</span>(); <span class="cmt">// eager — thread safe ✅</span>
+
+    <span class="cmt">// Nobody can call new DatabaseConnection()</span>
+    <span class="kw">private</span> <span class="cls">DatabaseConnection</span>() {
+        System.out.<span class="fn">println</span>(<span class="str">"Connecting to DB... (expensive!)"</span>);
+    }
+
+    <span class="kw">public static</span> <span class="cls">DatabaseConnection</span> <span class="fn">getInstance</span>() {
+        <span class="kw">return</span> instance;
+    }
+
+    <span class="kw">public void</span> <span class="fn">query</span>(String sql) {
+        System.out.<span class="fn">println</span>(<span class="str">"Running: "</span> + sql);
+    }
+}
+
+<span class="cmt">// Usage — run it yourself, this is a complete, compilable file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">DatabaseConnection</span> c1 = <span class="cls">DatabaseConnection</span>.<span class="fn">getInstance</span>();
+        <span class="cls">DatabaseConnection</span> c2 = <span class="cls">DatabaseConnection</span>.<span class="fn">getInstance</span>();
+
+        System.out.<span class="fn">println</span>(c1 == c2); <span class="cmt">// true — exact same object!</span>
+        c1.<span class="fn">query</span>(<span class="str">"SELECT * FROM users"</span>); <span class="cmt">// "Connecting..." only printed ONCE, ever</span>
+    }
+}</pre>
+          </div>
+          <div class="gotcha-box">
+            <strong>⚠️ Gotcha — Thread Safety:</strong> The lazy version (checking <code>if instance == null</code>) has a race condition — two threads can both create an instance simultaneously. Always prefer <strong>eager initialization</strong> (shown above) or use <code>synchronized</code>.
+          </div>
+        </div>
+
+        <div id="singleton-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 You Already Use This Every Day</h3>
+            <p>Every <code>@Service</code>, <code>@Repository</code>, <code>@Component</code> in Spring is a Singleton by default. Spring creates <strong>one instance</strong> and reuses it for every request.</p>
+            <p>This is why instance variables in Spring beans are dangerous — they're shared across all threads simultaneously.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring Singleton</span></div>
+            <pre><span class="ann">@Service</span> <span class="cmt">// Spring creates ONE instance — Singleton!</span>
+<span class="kw">public class</span> <span class="cls">PaymentService</span> {
+
+    <span class="cmt">// ✅ Safe — no state, just methods</span>
+    <span class="kw">public void</span> <span class="fn">processPayment</span>(<span class="cls">PaymentRequest</span> req) { ... }
+
+    <span class="cmt">// ❌ DANGER — shared across ALL threads</span>
+    <span class="kw">private</span> String currentUser; <span class="cmt">// race condition!</span>
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUILDER -->
+    <div id="panel-builder" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 02 · CREATIONAL</div>
+        <div class="pattern-title">Builder</div>
+        <div class="pattern-tagline">Construct complex objects step by step. Only finalize at the end.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-c">Creational</span>
+          <span class="badge badge-spring">ResponseEntity · Lombok</span>
+          <span class="badge badge-interview">Interview favourite</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active c" onclick="showPtab(this,'builder','analogy')">🏠 Analogy</button>
+          <button class="ptab c" onclick="showPtab(this,'builder','code')">💻 Code</button>
+          <button class="ptab c" onclick="showPtab(this,'builder','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="builder-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🥖 The Subway Analogy</h3>
+            <p>You go to Subway to order a sandwich. You don't just say <span class="hl">"give me a sandwich"</span> and get a random one. You build it step by step — bread, protein, veggies, sauce, toasted or not?</p>
+            <p>The guy behind the counter builds it step by step, exactly how you want. You only get the final sandwich when you say <span class="hl">"that's it."</span></p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It — Telescoping Constructor</h3>
+            <p><code>new User("Sandeep", "Das", 32, "Toronto", "email", true, false, null, "en-CA")</code> — What is the 4th argument? What does true, false mean? Unreadable and error-prone.</p>
+          </div>
+          <div class="oneliner oneliner-c">"Builder constructs a complex object step by step using a fluent chain — and only creates the final object when you call build()."</div>
+        </div>
+
+        <div id="builder-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Builder Pattern</span></div>
+            <pre><span class="kw">public class</span> <span class="cls">User</span> {
+    <span class="kw">private</span> String firstName, lastName, email, city;
+    <span class="kw">private boolean</span> isVerified;
+
+    <span class="kw">private</span> <span class="cls">User</span>(<span class="cls">Builder</span> builder) {
+        <span class="kw">this</span>.firstName  = builder.firstName;
+        <span class="kw">this</span>.lastName   = builder.lastName;
+        <span class="kw">this</span>.email      = builder.email;
+        <span class="kw">this</span>.city       = builder.city;
+        <span class="kw">this</span>.isVerified = builder.isVerified;
+    }
+
+    <span class="kw">public static class</span> <span class="cls">Builder</span> {
+        <span class="kw">private</span> String firstName, lastName, email, city;
+        <span class="kw">private boolean</span> isVerified;
+
+        <span class="kw">public</span> <span class="cls">Builder</span> <span class="fn">firstName</span>(String v) { <span class="kw">this</span>.firstName = v; <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="cls">Builder</span> <span class="fn">lastName</span>(String v)  { <span class="kw">this</span>.lastName = v;  <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="cls">Builder</span> <span class="fn">email</span>(String v)     { <span class="kw">this</span>.email = v;     <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="cls">Builder</span> <span class="fn">city</span>(String v)      { <span class="kw">this</span>.city = v;      <span class="kw">return this</span>; }
+        <span class="kw">public</span> <span class="cls">Builder</span> <span class="fn">isVerified</span>(<span class="kw">boolean</span> v){ <span class="kw">this</span>.isVerified = v; <span class="kw">return this</span>; }
+
+        <span class="kw">public</span> <span class="cls">User</span> <span class="fn">build</span>() {
+            <span class="kw">if</span> (firstName == <span class="kw">null</span> || email == <span class="kw">null</span>)
+                <span class="kw">throw new</span> <span class="cls">IllegalStateException</span>(<span class="str">"firstName and email required"</span>);
+            <span class="kw">return new</span> <span class="cls">User</span>(<span class="kw">this</span>);
+        }
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public</span> String <span class="fn">toString</span>() {
+        <span class="kw">return</span> firstName + <span class="str">" "</span> + lastName + <span class="str">" &lt;"</span> + email + <span class="str">"&gt; ("</span> + city + <span class="str">")"</span>;
+    }
+}
+
+<span class="cmt">// Usage — clean, readable, obvious. Run it: this is a complete file.</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">User</span> user = <span class="kw">new</span> <span class="cls">User</span>.<span class="cls">Builder</span>()
+            .<span class="fn">firstName</span>(<span class="str">"Sandeep"</span>)
+            .<span class="fn">lastName</span>(<span class="str">"Das"</span>)
+            .<span class="fn">email</span>(<span class="str">"sandeep@email.com"</span>)
+            .<span class="fn">city</span>(<span class="str">"Toronto"</span>)
+            .<span class="fn">isVerified</span>(<span class="kw">true</span>)
+            .<span class="fn">build</span>(); <span class="cmt">// sandwich is ready 🥪</span>
+
+        System.out.<span class="fn">println</span>(user); <span class="cmt">// Sandeep Das &lt;sandeep@email.com&gt; (Toronto)</span>
+    }
+}</pre>
+          </div>
+        </div>
+
+        <div id="builder-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 You Use This Every Day</h3>
+            <p>Builder is baked into Spring and Lombok. You're already using it without thinking about it.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring + Lombok Builder</span></div>
+            <pre><span class="cmt">// ResponseEntity — classic Spring builder</span>
+<span class="kw">return</span> <span class="cls">ResponseEntity</span>
+    .<span class="fn">ok</span>()
+    .<span class="fn">header</span>(<span class="str">"X-Custom"</span>, <span class="str">"value"</span>)
+    .<span class="fn">body</span>(responseDto);
+
+<span class="cmt">// Lombok @Builder — generates all the boilerplate for you</span>
+<span class="ann">@Builder</span>
+<span class="kw">public class</span> <span class="cls">User</span> {
+    <span class="kw">private</span> String firstName, lastName, email, city;
+}
+
+<span class="cls">User</span> user = <span class="cls">User</span>.<span class="fn">builder</span>()
+    .<span class="fn">firstName</span>(<span class="str">"Sandeep"</span>)
+    .<span class="fn">city</span>(<span class="str">"Toronto"</span>)
+    .<span class="fn">build</span>();</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRATEGY -->
+    <div id="panel-strategy" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 03 · BEHAVIOURAL</div>
+        <div class="pattern-title">Strategy</div>
+        <div class="pattern-tagline">Swap algorithms at runtime. Eliminate if-else chains forever.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-b">Behavioural</span>
+          <span class="badge badge-spring">Payment providers · Comparator</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active b" onclick="showPtab(this,'strategy','analogy')">🏠 Analogy</button>
+          <button class="ptab b" onclick="showPtab(this,'strategy','code')">💻 Code</button>
+          <button class="ptab b" onclick="showPtab(this,'strategy','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="strategy-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🗺️ Google Maps Analogy</h3>
+            <p>You're travelling from Toronto to downtown. Google Maps asks: 🚗 Drive (25 mins), 🚌 Transit (40 mins), 🚴 Cycle (35 mins), 🚶 Walk (1hr 20 mins).</p>
+            <p>You <span class="hl">pick a strategy at runtime</span>. The destination is the same. The goal is the same. Only the algorithm changes. Tomorrow you might pick differently based on weather or mood.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>One giant if-else block that you must edit every time you add a new payment provider. Adding Razorpay? Find every copy of this block across your codebase. Add a case. Hope you didn't miss any.</p>
+          </div>
+          <div class="oneliner oneliner-b">"Strategy defines a family of algorithms behind a common interface, and lets you swap them at runtime — eliminating if-else chains and making it easy to add new behaviours without touching existing code."</div>
+        </div>
+
+        <div id="strategy-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Strategy Pattern</span></div>
+            <pre><span class="cmt">// 1. The contract</span>
+<span class="kw">public interface</span> <span class="cls">PaymentStrategy</span> {
+    <span class="kw">void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount);
+}
+
+<span class="cmt">// 2. Concrete strategies</span>
+<span class="kw">public class</span> <span class="cls">StripeStrategy</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"Stripe: charging $"</span> + amount);
+    }
+}
+<span class="kw">public class</span> <span class="cls">PayPalStrategy</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) {
+        System.out.<span class="fn">println</span>(<span class="str">"PayPal: processing $"</span> + amount);
+    }
+}
+
+<span class="cmt">// 3. Context — uses whichever strategy is injected</span>
+<span class="kw">public class</span> <span class="cls">PaymentService</span> {
+    <span class="kw">private</span> <span class="cls">PaymentStrategy</span> strategy;
+
+    <span class="kw">public void</span> <span class="fn">setStrategy</span>(<span class="cls">PaymentStrategy</span> s) { <span class="kw">this</span>.strategy = s; }
+
+    <span class="kw">public void</span> <span class="fn">checkout</span>(<span class="kw">double</span> amount) {
+        strategy.<span class="fn">pay</span>(amount); <span class="cmt">// doesn't know or care which one</span>
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">PaymentService</span> service = <span class="kw">new</span> <span class="cls">PaymentService</span>();
+
+        <span class="cmt">// Swap at runtime!</span>
+        service.<span class="fn">setStrategy</span>(<span class="kw">new</span> <span class="cls">StripeStrategy</span>());
+        service.<span class="fn">checkout</span>(<span class="num">99.99</span>); <span class="cmt">// Stripe: charging $99.99</span>
+
+        service.<span class="fn">setStrategy</span>(<span class="kw">new</span> <span class="cls">PayPalStrategy</span>());
+        service.<span class="fn">checkout</span>(<span class="num">49.99</span>); <span class="cmt">// PayPal: processing $49.99</span>
+    }
+}</pre>
+          </div>
+        </div>
+
+        <div id="strategy-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Spring DI + Strategy = Zero If-Else</h3>
+            <p>Register each strategy as a bean. Spring automatically injects all implementations into a Map keyed by bean name. Pick by key at runtime — no if-else anywhere.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring Strategy Magic</span></div>
+            <pre><span class="ann">@Service</span>(<span class="str">"stripe"</span>)
+<span class="kw">public class</span> <span class="cls">StripeStrategy</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> { ... }
+
+<span class="ann">@Service</span>(<span class="str">"paypal"</span>)
+<span class="kw">public class</span> <span class="cls">PayPalStrategy</span> <span class="kw">implements</span> <span class="cls">PaymentStrategy</span> { ... }
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">CheckoutService</span> {
+
+    <span class="ann">@Autowired</span>
+    <span class="cls">Map</span>&lt;String, <span class="cls">PaymentStrategy</span>&gt; strategies;
+    <span class="cmt">// Spring injects ALL implementations, keyed by bean name</span>
+
+    <span class="kw">public void</span> <span class="fn">checkout</span>(String provider, <span class="kw">double</span> amount) {
+        strategies.<span class="fn">get</span>(provider).<span class="fn">pay</span>(amount); <span class="cmt">// zero if-else 🎉</span>
+    }
+}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROXY -->
+    <div id="panel-proxy" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 04 · STRUCTURAL</div>
+        <div class="pattern-title">Proxy</div>
+        <div class="pattern-tagline">Wrap an object to control access. The engine behind Spring annotations.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-s">Structural</span>
+          <span class="badge badge-spring">@Transactional · @Cacheable · @Async</span>
+          <span class="badge badge-interview">Must know</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active s" onclick="showPtab(this,'proxy','analogy')">🏠 Analogy</button>
+          <button class="ptab s" onclick="showPtab(this,'proxy','code')">💻 Code</button>
+          <button class="ptab s" onclick="showPtab(this,'proxy','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="proxy-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>📞 Bank IVR Analogy</h3>
+            <p>You call your bank. You don't reach the agent directly. You reach an <span class="hl">IVR system</span> first — "Press 1 for balance", "Enter your PIN", "Verifying identity..." — only after all that does it connect you to the real agent.</p>
+            <p>The IVR is the <span class="hl">Proxy</span>. It sits in front of the real thing and does extra work before letting you through.</p>
+          </div>
+          <div class="analogy-box" style="margin-top:-4px;">
+            <h3>📐 Visually</h3>
+            <p><strong>Without Proxy:</strong> You → Real Object</p>
+            <p><strong>With Proxy:</strong> You → Proxy (does extra stuff) → Real Object</p>
+            <p style="margin-top:8px; color: var(--muted);">The caller <strong>doesn't know</strong> there's a proxy. It just calls normally.</p>
+          </div>
+          <div class="oneliner oneliner-s">"Proxy wraps a real object and controls access to it — adding security, logging, caching, or transactions transparently without touching the real class."</div>
+        </div>
+
+        <div id="proxy-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Proxy Pattern</span></div>
+            <pre><span class="kw">interface</span> <span class="cls">BankService</span> {
+    <span class="kw">void</span> <span class="fn">getBalance</span>();
+}
+
+<span class="cmt">// Real object — the celebrity</span>
+<span class="kw">class</span> <span class="cls">RealBankService</span> <span class="kw">implements</span> <span class="cls">BankService</span> {
+    <span class="kw">public void</span> <span class="fn">getBalance</span>() {
+        System.out.<span class="fn">println</span>(<span class="str">"Balance: $5000"</span>);
+    }
+}
+
+<span class="cmt">// Proxy — the manager. Same interface!</span>
+<span class="kw">class</span> <span class="cls">BankServiceProxy</span> <span class="kw">implements</span> <span class="cls">BankService</span> {
+    <span class="kw">private</span> <span class="cls">RealBankService</span> real = <span class="kw">new</span> <span class="cls">RealBankService</span>();
+
+    <span class="kw">public void</span> <span class="fn">getBalance</span>() {
+        System.out.<span class="fn">println</span>(<span class="str">"🔐 Checking PIN..."</span>);  <span class="cmt">// BEFORE</span>
+        real.<span class="fn">getBalance</span>();                          <span class="cmt">// real call</span>
+        System.out.<span class="fn">println</span>(<span class="str">"📋 Call logged."</span>);      <span class="cmt">// AFTER</span>
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cmt">// Caller has no idea it's a proxy</span>
+        <span class="cls">BankService</span> service = <span class="kw">new</span> <span class="cls">BankServiceProxy</span>();
+        service.<span class="fn">getBalance</span>();
+        <span class="cmt">// 🔐 Checking PIN...</span>
+        <span class="cmt">// Balance: $5000</span>
+        <span class="cmt">// 📋 Call logged.</span>
+    }
+}</pre>
+          </div>
+        </div>
+
+        <div id="proxy-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 How @Transactional, @Cacheable, @Async Work</h3>
+            <p>Spring secretly replaces your bean with a proxy on startup. You never see it — but it's always there intercepting your method calls.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">What Spring does behind the scenes</span></div>
+            <pre><span class="cmt">// What you write</span>
+<span class="ann">@Transactional</span>
+<span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="cls">Order</span> order) {
+    orderRepo.<span class="fn">save</span>(order);       <span class="cmt">// step 1</span>
+    inventoryRepo.<span class="fn">reduce</span>(...);   <span class="cmt">// step 2</span>
+    paymentRepo.<span class="fn">charge</span>(...);     <span class="cmt">// step 3 — if this throws...</span>
+}                                 <span class="cmt">// steps 1 & 2 ROLL BACK ✅</span>
+
+<span class="cmt">// What Spring's proxy does</span>
+<span class="cmt">// open transaction</span>
+<span class="cmt">// → calls your real placeOrder()</span>
+<span class="cmt">// success  → COMMIT</span>
+<span class="cmt">// exception → ROLLBACK</span>
+
+<span class="cmt">// ❌ THE GOTCHA — self-invocation bypasses proxy!</span>
+<span class="kw">public void</span> <span class="fn">doSomething</span>() {
+    <span class="fn">placeOrder</span>(order); <span class="cmt">// 😱 @Transactional WON'T work here</span>
+}                      <span class="cmt">// calls real method, skips proxy</span></pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">@Cacheable — proxy checks the cache first</span></div>
+            <pre><span class="cmt">// What you write</span>
+<span class="ann">@Cacheable</span>(<span class="str">"users"</span>)
+<span class="kw">public</span> <span class="cls">User</span> <span class="fn">getUserById</span>(Long id) {
+    System.out.<span class="fn">println</span>(<span class="str">"Hitting DB for user "</span> + id); <span class="cmt">// only runs on a MISS</span>
+    <span class="kw">return</span> userRepo.<span class="fn">findById</span>(id);
+}
+
+<span class="cmt">// What Spring's proxy does before calling your real method</span>
+<span class="cmt">// call 1: getUserById(1) → cache MISS → runs real method → stores result under key "1"</span>
+<span class="cmt">// call 2: getUserById(1) → cache HIT  → returns stored value, "Hitting DB..." never prints</span>
+
+<span class="cmt">// Usage</span>
+userService.<span class="fn">getUserById</span>(1L); <span class="cmt">// prints "Hitting DB for user 1"</span>
+userService.<span class="fn">getUserById</span>(1L); <span class="cmt">// prints nothing — served from cache</span></pre>
+          </div>
+
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">@Async — proxy hands the call to another thread</span></div>
+            <pre><span class="cmt">// What you write</span>
+<span class="ann">@Async</span>
+<span class="kw">public</span> CompletableFuture&lt;String&gt; <span class="fn">sendEmail</span>(String to) {
+    System.out.<span class="fn">println</span>(<span class="str">"Sending on thread: "</span> + Thread.<span class="fn">currentThread</span>().<span class="fn">getName</span>());
+    <span class="kw">return</span> CompletableFuture.<span class="fn">completedFuture</span>(<span class="str">"sent"</span>);
+}
+
+<span class="cmt">// What Spring's proxy does</span>
+<span class="cmt">// intercepts the call → submits it to a TaskExecutor thread pool</span>
+<span class="cmt">// → returns control to the caller immediately, doesn't wait</span>
+
+<span class="cmt">// Usage</span>
+<span class="kw">public void</span> <span class="fn">onSignup</span>(<span class="cls">User</span> user) {
+    emailService.<span class="fn">sendEmail</span>(user.<span class="fn">getEmail</span>()); <span class="cmt">// returns instantly, runs in background</span>
+    System.out.<span class="fn">println</span>(<span class="str">"Signup flow continues without waiting"</span>);
+}</pre>
+          </div>
+
+          <div class="gotcha-box">
+            <strong>⚠️ Applies to all three:</strong> Each needs its own switch turned on at config level — <code>@EnableTransactionManagement</code>, <code>@EnableCaching</code>, <code>@EnableAsync</code> (Spring Boot autoconfigures these once it sees the annotation in use, but plain Spring doesn't). And the self-invocation gotcha above isn't unique to <code>@Transactional</code> — calling a <code>@Cacheable</code> or <code>@Async</code> method from another method <em>in the same class</em> calls the real object directly, skipping the proxy entirely, so the caching/async behaviour silently does nothing.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEMPLATE METHOD -->
+    <div id="panel-template" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 05 · BEHAVIOURAL</div>
+        <div class="pattern-title">Template Method</div>
+        <div class="pattern-tagline">Fixed skeleton. Subclasses fill in specific steps.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-b">Behavioural</span>
+          <span class="badge badge-spring">JdbcTemplate · RestTemplate</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active b" onclick="showPtab(this,'template','analogy')">🏠 Analogy</button>
+          <button class="ptab b" onclick="showPtab(this,'template','code')">💻 Code</button>
+          <button class="ptab b" onclick="showPtab(this,'template','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="template-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>⏰ Morning Routine Analogy</h3>
+            <p>Every morning: 1. Wake up ⏰  2. Brush teeth 🪥  3. <span class="hl">Get ready ← this changes</span>  4. Breakfast 🍳  5. Leave 🚪</p>
+            <p>Steps 1, 2, 4, 5 are always the same. Only step 3 changes — suit on workdays, casual on weekends. Your routine is the <span class="hl">template</span>. "Get ready" is left blank for you to fill in.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>PDF report, Excel report, Email report all repeat the same "fetch data" and "save report" steps. Copy-paste across 3 classes. If fetching logic changes — update it in 3 places and hope you don't miss one.</p>
+          </div>
+          <div class="oneliner oneliner-b">"Template Method defines the skeleton of an algorithm in a base class and lets subclasses fill in specific steps — without changing the overall structure."</div>
+        </div>
+
+        <div id="template-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Template Method</span></div>
+            <pre><span class="kw">public abstract class</span> <span class="cls">ReportGenerator</span> {
+
+    <span class="cmt">// THE SKELETON — final so nobody breaks the order</span>
+    <span class="kw">public final void</span> <span class="fn">generateReport</span>() {
+        <span class="fn">fetchData</span>();    <span class="cmt">// same for everyone</span>
+        <span class="fn">formatData</span>();   <span class="cmt">// ← subclass fills in</span>
+        <span class="fn">renderOutput</span>(); <span class="cmt">// ← subclass fills in</span>
+        <span class="fn">saveReport</span>();   <span class="cmt">// same for everyone</span>
+    }
+
+    <span class="kw">private void</span> <span class="fn">fetchData</span>()  { System.out.<span class="fn">println</span>(<span class="str">"📦 Fetching..."</span>); }
+    <span class="kw">private void</span> <span class="fn">saveReport</span>() { System.out.<span class="fn">println</span>(<span class="str">"💾 Saving..."</span>); }
+
+    <span class="kw">protected abstract void</span> <span class="fn">formatData</span>();
+    <span class="kw">protected abstract void</span> <span class="fn">renderOutput</span>();
+}
+
+<span class="kw">public class</span> <span class="cls">PdfReportGenerator</span> <span class="kw">extends</span> <span class="cls">ReportGenerator</span> {
+    <span class="kw">protected void</span> <span class="fn">formatData</span>()  { System.out.<span class="fn">println</span>(<span class="str">"📄 PDF format"</span>); }
+    <span class="kw">protected void</span> <span class="fn">renderOutput</span>(){ System.out.<span class="fn">println</span>(<span class="str">"🖨️ PDF render"</span>); }
+}
+
+<span class="kw">public class</span> <span class="cls">ExcelReportGenerator</span> <span class="kw">extends</span> <span class="cls">ReportGenerator</span> {
+    <span class="kw">protected void</span> <span class="fn">formatData</span>()  { System.out.<span class="fn">println</span>(<span class="str">"📊 Excel format"</span>); }
+    <span class="kw">protected void</span> <span class="fn">renderOutput</span>(){ System.out.<span class="fn">println</span>(<span class="str">"📈 Excel render"</span>); }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cmt">// Same skeleton — different filling</span>
+        <span class="kw">new</span> <span class="cls">PdfReportGenerator</span>().<span class="fn">generateReport</span>();
+        System.out.<span class="fn">println</span>();
+        <span class="kw">new</span> <span class="cls">ExcelReportGenerator</span>().<span class="fn">generateReport</span>();
+    }
+}</pre>
+          </div>
+        </div>
+
+        <div id="template-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 It's Literally in the Name</h3>
+            <p>JdbcTemplate, RestTemplate, KafkaTemplate — Spring writes the skeleton (open connection, handle errors, close connection). You fill in your specific step (the SQL or URL).</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring Templates</span></div>
+            <pre><span class="cmt">// JdbcTemplate — Spring handles connection/cleanup</span>
+<span class="cmt">// You fill in: the SQL and how to map a row</span>
+jdbcTemplate.<span class="fn">query</span>(<span class="str">"SELECT * FROM orders"</span>, (rs, row) -&gt; {
+    <span class="kw">return new</span> <span class="cls">Order</span>(rs.<span class="fn">getString</span>(<span class="str">"id"</span>)); <span class="cmt">// 👈 your step</span>
+});
+
+<span class="cmt">// RestTemplate — Spring handles HTTP lifecycle</span>
+<span class="cmt">// You fill in: the URL and response type</span>
+<span class="cls">Order</span> order = restTemplate.<span class="fn">getForObject</span>(
+    <span class="str">"https://api.example.com/orders/1"</span>,
+    <span class="cls">Order</span>.<span class="kw">class</span>  <span class="cmt">// 👈 your step</span>
+);</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OBSERVER -->
+    <div id="panel-observer" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 06 · BEHAVIOURAL</div>
+        <div class="pattern-title">Observer</div>
+        <div class="pattern-tagline">One changes. Many get notified. The foundation of event-driven systems.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-b">Behavioural</span>
+          <span class="badge badge-spring">@EventListener · Kafka</span>
+          <span class="badge badge-interview">Must know</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active b" onclick="showPtab(this,'observer','analogy')">🏠 Analogy</button>
+          <button class="ptab b" onclick="showPtab(this,'observer','code')">💻 Code</button>
+          <button class="ptab b" onclick="showPtab(this,'observer','spring')">🌱 Spring + Kafka</button>
+        </div>
+
+        <div id="observer-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>▶️ YouTube Analogy</h3>
+            <p>You subscribe to a YouTube channel. You don't check every 5 minutes — <span class="hl">you subscribe once</span>. When the creator uploads → YouTube notifies all subscribers automatically.</p>
+            <p>The creator doesn't know who you are. They just upload. YouTube handles telling everyone. That's Observer.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It — Polling</h3>
+            <p>Checking in a while loop every second: "hasNewOrder? hasNewOrder? hasNewOrder?" — wasteful, tightly coupled. Every new service that cares about orders means editing that loop.</p>
+          </div>
+          <div class="oneliner oneliner-b">"Observer defines a one-to-many relationship — when one object changes, all dependents are notified automatically. Foundation of event-driven architecture and Kafka."</div>
+        </div>
+
+        <div id="observer-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Observer Pattern</span></div>
+            <pre><span class="kw">import</span> java.util.ArrayList;
+<span class="kw">import</span> java.util.List;
+
+<span class="cmt">// Minimal Order — just enough state for the demo</span>
+<span class="kw">class</span> <span class="cls">Order</span> {
+    <span class="kw">private final</span> String id;
+    <span class="kw">public</span> <span class="cls">Order</span>(String id) { <span class="kw">this</span>.id = id; }
+    <span class="kw">public</span> String <span class="fn">getId</span>() { <span class="kw">return</span> id; }
+}
+
+<span class="cmt">// Subscriber contract</span>
+<span class="kw">public interface</span> <span class="cls">OrderObserver</span> {
+    <span class="kw">void</span> <span class="fn">onOrderPlaced</span>(<span class="cls">Order</span> order);
+}
+
+<span class="cmt">// The Subject (YouTube channel)</span>
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+    <span class="kw">private</span> List&lt;<span class="cls">OrderObserver</span>&gt; observers = <span class="kw">new</span> <span class="cls">ArrayList</span>&lt;&gt;();
+
+    <span class="kw">public void</span> <span class="fn">addObserver</span>(<span class="cls">OrderObserver</span> o) { observers.<span class="fn">add</span>(o); }
+
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="cls">Order</span> order) {
+        System.out.<span class="fn">println</span>(<span class="str">"💾 Order saved: "</span> + order.<span class="fn">getId</span>()); <span class="cmt">// stand-in for orderRepo.save(order)</span>
+        <span class="kw">for</span> (<span class="cls">OrderObserver</span> o : observers)
+            o.<span class="fn">onOrderPlaced</span>(order); <span class="cmt">// notify ALL</span>
+    }
+}
+
+<span class="cmt">// Subscribers — each does its own thing</span>
+<span class="kw">class</span> <span class="cls">EmailObserver</span> <span class="kw">implements</span> <span class="cls">OrderObserver</span> {
+    <span class="kw">public void</span> <span class="fn">onOrderPlaced</span>(<span class="cls">Order</span> o) {
+        System.out.<span class="fn">println</span>(<span class="str">"📧 Email sent for: "</span> + o.<span class="fn">getId</span>());
+    }
+}
+<span class="kw">class</span> <span class="cls">InventoryObserver</span> <span class="kw">implements</span> <span class="cls">OrderObserver</span> {
+    <span class="kw">public void</span> <span class="fn">onOrderPlaced</span>(<span class="cls">Order</span> o) {
+        System.out.<span class="fn">println</span>(<span class="str">"📦 Stock reduced for: "</span> + o.<span class="fn">getId</span>());
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cls">OrderService</span> orderService = <span class="kw">new</span> <span class="cls">OrderService</span>();
+
+        <span class="cmt">// Add new observer = zero changes to OrderService</span>
+        orderService.<span class="fn">addObserver</span>(<span class="kw">new</span> <span class="cls">EmailObserver</span>());
+        orderService.<span class="fn">addObserver</span>(<span class="kw">new</span> <span class="cls">InventoryObserver</span>());
+
+        orderService.<span class="fn">placeOrder</span>(<span class="kw">new</span> <span class="cls">Order</span>(<span class="str">"ORD-1001"</span>));
+        <span class="cmt">// 💾 Order saved: ORD-1001
+        // 📧 Email sent for: ORD-1001
+        // 📦 Stock reduced for: ORD-1001</span>
+    }
+}</pre>
+          </div>
+        </div>
+
+        <div id="observer-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Spring Events + Kafka = Observer at Scale</h3>
+            <p>Spring's @EventListener is Observer within one app. Kafka is Observer across distributed microservices. Same concept — different scale.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring @EventListener</span></div>
+            <pre><span class="cmt">// Publisher (the subject)</span>
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+    <span class="ann">@Autowired</span> <span class="cls">ApplicationEventPublisher</span> publisher;
+
+    <span class="ann">@Transactional</span>
+    <span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="cls">Order</span> order) {
+        orderRepo.<span class="fn">save</span>(order);
+        publisher.<span class="fn">publishEvent</span>(<span class="kw">new</span> <span class="cls">OrderPlacedEvent</span>(<span class="kw">this</span>, order));
+    }
+}
+
+<span class="cmt">// Listeners — completely decoupled</span>
+<span class="ann">@Component</span>
+<span class="kw">public class</span> <span class="cls">EmailListener</span> {
+    <span class="ann">@EventListener</span>
+    <span class="ann">@Async</span> <span class="cmt">// run in background — one failure won't block others</span>
+    <span class="kw">public void</span> <span class="fn">onOrder</span>(<span class="cls">OrderPlacedEvent</span> e) { <span class="cmt">/* send email */</span> }
+}
+
+<span class="cmt">// Kafka — Observer across microservices</span>
+<span class="cmt">// OrderService (Producer) → Kafka Topic → EmailService (Consumer)</span>
+<span class="cmt">//                                       → InventoryService (Consumer)</span>
+<span class="cmt">// Your @KafkaListener IS the Observer pattern 🔥</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FACTORY -->
+    <div id="panel-factory" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 07 · CREATIONAL</div>
+        <div class="pattern-title">Factory</div>
+        <div class="pattern-tagline">Ask what you want. Factory decides how to create it.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-c">Creational</span>
+          <span class="badge badge-spring">ApplicationContext · BeanFactory</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active c" onclick="showPtab(this,'factory','analogy')">🏠 Analogy</button>
+          <button class="ptab c" onclick="showPtab(this,'factory','code')">💻 Code</button>
+          <button class="ptab c" onclick="showPtab(this,'factory','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="factory-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>🚗 Car Dealership Analogy</h3>
+            <p>You walk into a dealership. You don't go to the back and <span class="hl">build the car yourself</span> — welding, wiring, painting. You just say <em>"I want an SUV."</em></p>
+            <p>The dealership figures out which car to build and hands it to you. You don't care how it was made. You just drive it away.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>The same if-else block deciding which processor to create gets copy-pasted everywhere in your codebase. Add Razorpay — hunt down every copy. Update all of them. Hope you didn't miss one.</p>
+          </div>
+          <div class="oneliner oneliner-c">"Factory centralises object creation — the caller says what it wants, the factory decides how to create and return it. Removes tight coupling between caller and concrete classes."</div>
+        </div>
+
+        <div id="factory-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Simple Factory</span></div>
+            <pre><span class="cmt">// The contract + concrete implementations the factory hands back</span>
+<span class="kw">interface</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount);
+}
+<span class="kw">class</span> <span class="cls">StripeProcessor</span> <span class="kw">implements</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) { System.out.<span class="fn">println</span>(<span class="str">"Stripe: charging $"</span> + amount); }
+}
+<span class="kw">class</span> <span class="cls">PayPalProcessor</span> <span class="kw">implements</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) { System.out.<span class="fn">println</span>(<span class="str">"PayPal: charging $"</span> + amount); }
+}
+<span class="kw">class</span> <span class="cls">RazorpayProcessor</span> <span class="kw">implements</span> <span class="cls">PaymentProcessor</span> {
+    <span class="kw">public void</span> <span class="fn">pay</span>(<span class="kw">double</span> amount) { System.out.<span class="fn">println</span>(<span class="str">"Razorpay: charging $"</span> + amount); }
+}
+
+<span class="kw">public class</span> <span class="cls">PaymentProcessorFactory</span> {
+
+    <span class="kw">public static</span> <span class="cls">PaymentProcessor</span> <span class="fn">create</span>(String type) {
+        <span class="kw">switch</span> (type) {
+            <span class="kw">case</span> <span class="str">"STRIPE"</span>:   <span class="kw">return new</span> <span class="cls">StripeProcessor</span>();
+            <span class="kw">case</span> <span class="str">"PAYPAL"</span>:   <span class="kw">return new</span> <span class="cls">PayPalProcessor</span>();
+            <span class="kw">case</span> <span class="str">"RAZORPAY"</span>: <span class="kw">return new</span> <span class="cls">RazorpayProcessor</span>();
+            <span class="kw">default</span>: <span class="kw">throw new</span> <span class="cls">IllegalArgumentException</span>(<span class="str">"Unknown: "</span> + type);
+        }
+    }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cmt">// Caller just asks — factory decides</span>
+        <span class="cls">PaymentProcessor</span> p1 = <span class="cls">PaymentProcessorFactory</span>.<span class="fn">create</span>(<span class="str">"STRIPE"</span>);
+        p1.<span class="fn">pay</span>(<span class="num">99.99</span>);
+
+        <span class="cmt">// Switch provider — zero other code changes, just a different variable</span>
+        <span class="cls">PaymentProcessor</span> p2 = <span class="cls">PaymentProcessorFactory</span>.<span class="fn">create</span>(<span class="str">"PAYPAL"</span>);
+        p2.<span class="fn">pay</span>(<span class="num">49.99</span>);
+    }
+}</pre>
+          </div>
+          <div class="gotcha-box">
+            <strong>⚠️ Factory vs Builder:</strong> Factory = <em>which type of object?</em> Builder = <em>how do I assemble this one object?</em> Factory returns different types. Builder configures one type differently.
+          </div>
+        </div>
+
+        <div id="factory-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Spring's Entire Core IS a Factory</h3>
+            <p>You never call <code>new PaymentService()</code>. Spring's ApplicationContext is the factory — you ask for a bean, it creates and returns it.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Spring as Factory</span></div>
+            <pre><span class="cmt">// ApplicationContext IS a factory</span>
+<span class="cls">ApplicationContext</span> ctx = <span class="kw">new</span> <span class="cls">AnnotationConfigApplicationContext</span>(...);
+
+<span class="cmt">// You ask for a bean — Spring creates and returns it</span>
+<span class="cls">PaymentService</span> service = ctx.<span class="fn">getBean</span>(<span class="cls">PaymentService</span>.<span class="kw">class</span>);
+
+<span class="cmt">// Factory + Strategy combined — the ultimate pattern 🔥</span>
+<span class="ann">@Autowired</span>
+<span class="cls">Map</span>&lt;String, <span class="cls">PaymentStrategy</span>&gt; strategies;
+<span class="cmt">// Spring injects all implementations, keyed by bean name</span>
+<span class="cmt">// strategies.get("stripe") → StripeProcessor</span>
+<span class="cmt">// strategies.get("paypal") → PayPalProcessor</span>
+<span class="cmt">// Zero if-else. Just ask by name.</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DECORATOR -->
+    <div id="panel-decorator" class="pattern-panel">
+      <div class="pattern-header">
+        <div class="pattern-number">PATTERN 08 · STRUCTURAL</div>
+        <div class="pattern-title">Decorator</div>
+        <div class="pattern-tagline">Layer behaviour on top without changing the original object.</div>
+        <div class="pattern-badges">
+          <span class="badge badge-family-s">Structural</span>
+          <span class="badge badge-spring">Security FilterChain · Java IO</span>
+        </div>
+      </div>
+      <div class="pattern-body">
+        <div class="ptabs">
+          <button class="ptab active s" onclick="showPtab(this,'decorator','analogy')">🏠 Analogy</button>
+          <button class="ptab s" onclick="showPtab(this,'decorator','code')">💻 Code</button>
+          <button class="ptab s" onclick="showPtab(this,'decorator','spring')">🌱 Spring</button>
+        </div>
+
+        <div id="decorator-analogy" class="ptab-content active">
+          <div class="analogy-box">
+            <h3>☕ Starbucks Analogy</h3>
+            <p>You order a plain coffee ☕. Then — <em>"add milk"</em> → latte. <em>"Add caramel"</em> → caramel latte. <em>"Add whipped cream"</em> → caramel latte with whip.</p>
+            <p>Each addition <span class="hl">wraps the previous drink</span>. You never threw away the original coffee — you kept layering on top. Price adds up with each layer.</p>
+          </div>
+          <div class="problem-box">
+            <h3>⚠️ The Problem Without It</h3>
+            <p>CoffeeWithMilk, CoffeeWithCaramel, CoffeeWithMilkAndCaramel, CoffeeWithMilkAndCaramelAndWhip... 10 add-ons = hundreds of class combinations. Combinatorial explosion. 💥</p>
+          </div>
+          <div class="oneliner oneliner-s">"Decorator wraps an object to add new behaviour layer by layer at runtime — without changing the original class or creating an explosion of subclass combinations."</div>
+        </div>
+
+        <div id="decorator-code" class="ptab-content">
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-good">✅ Decorator Pattern</span></div>
+            <pre><span class="kw">interface</span> <span class="cls">Coffee</span> {
+    String <span class="fn">getDescription</span>();
+    <span class="kw">double</span> <span class="fn">getCost</span>();
+}
+
+<span class="kw">class</span> <span class="cls">PlainCoffee</span> <span class="kw">implements</span> <span class="cls">Coffee</span> {
+    <span class="kw">public</span> String <span class="fn">getDescription</span>() { <span class="kw">return</span> <span class="str">"Plain coffee"</span>; }
+    <span class="kw">public double</span> <span class="fn">getCost</span>() { <span class="kw">return</span> <span class="num">2.00</span>; }
+}
+
+<span class="cmt">// Base decorator — wraps any Coffee</span>
+<span class="kw">abstract class</span> <span class="cls">CoffeeDecorator</span> <span class="kw">implements</span> <span class="cls">Coffee</span> {
+    <span class="kw">protected</span> <span class="cls">Coffee</span> coffee;
+    <span class="cls">CoffeeDecorator</span>(<span class="cls">Coffee</span> c) { <span class="kw">this</span>.coffee = c; }
+    <span class="kw">public</span> String <span class="fn">getDescription</span>() { <span class="kw">return</span> coffee.<span class="fn">getDescription</span>(); }
+    <span class="kw">public double</span> <span class="fn">getCost</span>() { <span class="kw">return</span> coffee.<span class="fn">getCost</span>(); }
+}
+
+<span class="kw">class</span> <span class="cls">MilkDecorator</span> <span class="kw">extends</span> <span class="cls">CoffeeDecorator</span> {
+    <span class="cls">MilkDecorator</span>(<span class="cls">Coffee</span> c) { <span class="kw">super</span>(c); }
+    <span class="kw">public</span> String <span class="fn">getDescription</span>() { <span class="kw">return</span> coffee.<span class="fn">getDescription</span>() + <span class="str">", Milk"</span>; }
+    <span class="kw">public double</span> <span class="fn">getCost</span>() { <span class="kw">return</span> coffee.<span class="fn">getCost</span>() + <span class="num">0.50</span>; }
+}
+
+<span class="kw">class</span> <span class="cls">CaramelDecorator</span> <span class="kw">extends</span> <span class="cls">CoffeeDecorator</span> {
+    <span class="cls">CaramelDecorator</span>(<span class="cls">Coffee</span> c) { <span class="kw">super</span>(c); }
+    <span class="kw">public</span> String <span class="fn">getDescription</span>() { <span class="kw">return</span> coffee.<span class="fn">getDescription</span>() + <span class="str">", Caramel"</span>; }
+    <span class="kw">public double</span> <span class="fn">getCost</span>() { <span class="kw">return</span> coffee.<span class="fn">getCost</span>() + <span class="num">0.75</span>; }
+}
+
+<span class="cmt">// Usage — run it: this is a complete file</span>
+<span class="kw">public class</span> <span class="cls">Main</span> {
+    <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+        <span class="cmt">// Stack layers at runtime</span>
+        <span class="cls">Coffee</span> order = <span class="kw">new</span> <span class="cls">CaramelDecorator</span>(
+                          <span class="kw">new</span> <span class="cls">MilkDecorator</span>(
+                            <span class="kw">new</span> <span class="cls">PlainCoffee</span>()));
+
+        System.out.<span class="fn">println</span>(order.<span class="fn">getDescription</span>()); <span class="cmt">// Plain coffee, Milk, Caramel</span>
+        System.out.<span class="fn">println</span>(order.<span class="fn">getCost</span>());        <span class="cmt">// 3.25</span>
+    }
+}</pre>
+          </div>
+        </div>
+
+        <div id="decorator-spring" class="ptab-content">
+          <div class="spring-box">
+            <h3>🌱 Spring Security Filter Chain</h3>
+            <p>Each filter wraps the next one. Each adds its own behaviour. Your controller stays completely clean — it never knows any of this happened.</p>
+          </div>
+          <div class="code-block">
+            <div class="code-header"><span class="code-lang">Java</span><span class="code-label cl-spring">Decorator in the wild</span></div>
+            <pre><span class="cmt">// Spring Security — each filter decorates the next</span>
+<span class="cmt">// Request comes in</span>
+<span class="cmt">//   → CorsFilter        (adds CORS headers)</span>
+<span class="cmt">//   → LoggingFilter     (logs the request)</span>
+<span class="cmt">//   → AuthTokenFilter   (validates JWT)</span>
+<span class="cmt">//   → RateLimitFilter   (checks rate limit)</span>
+<span class="cmt">//   → Your Controller   (the real object — stays clean)</span>
+
+<span class="cmt">// Java IO — the classic Decorator example</span>
+<span class="cls">BufferedReader</span> reader = <span class="kw">new</span> <span class="cls">BufferedReader</span>(     <span class="cmt">// adds buffering</span>
+                          <span class="kw">new</span> <span class="cls">InputStreamReader</span>(   <span class="cmt">// adds charset</span>
+                            <span class="kw">new</span> <span class="cls">FileInputStream</span>(<span class="str">"f.txt"</span>) <span class="cmt">// base</span>
+                          )
+                        );
+<span class="cmt">// FileInputStream = plain coffee ☕</span>
+<span class="cmt">// Each wrapper = an add-on layer</span></pre>
+          </div>
+          <div class="gotcha-box">
+            <strong>⚠️ Decorator vs Proxy:</strong> Both wrap an object. Decorator <strong>adds features</strong> (stacked by caller). Proxy <strong>controls access</strong> (created by framework). Decorator = coffee add-ons. Proxy = bank IVR.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  function showPattern(id) {
+    document.querySelectorAll('.pattern-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('panel-' + id).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  function showPtab(btn, pattern, tabId) {
+    const body = btn.closest('.pattern-body');
+    body.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+    body.querySelectorAll('.ptab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(pattern + '-' + tabId).classList.add('active');
+  }
+</script>
+</body>
+</html>

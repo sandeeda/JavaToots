@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Streaming HTTP Responses — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#070b12; --surface:#0e1520; --surface2:#131b28; --border:#1c2634; --border2:#283449;
+  --accent:#38bdf8; --accent2:#7ee3ff; --accent3:#b7f0ff; --glow:rgba(56,189,248,.16);
+  --text:#e8edf5; --muted:#8793a8; --muted2:#4f596c;
+  --red:#f4685f; --green:#4ade80; --yellow:#fbbf24; --purple:#c792ea;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:90px 24px 70px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(56,189,248,.14) 0%, transparent 70%),
+              radial-gradient(ellipse 35% 30% at 15% 25%, rgba(244,104,95,.07) 0%, transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(56,189,248,.08);
+  border:1px solid rgba(56,189,248,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:30px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(34px,5.5vw,60px); font-weight:700; line-height:1.1; letter-spacing:-.03em; margin-bottom:18px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 60%,#dff8ff 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:16.5px; max-width:600px; margin:0 auto 40px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; flex-wrap:wrap; }
+.stat { padding:16px 26px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',sans-serif; font-size:24px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:50px 24px 30px; position:relative; }
+.thread-line { position:absolute; left:39px; top:44px; bottom:40px; width:2px;
+  background:linear-gradient(to bottom, transparent, var(--border2) 4%, var(--border2) 96%, transparent); z-index:0; }
+
+/* STAGE */
+.stage { position:relative; display:flex; gap:26px; margin-bottom:22px; z-index:1; }
+.stage-node { flex-shrink:0; width:38px; height:38px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; color:var(--muted2);
+  margin-top:22px; position:relative; z-index:2; }
+.stage.marker-danger .stage-node { border-color:var(--red); background:rgba(244,104,95,.12); color:#ffb3ad; }
+.stage.marker-warn .stage-node { border-color:var(--yellow); background:rgba(251,191,36,.12); color:#ffe08a; }
+.stage.marker-fix .stage-node { border-color:var(--green); background:rgba(74,222,128,.12); color:#a7f3c4; }
+.stage.marker-info .stage-node { border-color:var(--accent); background:rgba(56,189,248,.12); color:var(--accent2); }
+.stage-body { flex:1; min-width:0; }
+.stage-card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:22px 24px 24px; }
+.stage-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:.1em;
+  padding:3px 10px; border-radius:100px; border:1px solid; display:inline-block; margin-bottom:10px; }
+.tag-info { color:var(--accent2); border-color:rgba(56,189,248,.3); background:rgba(56,189,248,.06); }
+.tag-danger { color:#ffb3ad; border-color:rgba(244,104,95,.3); background:rgba(244,104,95,.06); }
+.tag-warn { color:#ffe08a; border-color:rgba(251,191,36,.3); background:rgba(251,191,36,.06); }
+.tag-fix { color:#a7f3c4; border-color:rgba(74,222,128,.3); background:rgba(74,222,128,.06); }
+.stage-title { font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:600; margin-bottom:10px; }
+.stage-card p { color:var(--muted); font-size:14.5px; line-height:1.75; margin-bottom:12px; }
+.stage-card p:last-child { margin-bottom:0; }
+.stage-card strong { color:var(--text); font-weight:600; }
+.stage-card code { font-family:'JetBrains Mono',monospace; font-size:13px; background:rgba(255,255,255,.05); padding:1px 6px; border-radius:4px; color:var(--accent2); }
+
+/* CODE */
+.code-wrap { background:#0a0e15; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin:14px 0; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:9px 15px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:9px; height:9px; border-radius:50%; }
+.dot-r { background:#f4685f; } .dot-y { background:#fbbf24; } .dot-g { background:#4ade80; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+pre { padding:16px 18px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.7; }
+code { font-family:inherit; }
+.kw { color:#c792ea; } .cls { color:#82aaff; } .fn { color:#82aaff; } .str { color:#c3e88d; }
+.num { color:#f78c6c; } .cmt { color:#546e7a; font-style:italic; } .ann { color:#ffcb6b; }
+.hl { background:rgba(56,189,248,.08); display:block; border-left:2px solid var(--accent); padding-left:5px; margin-left:-7px; }
+
+/* ANALOGY / TAKEAWAY / GOTCHA */
+.box { display:flex; gap:12px; border-radius:12px; padding:14px 16px; margin:14px 0; }
+.box-icon { font-size:19px; flex-shrink:0; margin-top:1px; }
+.box p { font-size:13.5px; line-height:1.65; color:var(--muted); margin:0; }
+.box p strong { color:var(--text); }
+.analogy { background:rgba(56,189,248,.05); border:1px solid rgba(56,189,248,.16); }
+.analogy p strong { color:var(--accent3); }
+.takeaway { background:rgba(250,204,21,.05); border:1px solid rgba(250,204,21,.15); }
+.takeaway p strong, .takeaway p code { color:var(--yellow); }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1); border-radius:4px; padding:1px 6px; }
+.gotcha { background:rgba(244,104,95,.05); border:1px solid rgba(244,104,95,.18); }
+.gotcha p strong { color:#ffb3ad; }
+.gotcha p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(244,104,95,.1); border-radius:4px; padding:1px 6px; color:#ffb3ad; }
+
+/* DIAGRAM */
+.diagram-wrap { background:#0a0e15; border:1px solid var(--border); border-radius:12px; padding:10px; margin:16px 0; overflow-x:auto; }
+.diagram-wrap svg { display:block; min-width:600px; }
+
+/* REFERENCE / TABLES */
+.reference { max-width:900px; margin:10px auto 60px; padding:0 24px; }
+.ref-heading { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted2); margin:44px 0 14px; display:flex; align-items:center; gap:10px; }
+.ref-heading::after { content:''; flex:1; height:1px; background:var(--border); }
+.table-wrap { border:1px solid var(--border); border-radius:12px; overflow:hidden; overflow-x:auto; margin-bottom:8px; }
+table { width:100%; border-collapse:collapse; font-size:13px; min-width:560px; }
+thead th { background:var(--surface2); text-align:left; padding:10px 14px; font-size:11px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); }
+td { padding:10px 14px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:top; line-height:1.55; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover td { background:rgba(255,255,255,.015); }
+td code, th code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(255,255,255,.05); padding:1px 6px; border-radius:4px; white-space:nowrap; color:var(--accent2); }
+.cell-bad { color:#ffb3ad; }
+.cell-good { color:#a7f3c4; }
+
+/* PITCH / STAR */
+.pitch { background:linear-gradient(160deg, rgba(56,189,248,.07), var(--surface)); border:1px solid rgba(56,189,248,.25);
+  border-radius:16px; padding:26px 28px; margin-top:10px; }
+.pitch-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  padding:3px 10px; border-radius:100px; background:rgba(56,189,248,.15); border:1px solid rgba(56,189,248,.3); color:var(--accent2); display:inline-block; margin-bottom:14px; }
+.pitch dl { display:grid; grid-template-columns:96px 1fr; gap:10px 18px; }
+.pitch dt { font-family:'Space Grotesk',sans-serif; font-weight:600; color:var(--accent2); font-size:13.5px; }
+.pitch dd { font-size:14px; color:var(--text); line-height:1.65; margin:0; }
+
+footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-size:12px; font-family:'JetBrains Mono',monospace; }
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+
+@media (max-width:640px){
+  .thread-line{ left:26px; }
+  .stage{ gap:14px; }
+  .stage-node{ width:30px; height:30px; font-size:10px; margin-top:16px; }
+  .pitch dl{ grid-template-columns:1fr; }
+  .pitch dt{ margin-top:6px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Backend Engineering — Incident Postmortem</div>
+  <h1>The CSV Report<br>That <em>Wouldn't Download</em></h1>
+  <p class="hero-sub">A financial-transactions export, a gateway that kept killing the connection, a Keep-Alive header that didn't help at all — and the one-line mental model that actually fixed it: <strong>a response isn't safe just because it will finish. It's safe because it never goes quiet.</strong></p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">10min</span><span class="stat-label">Keep-Alive that changed nothing</span></div>
+    <div class="stat"><span class="stat-num">1</span><span class="stat-label">Line: buffered → streamed</span></div>
+    <div class="stat"><span class="stat-num">0</span><span class="stat-label">Failed downloads after</span></div>
+  </div>
+</section>
+
+<div class="main">
+  <div class="thread-line"></div>
+
+  <!-- STAGE 1 -->
+  <div class="stage marker-info">
+    <div class="stage-node">01</div>
+    <div class="stage-body">
+      <div class="stage-card">
+        <span class="stage-tag tag-info">Setup</span>
+        <div class="stage-title">A CSV export, over plain HTTP</div>
+        <p>The feature was simple on paper: a user picks a date range on a financial transactions dashboard and clicks <strong>Download report</strong>. The backend queries the transactions, serializes them to CSV, and the browser saves the file. For small accounts and short ranges — a few hundred rows — this worked perfectly, every time.</p>
+        <p>The problem only showed up for the reports that mattered most: <strong>large accounts, wide date ranges</strong>, producing CSVs in the tens of thousands of rows — several megabytes of plain text. Those downloads didn't just take longer. They <strong>failed outright.</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 2 -->
+  <div class="stage marker-danger">
+    <div class="stage-node">02</div>
+    <div class="stage-body">
+      <div class="stage-card">
+        <span class="stage-tag tag-danger">Symptom</span>
+        <div class="stage-title">The browser just... gives up</div>
+        <p>For the large reports: the download would start (or appear to), sit at "downloading" with no progress, and then the browser would report a failed / interrupted download. No CSV, no partial file worth trusting, no useful error surfaced to the user beyond "something went wrong."</p>
+        <div class="box analogy">
+          <div class="box-icon">📞</div>
+          <p><strong>Like being on hold with no hold music.</strong> If a phone line goes completely silent for too long, the switchboard assumes the call dropped and hangs up — even if the person on the other end was still there, just quietly writing something down. That's exactly the shape of what was happening on the wire.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 3 -->
+  <div class="stage marker-warn">
+    <div class="stage-node">03</div>
+    <div class="stage-body">
+      <div class="stage-card">
+        <span class="stage-tag tag-warn">First theory — wrong</span>
+        <div class="stage-title">"It must be a connection timeout — bump Keep-Alive"</div>
+        <p>The first, reasonable-sounding theory: some layer is closing the connection too early because it thinks the request is taking too long. The fix that seemed obvious — extend how long the connection is allowed to stay alive.</p>
+        <div class="code-wrap">
+          <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">HTTP response headers — attempt #1</span></div>
+          <pre><code><span class="cmt">HTTP/1.1 200 OK</span>
+<span class="cls">Content-Type</span>: text/csv
+<span class="cls">Content-Disposition</span>: attachment; filename=transactions.csv
+<span class="cls">Connection</span>: keep-alive
+<span class="cls">Keep-Alive</span>: timeout=<span class="num">600</span>   <span class="cmt">// 10 minutes — should be plenty of runway, right?</span></code></pre>
+        </div>
+        <p><strong>It changed nothing.</strong> Same reports, same failure, same point of breakdown — which was the actual clue. If a connection-lifetime setting had been the problem, extending it should have fixed at least the largest-but-not-huge reports. Nothing moved. That meant the thing killing the connection wasn't watching <em>how old</em> the connection was at all.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 4 -->
+  <div class="stage marker-danger">
+    <div class="stage-node">04</div>
+    <div class="stage-body">
+      <div class="stage-card">
+        <span class="stage-tag tag-danger">Investigation</span>
+        <div class="stage-title">Two clues, from two different logs</div>
+        <p><strong>Application logs:</strong> the backend finished successfully on every single failing request. The query ran, every row got serialized, the full CSV byte array was built — as far as the service was concerned, it had a complete response ready to send.</p>
+        <p><strong>Gateway logs</strong> (the API gateway / reverse proxy sitting between the browser and the service): a timeout, on exactly those same calls, well before the backend had actually finished. The gateway wasn't waiting for the whole request to complete — it was killing the connection because it had received <strong>no bytes at all</strong> from the backend for longer than its own idle-read timeout allowed.</p>
+        <div class="box takeaway">
+          <div class="box-icon">💡</div>
+          <p>This is the whole bug, in one sentence: <strong><code>Keep-Alive</code> controls whether a connection is reused / left open while genuinely idle between requests. It has nothing to do with how long an intermediary will tolerate silence in the middle of a response that's already in flight.</strong> That second thing is a completely separate setting — an idle / read timeout — enforced independently by the gateway, and no amount of Keep-Alive tuning touches it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 5 -->
+  <div class="stage marker-danger">
+    <div class="stage-node">05</div>
+    <div class="stage-body">
+      <div class="stage-card">
+        <span class="stage-tag tag-danger">Root cause</span>
+        <div class="stage-title">The whole response was built before a single byte was sent</div>
+        <p>The original controller loaded every matching transaction, converted the entire set to CSV text in memory, and only <em>then</em> handed the finished byte array to Spring as the response body. For a large report, that fetch-and-serialize step alone could run well past a minute.</p>
+        <p>During that entire minute-plus, the connection to the gateway carried <strong>zero bytes</strong>. Not slow — <em>silent</em>. From the gateway's point of view that's indistinguishable from a hung backend, so it did exactly what an idle-read timeout is designed to do: it cut the connection. The eventual finished CSV never had a chance to leave the building.</p>
+
+        <div class="diagram-wrap">
+          <svg viewBox="0 0 860 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Timeline comparing a buffered response, which stays silent then sends one burst too late and gets killed by the gateway idle timeout, against a streamed response, which sends small chunks continuously and finishes successfully.">
+            <line x1="140" y1="40" x2="820" y2="40" stroke="#283449" stroke-width="1"></line>
+            <text x="20" y="44" font-family="JetBrains Mono" font-size="11" fill="#8793a8">buffered</text>
+            <rect x="140" y="30" width="430" height="20" rx="4" fill="none" stroke="#f4685f" stroke-width="1.3" stroke-dasharray="3,3"></rect>
+            <text x="355" y="24" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#f4685f">silence — building the full CSV in memory</text>
+            <rect x="580" y="30" width="60" height="20" rx="3" fill="#38bdf8" opacity=".8"></rect>
+            <text x="610" y="44" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#070b12">burst</text>
+            <line x1="480" y1="20" x2="480" y2="60" stroke="#fbbf24" stroke-width="1.3" stroke-dasharray="2,2"></line>
+            <text x="480" y="70" text-anchor="middle" font-family="JetBrains Mono" font-size="9.5" fill="#fbbf24">gateway idle-timeout threshold</text>
+            <text x="700" y="44" font-family="JetBrains Mono" font-size="16" fill="#f4685f">✕</text>
+            <text x="720" y="48" font-family="JetBrains Mono" font-size="10" fill="#f4685f">killed — too late</text>
+
+            <line x1="140" y1="130" x2="820" y2="130" stroke="#283449" stroke-width="1"></line>
+            <text x="20" y="134" font-family="JetBrains Mono" font-size="11" fill="#8793a8">streamed</text>
+            <g fill="#4ade80">
+              <rect x="150" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="185" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="220" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="255" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="290" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="325" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="360" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="395" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="430" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="465" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="500" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="535" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="570" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="605" y="120" width="14" height="20" rx="2"></rect>
+              <rect x="640" y="120" width="14" height="20" rx="2"></rect>
+            </g>
+            <text x="400" y="110" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#4ade80">small chunks, continuously — never a gap longer than the timeout</text>
+            <text x="700" y="134" font-family="JetBrains Mono" font-size="14" fill="#4ade80">✓</text>
+            <text x="716" y="138" font-family="JetBrains Mono" font-size="10" fill="#4ade80">complete — 200 OK all the way through</text>
+
+            <line x1="140" y1="170" x2="140" y2="185" stroke="#4f596c" stroke-width="1"></line>
+            <text x="140" y="200" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#4f596c">t = 0 (request sent)</text>
+            <line x1="480" y1="170" x2="480" y2="185" stroke="#4f596c" stroke-width="1"></line>
+            <text x="480" y="200" text-anchor="middle" font-family="JetBrains Mono" font-size="10" fill="#4f596c">idle-timeout mark</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 6 -->
+  <div class="stage marker-fix">
+    <div class="stage-node">06</div>
+    <div class="stage-body">
+      <div class="stage-card">
+        <span class="stage-tag tag-fix">The fix</span>
+        <div class="stage-title">Stream the rows out as they're produced — never build the whole file first</div>
+        <p>The rewrite didn't change what data went to the user. It changed <strong>when bytes started leaving the server</strong>: instead of assembling the entire CSV and returning it as one block, the response writes each batch of rows straight to the output stream as soon as it's fetched, and flushes regularly.</p>
+
+        <div class="code-wrap">
+          <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — before (buffered)</span></div>
+          <pre><code><span class="ann">@GetMapping</span>(<span class="str">"/api/reports/transactions"</span>)
+<span class="kw">public</span> ResponseEntity&lt;<span class="kw">byte</span>[]&gt; <span class="fn">downloadTransactions</span>(<span class="cls">String</span> accountId, <span class="cls">LocalDate</span> from, <span class="cls">LocalDate</span> to) {
+
+    List&lt;<span class="cls">Transaction</span>&gt; rows = repo.<span class="fn">findAllByAccountIdAndDateBetween</span>(accountId, from, to);
+    <span class="cmt">// for a wide date range, this alone can be 100k+ rows held in memory</span>
+
+    StringBuilder csv = <span class="kw">new</span> StringBuilder(<span class="str">"date,description,amount,balance\n"</span>);
+    <span class="kw">for</span> (<span class="cls">Transaction</span> t : rows) {
+        csv.<span class="fn">append</span>(t.<span class="fn">getDate</span>()).<span class="fn">append</span>(<span class="str">','</span>)
+           .<span class="fn">append</span>(t.<span class="fn">getDescription</span>()).<span class="fn">append</span>(<span class="str">','</span>)
+           .<span class="fn">append</span>(t.<span class="fn">getAmount</span>()).<span class="fn">append</span>(<span class="str">'\n'</span>);
+    }
+<span class="hl">    <span class="cmt">// nothing has reached the socket yet — everything above is happening in memory,</span></span>
+<span class="hl">    <span class="cmt">// and the gateway sees total silence for the whole time this loop runs</span></span>
+
+    <span class="kw">return</span> ResponseEntity.<span class="fn">ok</span>()
+        .<span class="fn">header</span>(<span class="cls">HttpHeaders</span>.CONTENT_DISPOSITION, <span class="str">"attachment; filename=transactions.csv"</span>)
+        .<span class="fn">contentType</span>(MediaType.<span class="fn">parseMediaType</span>(<span class="str">"text/csv"</span>))
+        .<span class="fn">body</span>(csv.<span class="fn">toString</span>().<span class="fn">getBytes</span>(UTF_8)); <span class="cmt">// one giant block, sent only at the end</span>
+}</code></pre>
+        </div>
+
+        <div class="code-wrap">
+          <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — after (streamed)</span></div>
+          <pre><code><span class="ann">@GetMapping</span>(<span class="str">"/api/reports/transactions"</span>)
+<span class="kw">public</span> ResponseEntity&lt;<span class="cls">StreamingResponseBody</span>&gt; <span class="fn">downloadTransactions</span>(<span class="cls">String</span> accountId, <span class="cls">LocalDate</span> from, <span class="cls">LocalDate</span> to) {
+
+    <span class="cls">StreamingResponseBody</span> body = out -> {
+        Writer w = <span class="kw">new</span> BufferedWriter(<span class="kw">new</span> OutputStreamWriter(out, UTF_8));
+        w.<span class="fn">write</span>(<span class="str">"date,description,amount,balance\n"</span>);
+
+        <span class="kw">int</span> sinceFlush = <span class="num">0</span>;
+        <span class="kw">try</span> (Stream&lt;<span class="cls">Transaction</span>&gt; rows = repo.<span class="fn">streamAllByAccountIdAndDateBetween</span>(accountId, from, to)) {
+            <span class="kw">for</span> (<span class="cls">Transaction</span> t : (Iterable&lt;<span class="cls">Transaction</span>&gt;) rows::iterator) {
+                w.<span class="fn">write</span>(t.<span class="fn">getDate</span>() + <span class="str">","</span> + t.<span class="fn">getDescription</span>() + <span class="str">","</span> + t.<span class="fn">getAmount</span>() + <span class="str">"\n"</span>);
+<span class="hl">                <span class="kw">if</span> (++sinceFlush == <span class="num">500</span>) { w.<span class="fn">flush</span>(); sinceFlush = <span class="num">0</span>; } <span class="cmt">// push real bytes onto the wire, regularly</span></span>
+            }
+        }
+        w.<span class="fn">flush</span>();
+    };
+
+    <span class="kw">return</span> ResponseEntity.<span class="fn">ok</span>()
+        .<span class="fn">header</span>(<span class="cls">HttpHeaders</span>.CONTENT_DISPOSITION, <span class="str">"attachment; filename=transactions.csv"</span>)
+        .<span class="fn">contentType</span>(MediaType.<span class="fn">parseMediaType</span>(<span class="str">"text/csv"</span>))
+        .<span class="fn">body</span>(body); <span class="cmt">// no Content-Length up front → Transfer-Encoding: chunked</span>
+}</code></pre>
+        </div>
+
+        <div class="box gotcha">
+          <div class="box-icon">⚠️</div>
+          <p><strong>The gotcha that almost bit us:</strong> <code>StreamingResponseBody.writeTo()</code> runs asynchronously, <em>after</em> the controller method has already returned — so the controller's own <code>@Transactional</code> boundary is already closed by the time the stream is actually read. A JPA <code>Stream&lt;Transaction&gt;</code> backed by a DB cursor has to be opened and fully consumed inside a transaction that's still active <em>during</em> the write, so the repository method itself carries <code>@Transactional(readOnly = true)</code> plus a fetch-size query hint — not the controller.</p>
+        </div>
+        <div class="code-wrap">
+          <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Repository — cursor-based, not "load everything"</span></div>
+          <pre><code><span class="ann">@Transactional</span>(readOnly = <span class="kw">true</span>)
+<span class="ann">@QueryHints</span>(<span class="ann">@QueryHint</span>(name = HINT_FETCH_SIZE, value = <span class="str">"500"</span>))
+<span class="ann">@Query</span>(<span class="str">"select t from Transaction t where t.accountId = :accountId "</span> +
+       <span class="str">"and t.date between :from and :to order by t.date"</span>)
+Stream&lt;<span class="cls">Transaction</span>&gt; <span class="fn">streamAllByAccountIdAndDateBetween</span>(<span class="cls">String</span> accountId, <span class="cls">LocalDate</span> from, <span class="cls">LocalDate</span> to);</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 7 -->
+  <div class="stage marker-fix">
+    <div class="stage-node">07</div>
+    <div class="stage-body">
+      <div class="stage-card">
+        <span class="stage-tag tag-fix">Verification</span>
+        <div class="stage-title">What changed in Postman was the tell</div>
+        <p><strong>Before:</strong> for a large report, Postman would sit on "Sending request..." with no status at all, then eventually report a failed / reset connection. Nothing ever rendered — because nothing was ever going to arrive as one piece before the gateway gave up.</p>
+        <p><strong>After:</strong> Postman showed <code>200 OK</code> almost immediately — the status line and headers go out the moment streaming begins, long before the body is complete — and then the response panel visibly filled in over time as chunks kept arriving, finishing cleanly when the stream closed. That "status first, body trickles in after" behaviour is the visible signature of a chunked, streamed response, as opposed to a buffered one that shows nothing until it either fully arrives or fails.</p>
+        <div class="box takeaway">
+          <div class="box-icon">💡</div>
+          <p>The browser download stopped failing for the exact same reason Postman's behaviour changed: the connection was never silent long enough for anything in between — gateway included — to conclude it had died.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="reference">
+
+  <div class="ref-heading">The three mechanisms, side by side</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Mechanism</th><th>What it actually governs</th><th>Did it matter here?</th></tr></thead>
+      <tbody>
+        <tr><td><code>Connection: keep-alive</code> / <code>Keep-Alive: timeout=</code></td><td>Whether a TCP connection is reused across separate requests, and how long it's kept open while genuinely idle between them.</td><td class="cell-bad">No — this was never the failure point.</td></tr>
+        <tr><td>Gateway / proxy idle (read) timeout</td><td>How long the intermediary tolerates <em>zero bytes arriving</em> during an in-progress response, regardless of how the connection was opened.</td><td class="cell-good">Yes — this is what was killing every large download.</td></tr>
+        <tr><td><code>Transfer-Encoding: chunked</code></td><td>Lets the server send a response in incremental, length-prefixed pieces when the total size isn't known upfront — the mechanism a streamed response uses instead of a single <code>Content-Length</code>.</td><td class="cell-good">Yes — this is what the fix relies on.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ref-heading">Buffered vs. streamed, at a glance</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>&nbsp;</th><th>Buffered (before)</th><th>Streamed (after)</th></tr></thead>
+      <tbody>
+        <tr><td>First byte reaches the client</td><td>Only once the entire CSV is built</td><td>As soon as the first batch is written</td></tr>
+        <tr><td>Wire activity while generating</td><td>None — total silence</td><td>Continuous small chunks</td></tr>
+        <tr><td>Server memory for one export</td><td>Whole CSV held as one <code>String</code>/<code>byte[]</code></td><td>Only the current batch at a time</td></tr>
+        <tr><td>Response header used</td><td><code>Content-Length: &lt;final size&gt;</code></td><td><code>Transfer-Encoding: chunked</code></td></tr>
+        <tr><td>Gateway idle timeout</td><td>Tripped on any sufficiently large export</td><td>Never tripped — gaps stay well inside the window</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ref-heading">Other timeout knobs worth knowing about</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Property</th><th>Layer</th><th>What to check it against</th></tr></thead>
+      <tbody>
+        <tr><td><code>proxy_read_timeout</code> / <code>proxy_send_timeout</code></td><td>Nginx or similar reverse proxy</td><td>Longest gap of silence it will tolerate mid-response.</td></tr>
+        <tr><td>Idle timeout (default 60s)</td><td>AWS ALB / most managed load balancers</td><td>Same idea — resets on any byte transferred, not on total duration.</td></tr>
+        <tr><td><code>server.tomcat.connection-timeout</code></td><td>Embedded Tomcat (Spring Boot)</td><td>How long Tomcat waits for the client to start sending a request — rarely the culprit for downloads, but worth ruling out.</td></tr>
+        <tr><td><code>spring.mvc.async.request-timeout</code></td><td>Spring MVC async dispatch</td><td><code>StreamingResponseBody</code> runs as an async request — this has its own timeout (default 30s) that can cut off a very long export independently of the gateway.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="ref-heading">Interview pitch</div>
+  <div class="pitch">
+    <span class="pitch-badge">60-second version</span>
+    <dl>
+      <dt>Situation</dt><dd>A financial-transactions CSV export failed to download in the browser for any sufficiently large report, while small reports always worked fine.</dd>
+      <dt>Task</dt><dd>Find the real cause — not just make the symptom go away — and fix it without an unbounded increase in server memory per export.</dd>
+      <dt>Action</dt><dd>Ruled out connection lifetime by raising <code>Keep-Alive</code>, which changed nothing — the real signal. Correlated application logs (backend always finished) against gateway logs (timeout, mid-response) and traced it to an idle-read timeout, not a duration timeout. Found the root cause: the controller built the entire CSV in memory before sending anything, so the connection sat silent for the whole generation time. Rewrote it as a <code>StreamingResponseBody</code> backed by a cursor-based JPA <code>Stream</code>, flushing every batch so real bytes hit the wire continuously from the first row onward.</dd>
+      <dt>Result</dt><dd>Downloads of any size completed reliably, memory per request dropped to one batch instead of the whole file, and the fix was visible in Postman itself — <code>200 OK</code> appeared immediately, with the body visibly streaming in afterward instead of arriving (or failing) as one silent block.</dd>
+    </dl>
+  </div>
+
+</div>
+
+<footer>streaming-response-body · chunked-transfer-encoding · gateway-idle-timeout ≠ keep-alive</footer>
+
+</body>
+</html>

@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MongoDB — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#06120D; --surface:#0B1F16; --surface2:#112B1F; --border:#1C3D2C; --border2:#2A5740;
+  --accent:#13AA52; --accent2:#4FC97D; --accent3:#9FE6BB; --glow:rgba(19,170,82,0.18);
+  --text:#E6F3EC; --muted:#7FA08D; --muted2:#4F6B5C;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(19,170,82,.16) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(79,201,125,.08) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(19,170,82,.1);
+  border:1px solid rgba(19,170,82,.3); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#D2FAE3 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:540px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(6,18,13,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(19,170,82,.18); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(19,170,82,.14),0 0 16px rgba(19,170,82,.22); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(19,170,82,.4); box-shadow:0 0 0 1px rgba(19,170,82,.12),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(19,170,82,.12); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+.code-wrap { background:#08160F; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(19,170,82,.12); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+.analogy { display:flex; gap:12px; background:rgba(19,170,82,.08); border:1px solid rgba(19,170,82,.2);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#04100A; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3C5; }
+
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(19,170,82,.1); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(19,170,82,.22); border:1px solid rgba(19,170,82,.35); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(19,170,82,.12) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(19,170,82,.12); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> MongoDB — Visual Guide</div>
+  <h1>Master<br><em>MongoDB</em><br>Basic to Intermediate</h1>
+  <p class="hero-sub">15 concepts. For Java/relational devs crossing over to documents. Each one explained simply, with runnable mongosh + Spring Data examples.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">15</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">15</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 15</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Document Model vs Relational</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">MongoDB stores <strong>documents</strong> (BSON — binary JSON) inside <strong>collections</strong>, instead of rows inside tables. A document can nest arrays and objects directly — no join needed to read related data that lives together.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4C1;</div><p><strong>Folder vs filing cabinet:</strong> A relational DB is a filing cabinet with separate drawers (tables) you cross-reference by ID. MongoDB is a folder where the whole record — including its "child" data — lives in one self-contained document.</p></div>
+          <div class="output-wrap"><div class="output-label">Relational — 2 tables, needs a JOIN</div>
+            <div class="output-box">posts(id, title, author)
+comments(id, post_id, text, author)
+<span class="cm">-- SELECT * FROM posts JOIN comments ON comments.post_id = posts.id</span></div></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// MongoDB — same data, one self-contained document</span>
+{
+  _id: <span class="fn">ObjectId</span>(<span class="st">"65f1a2b3c4d5e6f7a8b9c0d1"</span>),
+  title: <span class="st">"Why I Switched to Spring Boot 3"</span>,
+  author: <span class="st">"sandeep"</span>,
+  comments: [
+    { text: <span class="st">"Great post!"</span>, author: <span class="st">"alice"</span> },
+    { text: <span class="st">"Did you try WebFlux?"</span>, author: <span class="st">"bob"</span> }
+  ]
+}
+<span class="cm">// One read returns the post AND its comments — no JOIN required</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>MongoDB trades strict <strong>normalization</strong> for read locality. Data that's always read together can live together — at the cost of needing a plan for keeping duplicated data in sync.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Model it yourself</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Model a <strong>product review</strong> system both ways: as 2 SQL tables (products, reviews) and as one Mongo document per product with an embedded reviews array. Write both schemas side by side.</p>
+              <div class="practice-hints"><span class="hint-chip">products + reviews tables</span><span class="hint-chip">embedded reviews array</span><span class="hint-chip">compare read cost</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">CRUD Basics</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The four basics: <code>insertOne</code>/<code>insertMany</code>, <code>find</code> with a filter, <code>updateOne</code>/<code>updateMany</code> with update operators, and <code>deleteOne</code>/<code>deleteMany</code>. All of these are runnable directly in the <code>mongosh</code> shell.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// run mongosh, then: use bookstore</span>
+
+<span class="fn">db</span>.books.<span class="fn">insertOne</span>({ title: <span class="st">"Effective Java"</span>, author: <span class="st">"Bloch"</span>, price: <span class="nm">45</span>, tags: [<span class="st">"java"</span>, <span class="st">"best-practices"</span>] });
+
+<span class="fn">db</span>.books.<span class="fn">insertMany</span>([
+  { title: <span class="st">"Clean Code"</span>, author: <span class="st">"Martin"</span>, price: <span class="nm">38</span>, tags: [<span class="st">"java"</span>] },
+  { title: <span class="st">"Designing Data-Intensive Applications"</span>, author: <span class="st">"Kleppmann"</span>, price: <span class="nm">55</span>, tags: [<span class="st">"systems"</span>] }
+]);
+
+<span class="cm">// find — filter is a JSON document matching fields</span>
+<span class="fn">db</span>.books.<span class="fn">find</span>({ author: <span class="st">"Bloch"</span> });
+
+<span class="cm">// updateOne — $set replaces a field, $inc bumps a number, $push appends to an array</span>
+<span class="fn">db</span>.books.<span class="fn">updateOne</span>(
+  { title: <span class="st">"Effective Java"</span> },
+  { <span class="op">$set</span>: { price: <span class="nm">40</span> }, <span class="op">$push</span>: { tags: <span class="st">"interview-prep"</span> } }
+);
+
+<span class="cm">// deleteOne — removes the FIRST matching document only</span>
+<span class="fn">db</span>.books.<span class="fn">deleteOne</span>({ title: <span class="st">"Clean Code"</span> });</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">find() output</div>
+            <div class="output-box">[
+  {
+    _id: ObjectId(<span class="ok">"65f1a..."</span>),
+    title: <span class="ok">'Effective Java'</span>,
+    author: <span class="ok">'Bloch'</span>,
+    price: <span class="ok">40</span>,
+    tags: [ <span class="ok">'java'</span>, <span class="ok">'best-practices'</span>, <span class="ok">'interview-prep'</span> ]
+  }
+]</div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>updateOne</code>/<code>updateMany</code> need an <strong>update operator</strong> like <code>$set</code> — passing a plain object without one REPLACES the whole document, wiping every other field.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Build a mini catalog</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Insert <strong>5 products</strong> with price and category fields. Find all products in one category, increase all their prices by 10% using <code>updateMany</code> + <code>$mul</code>, then delete the cheapest one.</p>
+              <div class="practice-hints"><span class="hint-chip">insertMany</span><span class="hint-chip">$mul: {price: 1.1}</span><span class="hint-chip">deleteOne with sort via findOneAndDelete</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Query Operators</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Beyond exact-match filters, Mongo gives you comparison (<code>$gt</code>/<code>$lt</code>), set membership (<code>$in</code>), existence (<code>$exists</code>), pattern matching (<code>$regex</code>), and boolean logic (<code>$or</code>/<code>$and</code>).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// sample data first</span>
+<span class="fn">db</span>.books.<span class="fn">insertMany</span>([
+  { title: <span class="st">"Effective Java"</span>, price: <span class="nm">40</span>, inStock: <span class="kw">true</span> },
+  { title: <span class="st">"Clean Code"</span>, price: <span class="nm">38</span>, inStock: <span class="kw">false</span> },
+  { title: <span class="st">"Java Concurrency in Practice"</span>, price: <span class="nm">52</span>, inStock: <span class="kw">true</span> }
+]);
+
+<span class="cm">// $gt / $lt — comparison</span>
+<span class="fn">db</span>.books.<span class="fn">find</span>({ price: { <span class="op">$gt</span>: <span class="nm">39</span>, <span class="op">$lt</span>: <span class="nm">55</span> } });
+
+<span class="cm">// $in — value is one of a set</span>
+<span class="fn">db</span>.books.<span class="fn">find</span>({ price: { <span class="op">$in</span>: [<span class="nm">38</span>, <span class="nm">40</span>] } });
+
+<span class="cm">// $exists — field is present (or absent with false)</span>
+<span class="fn">db</span>.books.<span class="fn">find</span>({ inStock: { <span class="op">$exists</span>: <span class="kw">true</span> } });
+
+<span class="cm">// $regex — pattern match on a string field (case-insensitive with 'i')</span>
+<span class="fn">db</span>.books.<span class="fn">find</span>({ title: { <span class="op">$regex</span>: <span class="st">"java"</span>, <span class="op">$options</span>: <span class="st">"i"</span> } });
+
+<span class="cm">// $or / $and — combine conditions</span>
+<span class="fn">db</span>.books.<span class="fn">find</span>({
+  <span class="op">$or</span>: [ { price: { <span class="op">$lt</span>: <span class="nm">39</span> } }, { inStock: <span class="kw">false</span> } ]
+});</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Query operators always live as a <strong>nested object</strong> under the field name: <code>{ field: { $op: value } }</code>, not <code>{ $op: field, value }</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Compound filters</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Find all <strong>in-stock</strong> books priced <strong>between $35 and $50</strong> whose title contains the word "Java" (case-insensitive).</p>
+              <div class="practice-hints"><span class="hint-chip">$gte/$lte</span><span class="hint-chip">$regex with $options:"i"</span><span class="hint-chip">combine in one find()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Embedding vs Referencing</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The single most important MongoDB schema decision: should related data live <strong>inside</strong> the parent document (embed) or in its <strong>own collection</strong> referenced by ID (reference)? Get this wrong and everything downstream (indexes, queries, growth) gets harder.</div>
+          <div class="analogy"><div class="analogy-icon">&#x2696;&#xFE0F;</div><p><strong>Rule of thumb:</strong> Embed when it's "one-to-few" and always read together (a blog post's tags). Reference when it's "one-to-many-at-scale" or updated independently (a customer's thousands of orders).</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// EMBED — address is small, fixed-size, always read with the user</span>
+{
+  _id: <span class="fn">ObjectId</span>(<span class="st">"..."</span>),
+  name: <span class="st">"Sandeep"</span>,
+  address: { street: <span class="st">"123 Main St"</span>, city: <span class="st">"Toronto"</span> }
+}
+
+<span class="cm">// REFERENCE — an order history can grow unbounded; keep it in its own collection</span>
+<span class="cm">// users collection:</span>
+{ _id: <span class="fn">ObjectId</span>(<span class="st">"user1"</span>), name: <span class="st">"Sandeep"</span> }
+
+<span class="cm">// orders collection — each order POINTS BACK at the user by id:</span>
+{ _id: <span class="fn">ObjectId</span>(<span class="st">"order1"</span>), userId: <span class="fn">ObjectId</span>(<span class="st">"user1"</span>), total: <span class="nm">129.99</span> }
+{ _id: <span class="fn">ObjectId</span>(<span class="st">"order2"</span>), userId: <span class="fn">ObjectId</span>(<span class="st">"user1"</span>), total: <span class="nm">45.50</span> }
+<span class="cm">// thousands more orders for user1 never bloat the user document</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A document has a hard <strong>16MB size limit</strong>. Any array that grows without bound (orders, log entries, comments on a viral post) is a signal to reference, not embed.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Decide and justify</span></div>
+            <div class="practice-body">
+              <p class="practice-q">For each, decide embed or reference and justify in one sentence: (a) a user's shipping addresses (max 3), (b) a YouTube video's comments (could be millions), (c) a product's current price history (grows forever).</p>
+              <div class="practice-hints"><span class="hint-chip">bounded vs unbounded growth</span><span class="hint-chip">always read together?</span><span class="hint-chip">updated independently?</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Indexes</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Without an index, <code>find()</code> does a <strong>full collection scan</strong> — checking every document. An index is a sorted structure on one or more fields that lets Mongo jump straight to matches. Compound indexes (multiple fields) care about <strong>field order</strong>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// single-field index — speeds up queries filtering/sorting by email</span>
+<span class="fn">db</span>.users.<span class="fn">createIndex</span>({ email: <span class="nm">1</span> }, { unique: <span class="kw">true</span> }); <span class="cm">// 1 = ascending</span>
+
+<span class="cm">// compound index — field ORDER matters!</span>
+<span class="cm">// this index helps queries that filter by status, then sort/filter by createdAt</span>
+<span class="fn">db</span>.orders.<span class="fn">createIndex</span>({ status: <span class="nm">1</span>, createdAt: <span class="nm">-1</span> });
+
+<span class="cm">// this query USES the index efficiently (matches field order):</span>
+<span class="fn">db</span>.orders.<span class="fn">find</span>({ status: <span class="st">"SHIPPED"</span> }).<span class="fn">sort</span>({ createdAt: <span class="nm">-1</span> });
+
+<span class="cm">// this query on createdAt ALONE can't use the compound index efficiently —</span>
+<span class="cm">// status isn't a prefix of the filter, so Mongo can't seek directly</span>
+<span class="fn">db</span>.orders.<span class="fn">find</span>().<span class="fn">sort</span>({ createdAt: <span class="nm">-1</span> });
+
+<span class="cm">// verify index usage</span>
+<span class="fn">db</span>.orders.<span class="fn">find</span>({ status: <span class="st">"SHIPPED"</span> }).<span class="fn">explain</span>(<span class="st">"executionStats"</span>);
+<span class="cm">// look for "stage": "IXSCAN" (good) vs "stage": "COLLSCAN" (bad — full scan)</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Compound index <code>{a:1, b:1}</code> serves queries on <code>a</code> alone or <code>a</code>+<code>b</code> together — but NOT efficiently on <code>b</code> alone. Order fields by what you filter on most, equality before range.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Find the missing index</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Insert 1000 fake orders. Run <code>find({customerId: "c1", status: "PAID"})</code> with <code>.explain()</code> before and after adding a compound index on <code>{customerId, status}</code>. Compare <code>totalDocsExamined</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">explain("executionStats")</span><span class="hint-chip">totalDocsExamined</span><span class="hint-chip">createIndex({customerId:1, status:1})</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Aggregation Pipeline</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A pipeline of <strong>stages</strong>, each transforming the documents flowing through it — like Java Streams for your whole collection. <code>$match</code> filters, <code>$group</code> aggregates, <code>$sort</code> orders, <code>$project</code> reshapes.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// sample sales data</span>
+<span class="fn">db</span>.sales.<span class="fn">insertMany</span>([
+  { category: <span class="st">"books"</span>, amount: <span class="nm">40</span> },
+  { category: <span class="st">"books"</span>, amount: <span class="nm">25</span> },
+  { category: <span class="st">"electronics"</span>, amount: <span class="nm">300</span> },
+  { category: <span class="st">"electronics"</span>, amount: <span class="nm">150</span> }
+]);
+
+<span class="cm">// total sales per category, highest first</span>
+<span class="fn">db</span>.sales.<span class="fn">aggregate</span>([
+  { <span class="op">$match</span>: { amount: { <span class="op">$gt</span>: <span class="nm">0</span> } } },                <span class="cm">// stage 1: filter (like WHERE)</span>
+  { <span class="op">$group</span>: { _id: <span class="st">"$category"</span>, total: { <span class="op">$sum</span>: <span class="st">"$amount"</span> } } }, <span class="cm">// stage 2: aggregate (like GROUP BY)</span>
+  { <span class="op">$sort</span>: { total: <span class="nm">-1</span> } },                             <span class="cm">// stage 3: order</span>
+  { <span class="op">$project</span>: { _id: <span class="nm">0</span>, category: <span class="st">"$_id"</span>, total: <span class="nm">1</span> } } <span class="cm">// stage 4: reshape output fields</span>
+]);</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box">[
+  { category: <span class="ok">'electronics'</span>, total: <span class="ok">450</span> },
+  { category: <span class="ok">'books'</span>, total: <span class="ok">65</span> }
+]</div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Stages run <strong>in order</strong>, each one's output feeding the next. Put <code>$match</code> as early as possible — filtering first means later stages process fewer documents.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Average order value</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given an <code>orders</code> collection with <code>customerId</code> and <code>total</code>, write a pipeline that returns each customer's <strong>average order value</strong>, sorted highest first, only including customers with 2+ orders ($count via $group, then $match again).</p>
+              <div class="practice-hints"><span class="hint-chip">$avg</span><span class="hint-chip">$count or accumulate in $group</span><span class="hint-chip">second $match after $group</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">$lookup — the Mongo "Join"</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">When you DID reference instead of embed, <code>$lookup</code> performs a left-outer-join-style merge inside the aggregation pipeline, pulling in matching documents from another collection.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// users: { _id: ObjectId("u1"), name: "Sandeep" }</span>
+<span class="cm">// orders: { _id: ObjectId("o1"), userId: ObjectId("u1"), total: 99.99 }</span>
+
+<span class="fn">db</span>.orders.<span class="fn">aggregate</span>([
+  {
+    <span class="op">$lookup</span>: {
+      from: <span class="st">"users"</span>,           <span class="cm">// the other collection</span>
+      localField: <span class="st">"userId"</span>,     <span class="cm">// field on THIS (orders) document</span>
+      foreignField: <span class="st">"_id"</span>,       <span class="cm">// field on the OTHER (users) document</span>
+      as: <span class="st">"customer"</span>            <span class="cm">// result is added as an ARRAY under this name</span>
+    }
+  },
+  { <span class="op">$unwind</span>: <span class="st">"$customer"</span> } <span class="cm">// flatten the 1-element array into a plain object</span>
+]);</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box">{
+  _id: ObjectId(<span class="ok">"o1"</span>),
+  userId: ObjectId(<span class="ok">"u1"</span>),
+  total: <span class="ok">99.99</span>,
+  customer: { _id: ObjectId(<span class="ok">"u1"</span>), name: <span class="ok">'Sandeep'</span> }
+}</div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>$lookup</code> works, but it's <strong>not free</strong> — heavy use of it across large collections is often a sign you actually wanted embedding, or that a relational DB might fit better.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Join 3 collections</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Given <code>products</code>, <code>reviews</code> (productId reference), and <code>users</code> (reviewer reference), write a pipeline starting from <code>reviews</code> that <code>$lookup</code>s both the product name and reviewer name into each review.</p>
+              <div class="practice-hints"><span class="hint-chip">two $lookup stages</span><span class="hint-chip">$unwind after each</span><span class="hint-chip">$project the final shape</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Schema Validation</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">"Schemaless" doesn't mean "no rules allowed." A <code>$jsonSchema</code> validator attached to a collection rejects documents that don't match required fields/types — a safety net against application bugs writing garbage.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="fn">db</span>.<span class="fn">createCollection</span>(<span class="st">"books"</span>, {
+  validator: {
+    <span class="op">$jsonSchema</span>: {
+      bsonType: <span class="st">"object"</span>,
+      required: [<span class="st">"title"</span>, <span class="st">"price"</span>],
+      properties: {
+        title: { bsonType: <span class="st">"string"</span> },
+        price: { bsonType: <span class="st">"number"</span>, minimum: <span class="nm">0</span> }
+      }
+    }
+  },
+  validationAction: <span class="st">"error"</span> <span class="cm">// "error" rejects writes; "warn" just logs</span>
+});
+
+<span class="cm">// rejected — price is negative, violates "minimum": 0</span>
+<span class="fn">db</span>.books.<span class="fn">insertOne</span>({ title: <span class="st">"Bad Data"</span>, price: <span class="nm">-5</span> });
+<span class="cm">// MongoServerError: Document failed validation</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Validation is enforced at the <strong>collection level on every write</strong>, not just by your application code — a second line of defense if a different service writes to the same collection without your app's checks.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Add a validator</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Add a <code>$jsonSchema</code> validator to an <code>orders</code> collection requiring <code>status</code> to be one of <code>"PENDING"</code>, <code>"PAID"</code>, <code>"SHIPPED"</code> using <code>enum</code>. Confirm an invalid status is rejected.</p>
+              <div class="practice-hints"><span class="hint-chip">enum: ["PENDING","PAID","SHIPPED"]</span><span class="hint-chip">collMod for existing collections</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Multi-Document Transactions</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>single-document</strong> write is always atomic in MongoDB, no transaction needed. But updating two SEPARATE documents (e.g. across collections) atomically requires an explicit session-based transaction, available since MongoDB 4.0.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// transferring money between two account documents — needs a transaction</span>
+<span class="kw">const</span> session = <span class="fn">db</span>.<span class="fn">getMongo</span>().<span class="fn">startSession</span>();
+session.<span class="fn">startTransaction</span>();
+
+<span class="kw">try</span> {
+  <span class="kw">const</span> accounts = session.<span class="fn">getDatabase</span>(<span class="st">"bank"</span>).accounts;
+
+  accounts.<span class="fn">updateOne</span>({ _id: <span class="st">"acc1"</span> }, { <span class="op">$inc</span>: { balance: <span class="nm">-100</span> } });
+  accounts.<span class="fn">updateOne</span>({ _id: <span class="st">"acc2"</span> }, { <span class="op">$inc</span>: { balance: <span class="nm">100</span> } });
+
+  session.<span class="fn">commitTransaction</span>(); <span class="cm">// both updates become visible together, or neither does</span>
+} <span class="kw">catch</span> (e) {
+  session.<span class="fn">abortTransaction</span>(); <span class="cm">// roll back both on any failure</span>
+  <span class="kw">throw</span> e;
+} <span class="kw">finally</span> {
+  session.<span class="fn">endSession</span>();
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Transactions in Mongo carry a real <strong>performance cost</strong>. If a single atomic <code>updateOne</code> with <code>$inc</code> on ONE document can solve your problem, prefer that over a multi-document transaction.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Transactional order placement</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a transaction that decrements <code>stock</code> on a <code>products</code> document and inserts a new document into <code>orders</code> — both must succeed or both must roll back. Simulate a failure (throw after the first update) and confirm the stock change is undone.</p>
+              <div class="practice-hints"><span class="hint-chip">startTransaction/commitTransaction</span><span class="hint-chip">abortTransaction on error</span><span class="hint-chip">verify rollback with a find()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Replica Sets</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>replica set</strong> is a group of mongod servers holding the same data: one <strong>primary</strong> accepts all writes, and one or more <strong>secondaries</strong> replicate from it. If the primary dies, the set automatically elects a new primary.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4DD;</div><p><strong>One writer, many readers of the carbon copy:</strong> Only the primary's "ledger" is authoritative. Secondaries continuously copy it, so if the primary goes down, a secondary that's caught up can take over.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// connection string targeting a 3-node replica set named "rs0"</span>
+mongodb://node1:27017,node2:27017,node3:27017/?replicaSet=rs0
+
+<span class="cm">// reading from a secondary — accepts slightly stale data for less load on primary</span>
+<span class="fn">db</span>.books.<span class="fn">find</span>().<span class="fn">readPref</span>(<span class="st">"secondaryPreferred"</span>);
+<span class="cm">// "primary" (default, always fresh) | "secondaryPreferred" | "secondary" | "nearest"</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Reading from a secondary trades <strong>consistency for throughput</strong> — you may read data that's a few milliseconds (or more, under load) behind the primary. Fine for dashboards, risky for "did my payment go through" checks.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Explain failover</span></div>
+            <div class="practice-body">
+              <p class="practice-q">In your own words, write a 3-step explanation of what happens when a replica set's primary node crashes: detection, election, and what an application using the official MongoDB driver experiences during that window.</p>
+              <div class="practice-hints"><span class="hint-chip">heartbeats detect the failure</span><span class="hint-chip">remaining nodes vote</span><span class="hint-chip">driver retries/reconnects</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="concept" data-id="11">
+    <div class="concept-node">11</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Sharding Basics</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">When one replica set can't hold or serve all your data, <strong>sharding</strong> splits a collection across multiple replica sets ("shards") by a chosen <strong>shard key</strong>. Pick a bad shard key and one shard does all the work — a "hotspot."</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// enable sharding on a database, then shard a collection by customerId</span>
+<span class="fn">sh</span>.<span class="fn">enableSharding</span>(<span class="st">"shopdb"</span>);
+<span class="fn">sh</span>.<span class="fn">shardCollection</span>(<span class="st">"shopdb.orders"</span>, { customerId: <span class="nm">1</span> });
+
+<span class="cm">// &#x274C; BAD shard key: an auto-incrementing createdAt timestamp —</span>
+<span class="cm">// every new write has the HIGHEST value, so all inserts hit the SAME shard</span>
+<span class="fn">sh</span>.<span class="fn">shardCollection</span>(<span class="st">"shopdb.orders"</span>, { createdAt: <span class="nm">1</span> }); <span class="cm">// hotspot!</span>
+
+<span class="cm">// &#x2705; GOOD shard key: high-cardinality, evenly distributed, matches query patterns</span>
+<span class="fn">sh</span>.<span class="fn">shardCollection</span>(<span class="st">"shopdb.orders"</span>, { customerId: <span class="nm">"hashed"</span> });</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A good shard key has <strong>high cardinality</strong> (many distinct values), spreads writes evenly, and — ideally — matches the field you filter by most, so queries can target one shard instead of scattering to all of them.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q11 — Pick a shard key</span></div>
+            <div class="practice-body">
+              <p class="practice-q">For a multi-tenant SaaS <code>events</code> collection (millions of events per tenant, queries always filter by tenantId), propose a shard key and explain why a plain incrementing <code>_id</code> would be a poor choice.</p>
+              <div class="practice-hints"><span class="hint-chip">tenantId + something else?</span><span class="hint-chip">cardinality</span><span class="hint-chip">monotonic keys = hotspots</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="concept" data-id="12">
+    <div class="concept-node">12</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Spring Data MongoDB</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Spring Data MongoDB maps a <code>@Document</code>-annotated class to a collection, and a <code>MongoRepository</code> interface gives you CRUD + derived query methods for free — the same DI-friendly pattern as Spring Data JPA.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">package</span> com.example.demo.book;
+
+<span class="kw">import</span> org.springframework.data.annotation.Id;
+<span class="kw">import</span> org.springframework.data.mongodb.core.mapping.Document;
+
+<span class="an">@Document</span>(collection = <span class="st">"books"</span>)
+<span class="kw">public class</span> <span class="cl">Book</span> {
+
+    <span class="an">@Id</span>
+    <span class="kw">private</span> <span class="cl">String</span> id;
+    <span class="kw">private</span> <span class="cl">String</span> title;
+    <span class="kw">private</span> <span class="cl">String</span> author;
+    <span class="kw">private double</span> price;
+
+    <span class="kw">public</span> <span class="cl">Book</span>() {}
+
+    <span class="kw">public</span> <span class="cl">Book</span>(<span class="cl">String</span> title, <span class="cl">String</span> author, <span class="kw">double</span> price) {
+        <span class="kw">this</span>.title = title;
+        <span class="kw">this</span>.author = author;
+        <span class="kw">this</span>.price = price;
+    }
+
+    <span class="kw">public</span> <span class="cl">String</span> <span class="fn">getId</span>() { <span class="kw">return</span> id; }
+    <span class="kw">public</span> <span class="cl">String</span> <span class="fn">getTitle</span>() { <span class="kw">return</span> title; }
+    <span class="kw">public</span> <span class="cl">String</span> <span class="fn">getAuthor</span>() { <span class="kw">return</span> author; }
+    <span class="kw">public double</span> <span class="fn">getPrice</span>() { <span class="kw">return</span> price; }
+}</code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">package</span> com.example.demo.book;
+
+<span class="kw">import</span> org.springframework.data.mongodb.repository.MongoRepository;
+<span class="kw">import</span> java.util.List;
+
+<span class="kw">public interface</span> <span class="cl">BookRepository</span> <span class="kw">extends</span> <span class="cl">MongoRepository</span>&lt;<span class="cl">Book</span>, <span class="cl">String</span>&gt; {
+    <span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findByAuthor</span>(<span class="cl">String</span> author); <span class="cm">// derived query — no implementation needed</span>
+    <span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">findByPriceLessThan</span>(<span class="kw">double</span> price);
+}</code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">package</span> com.example.demo.book;
+
+<span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> java.util.List;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">BookService</span> {
+
+    <span class="kw">private final</span> <span class="cl">BookRepository</span> bookRepository;
+
+    <span class="kw">public</span> <span class="cl">BookService</span>(<span class="cl">BookRepository</span> bookRepository) {
+        <span class="kw">this</span>.bookRepository = bookRepository;
+    }
+
+    <span class="kw">public</span> <span class="cl">Book</span> <span class="fn">addBook</span>(<span class="cl">String</span> title, <span class="cl">String</span> author, <span class="kw">double</span> price) {
+        <span class="kw">return</span> bookRepository.<span class="fn">save</span>(<span class="kw">new</span> <span class="cl">Book</span>(title, author, price));
+    }
+
+    <span class="kw">public</span> <span class="cl">List</span>&lt;<span class="cl">Book</span>&gt; <span class="fn">cheapBooksBy</span>(<span class="cl">String</span> author, <span class="kw">double</span> maxPrice) {
+        <span class="kw">return</span> bookRepository.<span class="fn">findByAuthor</span>(author).<span class="fn">stream</span>()
+            .<span class="fn">filter</span>(b -> b.<span class="fn">getPrice</span>() &lt; maxPrice)
+            .<span class="fn">toList</span>();
+    }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Method names like <code>findByPriceLessThan</code> are parsed by Spring Data into a real Mongo query — no <code>@Query</code> annotation needed for simple cases.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q12 — Add a custom query</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Add a method <code>findByAuthorAndPriceBetween(String author, double min, double max)</code> to <code>BookRepository</code> using Spring Data's derived-query naming convention, and call it from a new <code>BookService</code> method.</p>
+              <div class="practice-hints"><span class="hint-chip">And / Between keywords</span><span class="hint-chip">derived query method</span><span class="hint-chip">no @Query needed</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Write the same query using <code>@Query("{ 'author': ?0, 'price': { $gte: ?1, $lte: ?2 } }")</code> instead, and compare readability.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="concept" data-id="13">
+    <div class="concept-node">13</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Common Pitfalls</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Three recurring mistakes: letting an embedded array grow without bound, forgetting indexes (every query becomes a full scan), and forcing relational thinking onto a document model (or the opposite — embedding everything and hitting the 16MB limit).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// &#x274C; unbounded embedded array — a "viral" post's comments array</span>
+<span class="cm">// keeps growing until the document hits the 16MB hard limit and writes start failing</span>
+{ _id: <span class="st">"post1"</span>, comments: [ <span class="cm">/* could become millions of entries */</span> ] }
+
+<span class="cm">// &#x2705; fix — reference instead, paginate comments from their own collection</span>
+{ _id: <span class="st">"comment1"</span>, postId: <span class="st">"post1"</span>, text: <span class="st">"..."</span> }
+<span class="fn">db</span>.comments.<span class="fn">find</span>({ postId: <span class="st">"post1"</span> }).<span class="fn">limit</span>(<span class="nm">20</span>).<span class="fn">skip</span>(<span class="nm">0</span>);
+
+<span class="cm">// &#x274C; missing index — this silently does a full COLLSCAN on a huge collection</span>
+<span class="fn">db</span>.orders.<span class="fn">find</span>({ customerEmail: <span class="st">"sandeep@email.com"</span> }); <span class="cm">// slow at scale</span>
+
+<span class="cm">// &#x2705; fix — index the field you actually filter on</span>
+<span class="fn">db</span>.orders.<span class="fn">createIndex</span>({ customerEmail: <span class="nm">1</span> });</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>"Schemaless" is a trap if taken literally — design your documents as deliberately as you would design SQL tables. The flexibility is for evolving the shape over time, not for skipping the design step.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q13 — Spot the bug</span></div>
+            <div class="practice-body">
+              <p class="practice-q">A social app embeds a <code>likedBy: [userId, userId, ...]</code> array directly on each post to track likes. Explain what breaks at scale (a post with 2 million likes) and redesign it.</p>
+              <div class="practice-hints"><span class="hint-chip">16MB document limit</span><span class="hint-chip">separate likes collection</span><span class="hint-chip">store a likeCount counter on the post for fast reads</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="concept" data-id="14">
+    <div class="concept-node">14</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">ObjectId</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The default <code>_id</code> type. It's 12 bytes: a 4-byte creation timestamp, plus bytes that make it unique across machines and processes without a central counter — which means it's naturally <strong>roughly sortable by creation time</strong>.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">mongosh</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">const</span> id = <span class="fn">ObjectId</span>(<span class="st">"65f1a2b3c4d5e6f7a8b9c0d1"</span>);
+
+<span class="fn">print</span>(id.<span class="fn">getTimestamp</span>()); <span class="cm">// extracts the embedded creation Date — no separate createdAt field needed!</span>
+
+<span class="cm">// sorting by _id ascending is (approximately) sorting by creation time —</span>
+<span class="cm">// great for "most recent N documents" without a dedicated timestamp index</span>
+<span class="fn">db</span>.events.<span class="fn">find</span>().<span class="fn">sort</span>({ _id: <span class="nm">-1</span> }).<span class="fn">limit</span>(<span class="nm">10</span>);</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>ObjectId's timestamp granularity is only <strong>1 second</strong> — for events created in the same second, relative order isn't guaranteed. Add an explicit timestamp field if you need millisecond precision.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q14 — Extract creation dates</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Insert 3 documents a few seconds apart. For each, call <code>.getTimestamp()</code> on its <code>_id</code> and print it, without storing any separate <code>createdAt</code> field.</p>
+              <div class="practice-hints"><span class="hint-chip">_id.getTimestamp()</span><span class="hint-chip">find().forEach()</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15 -->
+  <div class="concept" data-id="15">
+    <div class="concept-node">15</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The questions that come up once an interviewer knows you've used Mongo beyond a tutorial — they're testing judgment, not syntax recall.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">FAQ</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: When would you choose Mongo over Postgres, and vice versa?</span>
+<span class="cm">// A: Mongo — flexible/evolving schema, data naturally nested (catalogs, CMS
+//    content, event logs), horizontal scale via sharding is a first-class
+//    feature. Postgres — strong relational integrity, complex multi-table
+//    JOINs and ad-hoc reporting queries, ACID transactions are the norm
+//    rather than the exception. Many real systems use BOTH.</span>
+
+<span class="cm">// Q: How do transactions work in Mongo and what's the tradeoff?</span>
+<span class="cm">// A: Session-based, two-phase-commit-like under the hood across replica set
+//    members. Single-document writes are atomic for free; multi-document
+//    transactions add real latency, so reach for them only when you truly
+//    need atomicity across more than one document.</span>
+
+<span class="cm">// Q: What's a shard key and how do you pick a good one?</span>
+<span class="cm">// A: The field (or fields) Mongo uses to decide which shard owns a document.
+//    A good one has high cardinality, distributes writes evenly (avoiding a
+//    monotonically increasing key like a timestamp), and ideally matches
+//    your most common query filter so reads can target one shard.</span>
+
+<span class="cm">// Q: Embedding vs referencing — what's your decision framework?</span>
+<span class="cm">// A: Embed when the data is bounded in size, always read together, and
+//    rarely updated independently. Reference when it grows unbounded, is
+//    queried/updated on its own, or is shared across multiple parents.</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Senior interviews aren't testing command syntax — they're testing whether you can justify a schema/scaling decision and explain its tradeoff out loud.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q15 — Final boss: design it end to end</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Design the MongoDB schema for a ride-sharing app: <strong>users</strong>, <strong>drivers</strong>, <strong>trips</strong> (with start/end location, fare, status), and <strong>ratings</strong>. Decide what's embedded vs referenced, what indexes you'd add, and whether you'd shard <code>trips</code> and by what key.</p>
+              <div class="practice-hints"><span class="hint-chip">embed vs reference per relationship</span><span class="hint-chip">index on status + driverId</span><span class="hint-chip">shard key for trips at scale</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Add a Spring Data MongoDB <code>Trip</code> document class, a repository with a derived query for "active trips by driver," and a service method using an aggregation pipeline for "total fares per driver this week."</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F343; You're MongoDB-ready!</h2>
+    <p>From document-vs-relational fundamentals to schema design tradeoffs senior engineers get asked about.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> Document Model</div>
+      <div class="grid-item"><span class="grid-num">02</span> CRUD Basics</div>
+      <div class="grid-item"><span class="grid-num">03</span> Query Operators</div>
+      <div class="grid-item"><span class="grid-num">04</span> Embed vs Reference</div>
+      <div class="grid-item"><span class="grid-num">05</span> Indexes</div>
+      <div class="grid-item"><span class="grid-num">06</span> Aggregation Pipeline</div>
+      <div class="grid-item"><span class="grid-num">07</span> $lookup</div>
+      <div class="grid-item"><span class="grid-num">08</span> Schema Validation</div>
+      <div class="grid-item"><span class="grid-num">09</span> Transactions</div>
+      <div class="grid-item"><span class="grid-num">10</span> Replica Sets</div>
+      <div class="grid-item"><span class="grid-num">11</span> Sharding</div>
+      <div class="grid-item"><span class="grid-num">12</span> Spring Data MongoDB</div>
+      <div class="grid-item"><span class="grid-num">13</span> Common Pitfalls</div>
+      <div class="grid-item"><span class="grid-num">14</span> ObjectId</div>
+      <div class="grid-item"><span class="grid-num">15</span> Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 15) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 15';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

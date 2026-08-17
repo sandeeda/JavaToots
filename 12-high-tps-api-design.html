@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>High-TPS API Design — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0D0807; --surface:#171110; --surface2:#1F1614; --border:#2E1F1B; --border2:#3D2A24;
+  --accent:#FF6B35; --accent2:#FF8C5A; --accent3:#FFB088; --glow:rgba(255,107,53,0.18);
+  --text:#F5EDE8; --muted:#A8938A; --muted2:#6B5650;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(255,107,53,.15) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(255,140,90,.08) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(255,107,53,.1);
+  border:1px solid rgba(255,107,53,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#FFD9C2 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:560px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(13,8,7,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(255,107,53,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(255,107,53,.12),0 0 16px rgba(255,107,53,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(255,107,53,.35); box-shadow:0 0 0 1px rgba(255,107,53,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(255,107,53,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#120D0B; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(255,107,53,.1); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(255,107,53,.06); border:1px solid rgba(255,107,53,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#0A0605; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(255,107,53,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(255,107,53,.2); border:1px solid rgba(255,107,53,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(255,107,53,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(255,107,53,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Backend Engineering — Visual Guide</div>
+  <h1>Design APIs<br>for <em>200 TPS</em><br>and Beyond</h1>
+  <p class="hero-sub">18 concepts. From "what does TPS even mean" to staff-engineer capacity planning. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">18</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">18</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 18</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">TPS &amp; Little's Law</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><strong>200 TPS</strong> means 200 transactions <em>completed</em> per second, sustained — not 200 requests sitting in a queue. Throughput, latency, and concurrency are locked together by <strong>Little's Law</strong>: <code>concurrency = throughput &#xD7; latency</code>.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F6A7;</div><p><strong>Toll booth analogy:</strong> Cars/sec through a toll plaza depends on BOTH how fast one booth processes a car (latency) AND how many booths are open (concurrency). One slow booth or too few booths — same result: low throughput.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="kw">double</span> targetTps = <span class="nm">200</span>;            <span class="cm">// transactions/sec we must sustain</span>
+    <span class="kw">double</span> avgLatencySeconds = <span class="nm">0.150</span>; <span class="cm">// 150ms average time per request</span>
+
+<span class="hl">    <span class="cm">// Little's Law:  L = &#x3BB; &#xD7; W</span></span>
+<span class="hl">    <span class="cm">// L = concurrency needed, &#x3BB; = throughput (TPS), W = latency</span></span>
+    <span class="kw">double</span> requiredConcurrency = targetTps * avgLatencySeconds;
+
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Target throughput: "</span> + targetTps + <span class="st">" TPS"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Average latency:   "</span> + (avgLatencySeconds * <span class="nm">1000</span>) + <span class="st">" ms"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Concurrency needed: "</span> + requiredConcurrency + <span class="st">" in-flight requests"</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Target throughput: 200.0 TPS</span>
+<span class="ok">Average latency:   150.0 ms</span>
+<span class="ok">Concurrency needed: 30.0 in-flight requests</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>You cannot fix TPS by tuning only one of throughput, latency, or concurrency — they're mathematically locked together. Every later concept in this guide is really just "how do I supply enough <strong>concurrency</strong> without blowing up <strong>latency</strong>."</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Work the formula both ways</span></div>
+            <div class="practice-body">
+              <p class="practice-q">At <strong>200 TPS</strong> with an <strong>80ms</strong> downstream call, how much concurrency do you need? Now a slow dependency pushes latency to <strong>400ms</strong> — recompute. What does that tell you about why slow dependencies are dangerous at scale?</p>
+              <div class="practice-hints"><span class="hint-chip">concurrency = tps &#xD7; latency</span><span class="hint-chip">200 &#xD7; 0.08</span><span class="hint-chip">200 &#xD7; 0.4</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Rearrange the formula: <code>tps = concurrency / latency</code>. If your thread pool caps concurrency at 50 and latency is 150ms, what's the MAXIMUM TPS you can ever sustain — no matter how much traffic arrives?</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Stateless Service Design</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">One instance can never sustain 200 TPS forever — you'll need <strong>N instances</strong>. If a server remembers "this user is logged in" <strong>in its own memory</strong>, the load balancer is forced to always route that user back to the same instance. That kills horizontal scaling.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F455;</div><p><strong>Coat check vs carrying your own coat:</strong> A coat-check ticket (session ID) only means something to the ONE coat-check counter that issued it. A JWT is more like a coat YOU keep wearing — any door in the building can verify it's yours just by looking, no memory required.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">&#x274C; Stateful</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.web.bind.annotation.*;
+<span class="kw">import</span> jakarta.servlet.http.HttpSession;
+
+<span class="an">@RestController</span>
+<span class="kw">public class</span> <span class="cl">StatefulLoginController</span> {
+
+  <span class="an">@PostMapping</span>(<span class="st">"/login"</span>)
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">login</span>(<span class="an">@RequestParam</span> <span class="cl">String</span> username, <span class="cl">HttpSession</span> session) {
+<span class="hl">    session.<span class="fn">setAttribute</span>(<span class="st">"username"</span>, username); <span class="cm">// lives in THIS server's RAM</span></span>
+    <span class="kw">return</span> <span class="st">"Logged in as "</span> + username;
+  }
+
+  <span class="an">@GetMapping</span>(<span class="st">"/whoami"</span>)
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">whoAmI</span>(<span class="cl">HttpSession</span> session) {
+    <span class="kw">return</span> <span class="st">"You are: "</span> + session.<span class="fn">getAttribute</span>(<span class="st">"username"</span>);
+<span class="hl">    <span class="cm">// next request lands on a DIFFERENT instance &#x2192; that instance's</span></span>
+<span class="hl">    <span class="cm">// memory never saw this login &#x2192; null / 401, randomly, half the time</span></span>
+  }
+}</code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">&#x2705; Stateless</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.web.bind.annotation.*;
+
+<span class="an">@RestController</span>
+<span class="kw">public class</span> <span class="cl">StatelessLoginController</span> {
+
+  <span class="kw">private final</span> <span class="cl">JwtUtil</span> jwtUtil; <span class="cm">// see the JWT tutorial in this series</span>
+
+  <span class="kw">public</span> <span class="cl">StatelessLoginController</span>(<span class="cl">JwtUtil</span> jwtUtil) {
+    <span class="kw">this</span>.jwtUtil = jwtUtil;
+  }
+
+  <span class="an">@PostMapping</span>(<span class="st">"/login"</span>)
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">login</span>(<span class="an">@RequestParam</span> <span class="cl">String</span> username) {
+<span class="hl">    <span class="kw">return</span> jwtUtil.<span class="fn">generateToken</span>(username); <span class="cm">// zero server-side memory</span></span>
+  }
+  <span class="cm">// every request re-proves identity via the token itself —</span>
+  <span class="cm">// ANY instance, behind ANY load-balancer algorithm, can serve it</span>
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>No server-side session state is the single biggest enabler of horizontal scaling. It's also why <strong>JWT tutorial</strong> earlier in this series matters way beyond "just auth."</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Prove the failure, then fix it</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Run the stateful controller as <strong>2 separate processes</strong> on 2 ports. Alternate <code>curl</code> requests between them round-robin style and show <code>/whoami</code> fails about half the time. Swap in the JWT version and show it always works regardless of which port answers.</p>
+              <div class="practice-hints"><span class="hint-chip">HttpSession</span><span class="hint-chip">2 JVM processes</span><span class="hint-chip">JWT — stateless</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Horizontal Scaling &amp; Load Balancing</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Once instances are stateless, a load balancer can spread 200 TPS across N of them. <strong>Round robin</strong> is simple but blind to load; <strong>least-connections</strong> adapts to slow instances; <strong>consistent hashing</strong> keeps the same client/key hitting the same instance (useful for cache locality).</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F6D2;</div><p><strong>Supermarket checkout lanes:</strong> Round robin = "next customer, next open lane" regardless of cart size. Least-connections = "go to the shortest line." A bad cashier (slow instance) gets fewer customers either way, but least-connections notices faster.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.concurrent.atomic.AtomicInteger;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+<span class="hl">  <span class="kw">static final</span> <span class="cl">List</span>&lt;<span class="cl">String</span>&gt; servers = <span class="cl">List</span>.<span class="fn">of</span>(<span class="st">"10.0.0.1:8080"</span>, <span class="st">"10.0.0.2:8080"</span>, <span class="st">"10.0.0.3:8080"</span>);</span>
+  <span class="kw">static final</span> <span class="cl">AtomicInteger</span> counter = <span class="kw">new</span> <span class="cl">AtomicInteger</span>(<span class="nm">0</span>); <span class="cm">// thread-safe round-robin pointer</span>
+
+  <span class="kw">static</span> <span class="cl">String</span> <span class="fn">nextServer</span>() {
+    <span class="kw">int</span> index = counter.<span class="fn">getAndIncrement</span>() % servers.<span class="fn">size</span>();
+    <span class="kw">return</span> servers.<span class="fn">get</span>(index);
+  }
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">6</span>; i++) {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Request "</span> + i + <span class="st">" -&gt; "</span> + <span class="fn">nextServer</span>());
+    }
+    <span class="cm">// Real load balancers (nginx, ALB, Envoy) do this PLUS health checks —</span>
+    <span class="cm">// a server failing its health check drops out of "servers" automatically.</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Request 1 -> 10.0.0.1:8080</span>
+<span class="ok">Request 2 -> 10.0.0.2:8080</span>
+<span class="ok">Request 3 -> 10.0.0.3:8080</span>
+<span class="ok">Request 4 -> 10.0.0.1:8080</span>
+<span class="ok">Request 5 -> 10.0.0.2:8080</span>
+<span class="ok">Request 6 -> 10.0.0.3:8080</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Always provision for <strong>peak</strong> TPS, not average — a 200 TPS average with bursty traffic might hit 600 TPS for short windows. Capacity planned for the average will fall over during the burst.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Build least-connections</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Replace round robin with least-connections: track an <code>AtomicInteger</code> active-request count per server, route to whichever is currently lowest. Make server 2 artificially slow (longer sleep) and confirm fewer requests pile up on it over time.</p>
+              <div class="practice-hints"><span class="hint-chip">Map&lt;String, AtomicInteger&gt;</span><span class="hint-chip">pick the min</span><span class="hint-chip">increment/decrement around the call</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Thread Pool Sizing (Tomcat)</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>server.tomcat.threads.max</code> caps how many requests Spring Boot handles concurrently. Sizing it bigger than your DB connection pool doesn't add capacity — it just means more threads sit <strong>blocked</strong> waiting for a free DB connection.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F37D;</div><p><strong>Tables vs kitchen staff:</strong> Seating 200 parties (threads) when your kitchen (DB pool) can only cook for 20 at once doesn't feed people faster — it just means 180 parties sit at their table doing nothing.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">YAML</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">server:</span>
+  <span class="kw">tomcat:</span>
+    <span class="kw">threads:</span>
+      <span class="kw">max:</span> <span class="nm">200</span>        <span class="cm"># max concurrent requests Tomcat will accept</span>
+      <span class="kw">min-spare:</span> <span class="nm">20</span>  <span class="cm"># threads kept alive even when idle</span>
+    <span class="kw">accept-count:</span> <span class="nm">100</span> <span class="cm"># requests queued once all 200 threads are busy</span>
+    <span class="kw">max-connections:</span> <span class="nm">8192</span></code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.ExecutorService;
+<span class="kw">import</span> java.util.concurrent.Executors;
+<span class="kw">import</span> java.util.concurrent.Semaphore;
+<span class="kw">import</span> java.util.concurrent.TimeUnit;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">InterruptedException</span> {
+
+<span class="hl">    <span class="cl">Semaphore</span> dbConnections = <span class="kw">new</span> <span class="cl">Semaphore</span>(<span class="nm">20</span>);             <span class="cm">// Hikari maximumPoolSize = 20</span></span>
+    <span class="cl">ExecutorService</span> tomcatThreads = <span class="cl">Executors</span>.<span class="fn">newFixedThreadPool</span>(<span class="nm">200</span>); <span class="cm">// threads.max = 200</span>
+
+    <span class="kw">long</span> start = <span class="cl">System</span>.<span class="fn">currentTimeMillis</span>();
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">200</span>; i++) {
+      tomcatThreads.<span class="fn">submit</span>(() -> {
+        <span class="kw">try</span> {
+<span class="hl">          dbConnections.<span class="fn">acquire</span>(); <span class="cm">// the other 180 threads just WAIT here</span></span>
+          <span class="kw">try</span> {
+            <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">50</span>); <span class="cm">// pretend DB query takes 50ms</span>
+          } <span class="kw">finally</span> {
+            dbConnections.<span class="fn">release</span>();
+          }
+        } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) {
+          <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>();
+        }
+      });
+    }
+
+    tomcatThreads.<span class="fn">shutdown</span>();
+    tomcatThreads.<span class="fn">awaitTermination</span>(<span class="nm">30</span>, <span class="cl">TimeUnit</span>.SECONDS);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"200 requests done in "</span> + (<span class="cl">System</span>.<span class="fn">currentTimeMillis</span>() - start) + <span class="st">"ms"</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">200 requests done in ~500ms</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Size your thread pool <strong>around</strong> your slowest downstream dependency, not bigger "just in case." Extra threads beyond what the DB can serve just queue, and under real load that queueing turns into timeouts that mask the actual bottleneck.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Find the real bottleneck</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Drop the semaphore to <strong>5 permits</strong> and re-run with 200 tasks — measure total time. Now raise the thread pool to 500 but keep permits at 5 — does total time change at all? What does that prove about where capacity actually comes from?</p>
+              <div class="practice-hints"><span class="hint-chip">Semaphore(5)</span><span class="hint-chip">measure time</span><span class="hint-chip">vary pool size independently</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Database Connection Pooling (HikariCP)</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Opening a DB connection means a TCP handshake plus authentication — too expensive to do per-request. A pool keeps a small set of <strong>long-lived</strong> connections reused across requests. Bigger is not better: an oversized pool causes contention <strong>on the database itself</strong>.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F511;</div><p><strong>Shared meeting-room keys:</strong> Minting a brand-new key for every meeting wastes time. A small set of reusable keys, checked in and out, is faster — and handing out 500 keys for 5 rooms just causes a crowd at the door.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">YAML</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">spring:</span>
+  <span class="kw">datasource:</span>
+    <span class="kw">url:</span> <span class="st">jdbc:postgresql://db-host:5432/orders</span>
+    <span class="kw">username:</span> <span class="st">app_user</span>
+    <span class="kw">password:</span> <span class="st">${DB_PASSWORD}</span>
+    <span class="kw">hikari:</span>
+<span class="hl">      <span class="kw">maximum-pool-size:</span> <span class="nm">20</span>       <span class="cm"># start small; raise only if metrics show queueing</span></span>
+      <span class="kw">minimum-idle:</span> <span class="nm">5</span>
+      <span class="kw">connection-timeout:</span> <span class="nm">3000</span>    <span class="cm"># ms to wait for a free connection before failing fast</span>
+      <span class="kw">idle-timeout:</span> <span class="nm">600000</span>       <span class="cm"># 10 min — close connections idle longer than this</span>
+      <span class="kw">max-lifetime:</span> <span class="nm">1800000</span>      <span class="cm"># 30 min — recycle connections periodically</span>
+      <span class="kw">leak-detection-threshold:</span> <span class="nm">5000</span> <span class="cm"># warn if held &gt; 5s without being returned</span></code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> com.zaxxer.hikari.HikariConfig;
+<span class="kw">import</span> com.zaxxer.hikari.HikariDataSource;
+<span class="kw">import</span> java.sql.Connection;
+<span class="kw">import</span> java.sql.PreparedStatement;
+<span class="kw">import</span> java.sql.ResultSet;
+<span class="kw">import</span> java.sql.SQLException;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">SQLException</span> {
+
+    <span class="cl">HikariConfig</span> config = <span class="kw">new</span> <span class="cl">HikariConfig</span>();
+    config.<span class="fn">setJdbcUrl</span>(<span class="st">"jdbc:postgresql://db-host:5432/orders"</span>);
+    config.<span class="fn">setUsername</span>(<span class="st">"app_user"</span>);
+    config.<span class="fn">setPassword</span>(<span class="cl">System</span>.<span class="fn">getenv</span>(<span class="st">"DB_PASSWORD"</span>));
+    config.<span class="fn">setMaximumPoolSize</span>(<span class="nm">20</span>);
+
+    <span class="cl">HikariDataSource</span> dataSource = <span class="kw">new</span> <span class="cl">HikariDataSource</span>(config);
+
+<span class="hl">    <span class="kw">try</span> (<span class="cl">Connection</span> conn = dataSource.<span class="fn">getConnection</span>();  <span class="cm">// borrowed from the pool</span></span>
+         <span class="cl">PreparedStatement</span> stmt = conn.<span class="fn">prepareStatement</span>(
+             <span class="st">"SELECT id, status FROM orders WHERE customer_id = ?"</span>)) {
+
+      stmt.<span class="fn">setLong</span>(<span class="nm">1</span>, <span class="nm">42L</span>);
+      <span class="kw">try</span> (<span class="cl">ResultSet</span> rs = stmt.<span class="fn">executeQuery</span>()) {
+        <span class="kw">while</span> (rs.<span class="fn">next</span>()) {
+          <span class="cl">System</span>.out.<span class="fn">println</span>(rs.<span class="fn">getLong</span>(<span class="st">"id"</span>) + <span class="st">" -&gt; "</span> + rs.<span class="fn">getString</span>(<span class="st">"status"</span>));
+        }
+      }
+<span class="hl">    } <span class="cm">// connection is RETURNED to the pool here — not physically closed</span></span>
+
+    dataSource.<span class="fn">close</span>(); <span class="cm">// only at application shutdown</span>
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>try-with-resources</code> on a pooled <code>Connection</code> returns it to the pool, it doesn't kill the TCP connection. Swallowing an exception and skipping the close is the #1 cause of pool exhaustion in production.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Reproduce a connection leak</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Write a version that grabs a connection in a plain <code>try/catch</code> (no try-with-resources) and "forgets" to close it on one code path. Hammer it with 25 requests against a pool of 20 and show requests 21+ start failing on <code>connection-timeout</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">skip the close()</span><span class="hint-chip">pool size 20, requests 25</span><span class="hint-chip">connection-timeout error</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Cache-Aside &amp; the Thundering Herd</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Cache-aside: check Redis first; on a miss, read the DB and populate the cache. Cache <strong>read-heavy, slow-to-compute, rarely-changing</strong> data. The trap: when a hot key expires, dozens of requests can miss <strong>at the same instant</strong> and all hammer the DB at once — a <strong>thundering herd</strong>.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F6B0;</div><p><strong>Water cooler line:</strong> If everyone's bottle (cache entry) runs dry at the exact same moment, everyone rushes the one tap (the database) simultaneously.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.data.redis.core.StringRedisTemplate;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> java.time.Duration;
+<span class="kw">import</span> java.util.concurrent.ConcurrentHashMap;
+<span class="kw">import</span> java.util.concurrent.locks.ReentrantLock;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">ProductPriceService</span> {
+
+  <span class="kw">private final</span> <span class="cl">StringRedisTemplate</span> redis;
+  <span class="kw">private final</span> <span class="cl">ProductRepository</span> productRepository; <span class="cm">// your DB layer</span>
+
+<span class="hl">  <span class="cm">// one lock PER product key — only one thread recomputes a given miss</span></span>
+  <span class="kw">private final</span> <span class="cl">ConcurrentHashMap</span>&lt;<span class="cl">Long</span>, <span class="cl">ReentrantLock</span>&gt; locks = <span class="kw">new</span> <span class="cl">ConcurrentHashMap</span>&lt;&gt;();
+
+  <span class="kw">public</span> <span class="cl">ProductPriceService</span>(<span class="cl">StringRedisTemplate</span> redis, <span class="cl">ProductRepository</span> repo) {
+    <span class="kw">this</span>.redis = redis;
+    <span class="kw">this</span>.productRepository = repo;
+  }
+
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">getPrice</span>(<span class="kw">long</span> productId) {
+    <span class="cl">String</span> key = <span class="st">"price:"</span> + productId;
+
+    <span class="cl">String</span> cached = redis.<span class="fn">opsForValue</span>().<span class="fn">get</span>(key);
+    <span class="kw">if</span> (cached != <span class="kw">null</span>) <span class="kw">return</span> cached; <span class="cm">// HIT — sub-millisecond, no DB</span>
+
+<span class="hl">    <span class="cl">ReentrantLock</span> lock = locks.<span class="fn">computeIfAbsent</span>(productId, id -> <span class="kw">new</span> <span class="cl">ReentrantLock</span>());</span>
+    lock.<span class="fn">lock</span>();
+    <span class="kw">try</span> {
+      <span class="cm">// re-check — another thread may have filled it while we waited for the lock</span>
+      cached = redis.<span class="fn">opsForValue</span>().<span class="fn">get</span>(key);
+      <span class="kw">if</span> (cached != <span class="kw">null</span>) <span class="kw">return</span> cached;
+
+      <span class="cl">String</span> price = productRepository.<span class="fn">findPriceById</span>(productId); <span class="cm">// the slow path</span>
+
+<span class="hl">      <span class="kw">long</span> jitterSeconds = (<span class="kw">long</span>) (<span class="cl">Math</span>.<span class="fn">random</span>() * <span class="nm">10</span>); <span class="cm">// avoid synchronized expiry</span></span>
+      redis.<span class="fn">opsForValue</span>().<span class="fn">set</span>(key, price, <span class="cl">Duration</span>.<span class="fn">ofSeconds</span>(<span class="nm">60</span> + jitterSeconds));
+
+      <span class="kw">return</span> price;
+    } <span class="kw">finally</span> {
+      lock.<span class="fn">unlock</span>();
+    }
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Prevent the herd two ways: <strong>request coalescing</strong> (one thread refills, the rest wait and reuse the result) and <strong>jittered TTLs</strong> so millions of keys don't expire in the same second.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Count the herd</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Fire <strong>50 concurrent threads</strong> at <code>getPrice()</code> for the same <code>productId</code> right as its cache entry expires. Without the per-key lock, count how many times <code>findPriceById()</code> actually runs (expect &#x2248;50). Add the lock and confirm it drops to 1.</p>
+              <div class="practice-hints"><span class="hint-chip">AtomicInteger call counter</span><span class="hint-chip">ExecutorService(50)</span><span class="hint-chip">ReentrantLock per key</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Replace the in-process <code>ReentrantLock</code> with a Redis-based distributed lock (<code>SET key value NX EX 10</code>) so the protection works across multiple server instances, not just inside one JVM.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Async / Non-Blocking I/O</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">In the thread-per-request model, one blocked thread = one wasted thread (see <strong>java-threads.html</strong>'s Thread Pool card). Reactive/WebFlux releases the thread back to the pool while waiting on slow I/O — letting a handful of threads serve thousands of in-flight requests. It does nothing for <strong>CPU-bound</strong> work.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F37D;</div><p><strong>Waiter taking many orders vs one waiter per table:</strong> A good waiter takes order 2 while order 1 cooks. Reactive is that waiter. Blocking I/O is a waiter standing at one table, frozen, until the kitchen finishes.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">&#x274C; Blocking</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.web.bind.annotation.*;
+<span class="kw">import</span> org.springframework.web.client.RestTemplate;
+
+<span class="an">@RestController</span>
+<span class="kw">public class</span> <span class="cl">BlockingDashboardController</span> {
+
+  <span class="kw">private final</span> <span class="cl">RestTemplate</span> restTemplate = <span class="kw">new</span> <span class="cl">RestTemplate</span>();
+
+  <span class="an">@GetMapping</span>(<span class="st">"/dashboard"</span>)
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">dashboard</span>() {
+<span class="hl">    <span class="cl">String</span> users  = restTemplate.<span class="fn">getForObject</span>(<span class="st">"http://users-service/summary"</span>, <span class="cl">String</span>.<span class="kw">class</span>);  <span class="cm">// ~100ms</span></span>
+<span class="hl">    <span class="cl">String</span> orders = restTemplate.<span class="fn">getForObject</span>(<span class="st">"http://orders-service/summary"</span>, <span class="cl">String</span>.<span class="kw">class</span>); <span class="cm">// ~150ms</span></span>
+<span class="hl">    <span class="cl">String</span> stats  = restTemplate.<span class="fn">getForObject</span>(<span class="st">"http://stats-service/summary"</span>, <span class="cl">String</span>.<span class="kw">class</span>);  <span class="cm">// ~120ms</span></span>
+    <span class="kw">return</span> users + orders + stats; <span class="cm">// total ~370ms, ONE thread held the whole time</span>
+  }
+}</code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">&#x2705; Reactive</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.web.bind.annotation.*;
+<span class="kw">import</span> org.springframework.web.reactive.function.client.WebClient;
+<span class="kw">import</span> reactor.core.publisher.Mono;
+
+<span class="an">@RestController</span>
+<span class="kw">public class</span> <span class="cl">ReactiveDashboardController</span> {
+
+  <span class="kw">private final</span> <span class="cl">WebClient</span> webClient = <span class="cl">WebClient</span>.<span class="fn">create</span>();
+
+  <span class="an">@GetMapping</span>(<span class="st">"/dashboard"</span>)
+  <span class="kw">public</span> <span class="cl">Mono</span>&lt;<span class="cl">String</span>&gt; <span class="fn">dashboard</span>() {
+    <span class="cl">Mono</span>&lt;<span class="cl">String</span>&gt; users  = webClient.<span class="fn">get</span>().<span class="fn">uri</span>(<span class="st">"http://users-service/summary"</span>).<span class="fn">retrieve</span>().<span class="fn">bodyToMono</span>(<span class="cl">String</span>.<span class="kw">class</span>);
+    <span class="cl">Mono</span>&lt;<span class="cl">String</span>&gt; orders = webClient.<span class="fn">get</span>().<span class="fn">uri</span>(<span class="st">"http://orders-service/summary"</span>).<span class="fn">retrieve</span>().<span class="fn">bodyToMono</span>(<span class="cl">String</span>.<span class="kw">class</span>);
+    <span class="cl">Mono</span>&lt;<span class="cl">String</span>&gt; stats  = webClient.<span class="fn">get</span>().<span class="fn">uri</span>(<span class="st">"http://stats-service/summary"</span>).<span class="fn">retrieve</span>().<span class="fn">bodyToMono</span>(<span class="cl">String</span>.<span class="kw">class</span>);
+
+<span class="hl">    <span class="cm">// all 3 fire concurrently; the event-loop thread is FREE while waiting</span></span>
+    <span class="kw">return</span> <span class="cl">Mono</span>.<span class="fn">zip</span>(users, orders, stats)
+        .<span class="fn">map</span>(tuple -> tuple.<span class="fn">getT1</span>() + tuple.<span class="fn">getT2</span>() + tuple.<span class="fn">getT3</span>());
+    <span class="cm">// total ~150ms (the slowest call) — no thread was ever blocked waiting</span>
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Reactive wins when you fan out to <strong>many slow I/O calls</strong> per request. For CPU-bound work (encryption, image resizing) it adds complexity with zero throughput benefit — you still need real CPU cores, see <strong>Thread Pool</strong> in java-threads.html.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Measure the difference</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Simulate the 3 downstream calls with artificial 100/150/120ms delays. Measure total latency for the blocking version vs the <code>Mono.zip</code> version. Confirm the reactive version lands near the slowest single call, not the sum.</p>
+              <div class="practice-hints"><span class="hint-chip">Thread.sleep simulation</span><span class="hint-chip">Mono.zip</span><span class="hint-chip">measure both</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Load-test both with 500 concurrent requests — a 200-thread blocking server vs WebFlux's handful of event-loop threads. Compare maximum sustained TPS before latency blows up.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Read Replicas &amp; Read/Write Splitting</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Most APIs are read-heavy. Routing writes to the <strong>primary</strong> and reads to one or more <strong>replicas</strong> multiplies read capacity almost for free. The tradeoff: <strong>replication lag</strong> — a replica can be milliseconds to seconds behind the primary.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4D6;</div><p><strong>Library main desk vs branch reading rooms:</strong> New books (writes) are checked in at the main desk. Branches (replicas) get copies a little later — great for browsing, occasionally stale for "did my new book arrive yet."</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource;
+<span class="kw">import</span> org.springframework.transaction.support.TransactionSynchronizationManager;
+
+<span class="kw">public class</span> <span class="cl">ReadWriteRoutingDataSource</span> <span class="kw">extends</span> <span class="cl">AbstractRoutingDataSource</span> {
+
+  <span class="an">@Override</span>
+  <span class="kw">protected</span> <span class="cl">Object</span> <span class="fn">determineCurrentLookupKey</span>() {
+<span class="hl">    <span class="kw">boolean</span> readOnly = <span class="cl">TransactionSynchronizationManager</span>.<span class="fn">isCurrentTransactionReadOnly</span>();</span>
+    <span class="kw">return</span> readOnly ? <span class="st">"replica"</span> : <span class="st">"primary"</span>;
+  }
+}
+
+<span class="an">@Service</span>
+<span class="kw">class</span> <span class="cl">OrderService</span> {
+
+<span class="hl">  <span class="an">@Transactional</span>(readOnly = <span class="kw">true</span>) <span class="cm">// routed to a REPLICA — multiplies read capacity</span></span>
+  <span class="cl">Order</span> <span class="fn">findOrder</span>(<span class="kw">long</span> id) {
+    <span class="kw">return</span> orderRepository.<span class="fn">findById</span>(id);
+  }
+
+  <span class="an">@Transactional</span> <span class="cm">// readOnly = false (default) — routed to the PRIMARY</span>
+  <span class="kw">void</span> <span class="fn">placeOrder</span>(<span class="cl">Order</span> order) {
+    orderRepository.<span class="fn">save</span>(order);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><strong>Read-your-own-write gotcha:</strong> if a client calls <code>placeOrder()</code> then immediately calls <code>findOrder()</code>, the replica may not have caught up yet — the order "disappears" for a few hundred ms. Fix: read the just-saved object directly, or route the immediate follow-up read to the primary.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Reproduce replication lag</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Model "primary" and "replica" as two <code>ConcurrentHashMap</code>s. A background thread copies primary &#x2192; replica every <strong>200ms</strong>. Write a value, then immediately read from the replica map — observe the missing-data window, then wait 200ms and confirm it appears.</p>
+              <div class="practice-hints"><span class="hint-chip">two ConcurrentHashMaps</span><span class="hint-chip">background copy thread</span><span class="hint-chip">immediate read after write</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Sharding &amp; the Hot Partition Problem</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">When even a primary + replicas can't keep up, split the data itself across multiple database instances by a <strong>shard key</strong> (e.g. <code>customerId</code>). Pick the key carelessly and you get a <strong>hot partition</strong> — one shard takes most of the live traffic while the others sit idle.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F5C4;&#xFE0F;</div><p><strong>Filing cabinets by last name A-M / N-Z:</strong> Works fine until half your customers are named "Smith" — one cabinet is jammed, the other gathers dust.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">static final int</span> SHARD_COUNT = <span class="nm">4</span>; <span class="cm">// 4 separate database instances/schemas</span>
+
+<span class="hl">  <span class="kw">static int</span> <span class="fn">shardFor</span>(<span class="kw">long</span> customerId) {</span>
+<span class="hl">    <span class="kw">return</span> (<span class="kw">int</span>) (<span class="cl">Math</span>.<span class="fn">abs</span>(customerId) % SHARD_COUNT); <span class="cm">// naive modulo sharding</span></span>
+  }
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="kw">long</span>[] customerIds = { <span class="nm">101</span>, <span class="nm">102</span>, <span class="nm">103</span>, <span class="nm">104</span>, <span class="nm">105</span>, <span class="nm">106</span>, <span class="nm">107</span>, <span class="nm">108</span> };
+    <span class="kw">for</span> (<span class="kw">long</span> id : customerIds) {
+      <span class="kw">int</span> shard = <span class="fn">shardFor</span>(id);
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Customer "</span> + id + <span class="st">" -&gt; shard "</span> + shard + <span class="st">" (orders_db_"</span> + shard + <span class="st">")"</span>);
+    }
+    <span class="cm">// &#x26A0;&#xFE0F; HOT PARTITION RISK: sequential, recently-created customer IDs skew</span>
+    <span class="cm">// most LIVE traffic onto 1-2 shards. Real systems hash the key first.</span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Customer 101 -> shard 1 (orders_db_1)
+Customer 102 -> shard 2 (orders_db_2)
+Customer 103 -> shard 3 (orders_db_3)
+Customer 104 -> shard 0 (orders_db_0)
+Customer 105 -> shard 1 (orders_db_1)</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Pick a shard key that distributes <strong>load over time</strong>, not just values over a range. Hash the key before modulo-ing, and monitor per-shard TPS so a hot partition is caught before it becomes an outage.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Hash away the hot partition</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Change <code>shardFor</code> to hash the ID first: <code>Math.abs(Long.hashCode(customerId)) % SHARD_COUNT</code>. Generate 10,000 sequential IDs and print the per-shard count with and without hashing — compare the distribution.</p>
+              <div class="practice-hints"><span class="hint-chip">Long.hashCode()</span><span class="hint-chip">10,000 ids</span><span class="hint-chip">count per shard</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Rate Limiting (Token Bucket)</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Rate limiting protects your 200 TPS budget from any single caller hogging it. <strong>Token bucket</strong> allows short bursts up to a capacity, then settles to a steady refill rate — the most common choice. <strong>Leaky bucket</strong> smooths to a constant rate; <strong>fixed window</strong> is simplest but lets two bursts straddle a window boundary.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.Executors;
+<span class="kw">import</span> java.util.concurrent.ScheduledExecutorService;
+<span class="kw">import</span> java.util.concurrent.TimeUnit;
+<span class="kw">import</span> java.util.concurrent.atomic.AtomicInteger;
+
+<span class="kw">public class</span> <span class="cl">TokenBucketRateLimiter</span> {
+
+  <span class="kw">private final</span> <span class="cl">AtomicInteger</span> tokens;
+  <span class="kw">private final int</span> capacity;
+
+  <span class="kw">public</span> <span class="cl">TokenBucketRateLimiter</span>(<span class="kw">int</span> capacity, <span class="kw">int</span> refillPerSecond) {
+    <span class="kw">this</span>.capacity = capacity;
+    <span class="kw">this</span>.tokens = <span class="kw">new</span> <span class="cl">AtomicInteger</span>(capacity);
+
+    <span class="cl">ScheduledExecutorService</span> refiller = <span class="cl">Executors</span>.<span class="fn">newSingleThreadScheduledExecutor</span>();
+<span class="hl">    refiller.<span class="fn">scheduleAtFixedRate</span>(() -></span>
+<span class="hl">      tokens.<span class="fn">updateAndGet</span>(current -> <span class="cl">Math</span>.<span class="fn">min</span>(capacity, current + refillPerSecond)),</span>
+<span class="hl">      <span class="nm">1</span>, <span class="nm">1</span>, <span class="cl">TimeUnit</span>.SECONDS); <span class="cm">// refill once per second</span></span>
+  }
+
+  <span class="kw">public boolean</span> <span class="fn">tryAcquire</span>() {
+    <span class="kw">int</span> current;
+    <span class="kw">do</span> {
+      current = tokens.<span class="fn">get</span>();
+      <span class="kw">if</span> (current &lt;= <span class="nm">0</span>) <span class="kw">return false</span>; <span class="cm">// bucket empty — reject</span>
+    } <span class="kw">while</span> (!tokens.<span class="fn">compareAndSet</span>(current, current - <span class="nm">1</span>)); <span class="cm">// CAS retry loop</span>
+    <span class="kw">return true</span>;
+  }
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+    <span class="cl">TokenBucketRateLimiter</span> limiter = <span class="kw">new</span> <span class="cl">TokenBucketRateLimiter</span>(<span class="nm">5</span>, <span class="nm">5</span>); <span class="cm">// burst of 5, refill 5/s</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">8</span>; i++) {
+      <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Request "</span> + i + <span class="st">" -&gt; "</span> + (limiter.<span class="fn">tryAcquire</span>() ? <span class="st">"ALLOWED"</span> : <span class="st">"REJECTED (429)"</span>));
+    }
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Request 1 -> ALLOWED
+Request 2 -> ALLOWED
+Request 3 -> ALLOWED
+Request 4 -> ALLOWED
+Request 5 -> ALLOWED</span>
+<span class="er">Request 6 -> REJECTED (429)
+Request 7 -> REJECTED (429)
+Request 8 -> REJECTED (429)</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>This <code>AtomicInteger</code> version only protects <strong>one JVM</strong>. Across multiple instances you need a shared store — Redis <code>INCR</code> + <code>EXPIRE</code> (or a Lua script for atomicity) so all instances share the same budget.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Make it distributed</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Rewrite <code>tryAcquire()</code> backed by Redis: <code>INCR ratelimit:{userId}:{currentSecond}</code>, set <code>EXPIRE</code> to 1s on the first increment, reject if the count exceeds the limit. Confirm it correctly shares the budget across two simulated server instances.</p>
+              <div class="practice-hints"><span class="hint-chip">INCR + EXPIRE</span><span class="hint-chip">per-second bucket key</span><span class="hint-chip">2 instances sharing Redis</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Implement the leaky-bucket variant: instead of instant rejection, queue excess requests up to a max size and drain them at a constant rate.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="concept" data-id="11">
+    <div class="concept-node">11</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Backpressure &amp; Load Shedding</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">When traffic exceeds 200 TPS capacity, an <strong>unbounded queue</strong> isn't resilience — it's a delayed outage: latency grows without limit until clients give up or the JVM runs out of memory. A <strong>bounded queue</strong> plus deliberate rejection (429/503) keeps p99 sane.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> java.util.concurrent.*;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+<span class="hl">    <span class="cl">ThreadPoolExecutor</span> pool = <span class="kw">new</span> <span class="cl">ThreadPoolExecutor</span>(</span>
+<span class="hl">      <span class="nm">20</span>, <span class="nm">20</span>,                              <span class="cm">// core/max — fixed, matches DB capacity</span></span>
+<span class="hl">      <span class="nm">60</span>, <span class="cl">TimeUnit</span>.SECONDS,</span>
+<span class="hl">      <span class="kw">new</span> <span class="cl">ArrayBlockingQueue</span>&lt;&gt;(<span class="nm">100</span>),         <span class="cm">// BOUNDED — not unbounded!</span></span>
+<span class="hl">      <span class="kw">new</span> <span class="cl">ThreadPoolExecutor</span>.<span class="cl">AbortPolicy</span>()  <span class="cm">// reject instead of queueing forever</span></span>
+<span class="hl">    );</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">1</span>; i&lt;=<span class="nm">200</span>; i++) {
+      <span class="kw">int</span> requestId = i;
+      <span class="kw">try</span> {
+        pool.<span class="fn">execute</span>(() -> {
+          <span class="kw">try</span> { <span class="cl">Thread</span>.<span class="fn">sleep</span>(<span class="nm">50</span>); } <span class="kw">catch</span> (<span class="cl">InterruptedException</span> e) { <span class="cl">Thread</span>.<span class="fn">currentThread</span>().<span class="fn">interrupt</span>(); }
+        });
+      } <span class="kw">catch</span> (<span class="cl">RejectedExecutionException</span> e) {
+<span class="hl">        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Request "</span> + requestId + <span class="st">" -&gt; REJECTED (503), at capacity"</span>);</span>
+      }
+    }
+
+    pool.<span class="fn">shutdown</span>();
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Rejecting fast at capacity beats queueing forever — by the time a request at the back of an unbounded queue gets served, the caller has often already timed out or retried, doubling your load.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q11 — Compare rejection policies</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Swap <code>AbortPolicy</code> for <code>CallerRunsPolicy</code>. Run the same 200-request burst and observe how the submitting thread itself gets forced to do the work — naturally throttling how fast new requests can even be submitted.</p>
+              <div class="practice-hints"><span class="hint-chip">CallerRunsPolicy</span><span class="hint-chip">same 200-request burst</span><span class="hint-chip">observe throttling</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="concept" data-id="12">
+    <div class="concept-node">12</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Circuit Breakers &amp; Bulkheads</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A <strong>bulkhead</strong> gives each downstream dependency its own isolated thread pool, so one slow dependency can't exhaust the pool serving everything else. A <strong>circuit breaker</strong> stops calling a dependency that's clearly failing instead of piling up slow timeouts.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F6A2;</div><p><strong>Ship bulkheads:</strong> Watertight compartments mean one hull breach floods one compartment, not the whole ship. One slow payment gateway shouldn't sink your entire API.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+<span class="kw">import</span> io.github.resilience4j.bulkhead.annotation.Bulkhead;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> org.springframework.web.client.RestTemplate;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">PaymentGatewayClient</span> {
+
+  <span class="kw">private final</span> <span class="cl">RestTemplate</span> restTemplate = <span class="kw">new</span> <span class="cl">RestTemplate</span>();
+
+<span class="hl">  <span class="an">@CircuitBreaker</span>(name = <span class="st">"paymentGateway"</span>, fallbackMethod = <span class="st">"fallback"</span>)</span>
+<span class="hl">  <span class="an">@Bulkhead</span>(name = <span class="st">"paymentGateway"</span>) <span class="cm">// isolated pool — only THIS dependency lives here</span></span>
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">charge</span>(<span class="cl">String</span> orderId, <span class="kw">double</span> amount) {
+    <span class="kw">return</span> restTemplate.<span class="fn">postForObject</span>(
+        <span class="st">"https://payments.example.com/charge"</span>, amount, <span class="cl">String</span>.<span class="kw">class</span>);
+  }
+
+  <span class="kw">private</span> <span class="cl">String</span> <span class="fn">fallback</span>(<span class="cl">String</span> orderId, <span class="kw">double</span> amount, <span class="cl">Throwable</span> t) {
+<span class="hl">    <span class="cm">// circuit OPEN or bulkhead full — fail FAST instead of a slow timeout</span></span>
+    <span class="kw">return</span> <span class="st">"PAYMENT_PENDING: will retry "</span> + orderId;
+  }
+}</code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">YAML</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">resilience4j:</span>
+  <span class="kw">circuitbreaker:</span>
+    <span class="kw">instances:</span>
+      <span class="kw">paymentGateway:</span>
+        <span class="kw">sliding-window-size:</span> <span class="nm">20</span>
+        <span class="kw">failure-rate-threshold:</span> <span class="nm">50</span>      <span class="cm"># open if &gt;=50% of last 20 calls failed</span>
+        <span class="kw">wait-duration-in-open-state:</span> <span class="nm">10s</span>
+  <span class="kw">bulkhead:</span>
+    <span class="kw">instances:</span>
+      <span class="kw">paymentGateway:</span>
+        <span class="kw">max-concurrent-calls:</span> <span class="nm">10</span>        <span class="cm"># isolated capacity — caps blast radius</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Without a bulkhead, one slow dependency eventually consumes <strong>every</strong> thread in a shared pool — taking down requests that have nothing to do with the failing dependency. The circuit breaker stops wasting threads on calls very likely to fail anyway.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q12 — Watch the circuit open and recover</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Point <code>charge()</code> at a mock endpoint you can make fail on demand. Send enough failing calls to flip the circuit <strong>OPEN</strong>, confirm subsequent calls fail fast via <code>fallback()</code> instead of timing out, then make the mock succeed and confirm the breaker moves <code>HALF_OPEN &#x2192; CLOSED</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">mock failing endpoint</span><span class="hint-chip">watch CLOSED&#x2192;OPEN&#x2192;HALF_OPEN</span><span class="hint-chip">fallback fires instantly</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="concept" data-id="13">
+    <div class="concept-node">13</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Idempotency Keys</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">At 200 TPS with real network conditions, timeouts and retries <strong>will</strong> happen — clients and load balancers retry POST/PUT calls automatically. Without an idempotency key, a retried "charge card" call double-charges the customer.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.data.redis.core.StringRedisTemplate;
+<span class="kw">import</span> org.springframework.web.bind.annotation.*;
+<span class="kw">import</span> java.time.Duration;
+
+<span class="an">@RestController</span>
+<span class="kw">public class</span> <span class="cl">PaymentController</span> {
+
+  <span class="kw">private final</span> <span class="cl">StringRedisTemplate</span> redis;
+  <span class="kw">private final</span> <span class="cl">PaymentService</span> paymentService;
+
+  <span class="kw">public</span> <span class="cl">PaymentController</span>(<span class="cl">StringRedisTemplate</span> redis, <span class="cl">PaymentService</span> paymentService) {
+    <span class="kw">this</span>.redis = redis;
+    <span class="kw">this</span>.paymentService = paymentService;
+  }
+
+  <span class="an">@PostMapping</span>(<span class="st">"/payments"</span>)
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">charge</span>(<span class="an">@RequestHeader</span>(<span class="st">"Idempotency-Key"</span>) <span class="cl">String</span> key,
+                        <span class="an">@RequestBody</span> <span class="cl">ChargeRequest</span> request) {
+
+    <span class="cl">String</span> resultKey = <span class="st">"idempotency:"</span> + key;
+
+<span class="hl">    <span class="cm">// SET ... NX — atomically succeeds only if the key does NOT already exist</span></span>
+<span class="hl">    <span class="cl">Boolean</span> firstTime = redis.<span class="fn">opsForValue</span>().<span class="fn">setIfAbsent</span>(resultKey, <span class="st">"PROCESSING"</span>, <span class="cl">Duration</span>.<span class="fn">ofHours</span>(<span class="nm">24</span>));</span>
+
+    <span class="kw">if</span> (<span class="cl">Boolean</span>.FALSE.<span class="fn">equals</span>(firstTime)) {
+      <span class="cm">// this exact key already ran (or is running) — don't re-charge, return cached result</span>
+      <span class="cl">String</span> cachedResult = redis.<span class="fn">opsForValue</span>().<span class="fn">get</span>(resultKey);
+      <span class="kw">return</span> cachedResult != <span class="kw">null</span> ? cachedResult : <span class="st">"PROCESSING"</span>;
+    }
+
+    <span class="cl">String</span> result = paymentService.<span class="fn">charge</span>(request); <span class="cm">// the real side effect — runs ONCE</span>
+    redis.<span class="fn">opsForValue</span>().<span class="fn">set</span>(resultKey, result, <span class="cl">Duration</span>.<span class="fn">ofHours</span>(<span class="nm">24</span>));
+    <span class="kw">return</span> result;
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>The <strong>client</strong> generates the idempotency key once per logical operation (a UUID is fine) and resends the <strong>same</strong> key on every retry of that operation — never a fresh key per retry attempt.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q13 — Prove retries are safe</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Simulate a client retrying the same POST 3 times with the <strong>same</strong> <code>Idempotency-Key</code>. Confirm <code>paymentService.charge()</code> executes exactly once, and all 3 HTTP responses return the identical result.</p>
+              <div class="practice-hints"><span class="hint-chip">same key, 3 retries</span><span class="hint-chip">count actual charge() calls</span><span class="hint-chip">setIfAbsent (NX)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="concept" data-id="14">
+    <div class="concept-node">14</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Message Queues for Decoupling</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Every millisecond spent inside the synchronous request path eats directly into your Little's Law latency budget. Move <strong>non-critical-path</strong> work (emails, analytics, inventory sync) onto Kafka/RabbitMQ so the API does only the minimum needed to respond.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.kafka.core.KafkaTemplate;
+<span class="kw">import</span> org.springframework.web.bind.annotation.*;
+
+<span class="an">@RestController</span>
+<span class="kw">public class</span> <span class="cl">OrderController</span> {
+
+  <span class="kw">private final</span> <span class="cl">OrderRepository</span> orderRepository;
+  <span class="kw">private final</span> <span class="cl">KafkaTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">String</span>&gt; kafkaTemplate;
+
+  <span class="kw">public</span> <span class="cl">OrderController</span>(<span class="cl">OrderRepository</span> repo, <span class="cl">KafkaTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">String</span>&gt; kafka) {
+    <span class="kw">this</span>.orderRepository = repo;
+    <span class="kw">this</span>.kafkaTemplate = kafka;
+  }
+
+  <span class="an">@PostMapping</span>(<span class="st">"/orders"</span>)
+  <span class="kw">public</span> <span class="cl">String</span> <span class="fn">placeOrder</span>(<span class="an">@RequestBody</span> <span class="cl">OrderRequest</span> request) {
+
+<span class="hl">    <span class="cl">Order</span> saved = orderRepository.<span class="fn">save</span>(<span class="fn">toOrder</span>(request)); <span class="cm">// the ONE thing that must be synchronous</span></span>
+
+<span class="hl">    kafkaTemplate.<span class="fn">send</span>(<span class="st">"order-placed"</span>, saved.<span class="fn">getId</span>().<span class="fn">toString</span>()); <span class="cm">// fire and forget</span></span>
+
+    <span class="kw">return</span> <span class="st">"Order "</span> + saved.<span class="fn">getId</span>() + <span class="st">" placed"</span>; <span class="cm">// returns immediately</span>
+  }
+
+  <span class="kw">private</span> <span class="cl">Order</span> <span class="fn">toOrder</span>(<span class="cl">OrderRequest</span> r) { <span class="kw">return new</span> <span class="cl">Order</span>(); <span class="cm">/* mapping omitted */</span> }
+}
+
+<span class="cm">// a SEPARATE consumer, running independently, does the slow stuff</span>
+<span class="an">@Component</span>
+<span class="kw">class</span> <span class="cl">OrderPlacedListener</span> {
+
+  <span class="an">@KafkaListener</span>(topics = <span class="st">"order-placed"</span>)
+  <span class="kw">public void</span> <span class="fn">onOrderPlaced</span>(<span class="cl">String</span> orderId) {
+    emailService.<span class="fn">sendConfirmation</span>(orderId); <span class="cm">// can take 500ms+ — nobody's waiting on it</span>
+    analyticsService.<span class="fn">track</span>(orderId);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>If sending a confirmation email takes 300ms and you do it inline, you've burned 300ms of latency budget the client never asked you to spend. Push it off the critical path.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q14 — Move work off the request thread</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Start with "send confirmation email" inline inside <code>placeOrder()</code>. Measure response time. Move it to a Kafka consumer (or, as a simpler first step, just <code>ExecutorService.submit()</code>). Measure response time again.</p>
+              <div class="practice-hints"><span class="hint-chip">measure before</span><span class="hint-chip">move to async/queue</span><span class="hint-chip">measure after</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15 -->
+  <div class="concept" data-id="15">
+    <div class="concept-node">15</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Write Optimization &amp; the N+1 Problem</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The <strong>N+1 query problem</strong>: an ORM lazily loads a related collection inside a loop, firing one extra query per row. Invisible with 1 row of test data, devastating at 200 TPS with real volume. <strong>Batching</strong> writes turns hundreds of round trips into one.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">&#x274C; N+1</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cl">List</span>&lt;<span class="cl">Order</span>&gt; orders = orderRepository.<span class="fn">findByCustomerId</span>(customerId); <span class="cm">// 1 query</span>
+<span class="kw">for</span> (<span class="cl">Order</span> order : orders) {
+<span class="hl">  <span class="cl">System</span>.out.<span class="fn">println</span>(order.<span class="fn">getItems</span>().<span class="fn">size</span>()); <span class="cm">// lazy-loads items — 1 query EACH time!</span></span>
+}
+<span class="cm">// 50 orders = 51 queries. At 200 TPS that's a 50x multiplier on DB load.</span></code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">&#x2705; Fixed</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="an">@Query</span>(<span class="st">"SELECT DISTINCT o FROM Order o LEFT JOIN FETCH o.items WHERE o.customerId = :customerId"</span>)
+<span class="cl">List</span>&lt;<span class="cl">Order</span>&gt; <span class="fn">findByCustomerIdWithItems</span>(<span class="an">@Param</span>(<span class="st">"customerId"</span>) <span class="cl">Long</span> customerId);
+<span class="cm">// 50 orders = 1 query, regardless of how many orders there are.</span></code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">Batch Writes</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> com.zaxxer.hikari.HikariConfig;
+<span class="kw">import</span> com.zaxxer.hikari.HikariDataSource;
+<span class="kw">import</span> java.sql.Connection;
+<span class="kw">import</span> java.sql.PreparedStatement;
+<span class="kw">import</span> java.sql.SQLException;
+<span class="kw">import</span> java.sql.Timestamp;
+<span class="kw">import</span> java.util.List;
+
+<span class="kw">public class</span> <span class="cl">Main</span> {
+
+  <span class="kw">record</span> <span class="cl">AnalyticsEvent</span>(<span class="kw">long</span> userId, <span class="cl">String</span> type, <span class="cl">Timestamp</span> timestamp) {}
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) <span class="kw">throws</span> <span class="cl">SQLException</span> {
+
+    <span class="cl">HikariDataSource</span> dataSource = <span class="fn">buildDataSource</span>(); <span class="cm">// see concept 5 — HikariCP</span>
+    <span class="cl">List</span>&lt;<span class="cl">AnalyticsEvent</span>&gt; events = <span class="cl">List</span>.<span class="fn">of</span>(
+        <span class="kw">new</span> <span class="cl">AnalyticsEvent</span>(<span class="nm">1L</span>, <span class="st">"page_view"</span>, <span class="kw">new</span> <span class="cl">Timestamp</span>(<span class="cl">System</span>.<span class="fn">currentTimeMillis</span>())),
+        <span class="kw">new</span> <span class="cl">AnalyticsEvent</span>(<span class="nm">2L</span>, <span class="st">"click"</span>,     <span class="kw">new</span> <span class="cl">Timestamp</span>(<span class="cl">System</span>.<span class="fn">currentTimeMillis</span>()))
+    ); <span class="cm">// in production: 500+ events buffered client-side before flushing</span>
+
+    <span class="kw">try</span> (<span class="cl">Connection</span> conn = dataSource.<span class="fn">getConnection</span>();
+         <span class="cl">PreparedStatement</span> stmt = conn.<span class="fn">prepareStatement</span>(
+        <span class="st">"INSERT INTO analytics_events (user_id, event_type, ts) VALUES (?, ?, ?)"</span>)) {
+
+      <span class="kw">for</span> (<span class="cl">AnalyticsEvent</span> e : events) {
+        stmt.<span class="fn">setLong</span>(<span class="nm">1</span>, e.<span class="fn">userId</span>());
+        stmt.<span class="fn">setString</span>(<span class="nm">2</span>, e.<span class="fn">type</span>());
+        stmt.<span class="fn">setTimestamp</span>(<span class="nm">3</span>, e.<span class="fn">timestamp</span>());
+<span class="hl">        stmt.<span class="fn">addBatch</span>(); <span class="cm">// buffered, not sent yet</span></span>
+      }
+<span class="hl">      stmt.<span class="fn">executeBatch</span>(); <span class="cm">// ONE round trip for all 500 inserts, not 500</span></span>
+    }
+
+    dataSource.<span class="fn">close</span>();
+  }
+
+  <span class="kw">private static</span> <span class="cl">HikariDataSource</span> <span class="fn">buildDataSource</span>() {
+    <span class="cl">HikariConfig</span> config = <span class="kw">new</span> <span class="cl">HikariConfig</span>();
+    config.<span class="fn">setJdbcUrl</span>(<span class="st">"jdbc:postgresql://db-host:5432/analytics"</span>);
+    config.<span class="fn">setUsername</span>(<span class="st">"app_user"</span>);
+    config.<span class="fn">setPassword</span>(<span class="cl">System</span>.<span class="fn">getenv</span>(<span class="st">"DB_PASSWORD"</span>));
+    <span class="kw">return new</span> <span class="cl">HikariDataSource</span>(config);
+  }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Always check the actual <strong>SQL query count</strong> under realistic data volume, not just correctness with 1 test row. Batch writes for high-volume, low-priority data like events, logs, and audit trails.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q15 — Count the queries</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Enable <code>spring.jpa.show-sql=true</code>, reproduce the N+1 above with 10 orders &#xD7; 5 items each (expect <strong>11</strong> queries), then fix it with <code>JOIN FETCH</code> and confirm it drops to <strong>1</strong>.</p>
+              <div class="practice-hints"><span class="hint-chip">show-sql=true</span><span class="hint-chip">count before: 11</span><span class="hint-chip">count after: 1</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16 -->
+  <div class="concept" data-id="16">
+    <div class="concept-node">16</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Observability: p50/p95/p99</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><strong>Average latency hides outliers.</strong> At 200 TPS, a "rare" 1% slow path isn't rare at all — it happens roughly <strong>twice every second</strong>. p95/p99 reveal that constant background problem; average makes it invisible.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="cm">// 100 requests: 99 fast (10ms), 1 very slow (2000ms)</span>
+    <span class="kw">int</span>[] latenciesMs = <span class="kw">new int</span>[<span class="nm">100</span>];
+    <span class="kw">for</span> (<span class="kw">int</span> i=<span class="nm">0</span>; i&lt;<span class="nm">99</span>; i++) latenciesMs[i] = <span class="nm">10</span>;
+    latenciesMs[<span class="nm">99</span>] = <span class="nm">2000</span>;
+
+<span class="hl">    <span class="kw">double</span> average = java.util.Arrays.<span class="fn">stream</span>(latenciesMs).<span class="fn">average</span>().<span class="fn">orElse</span>(<span class="nm">0</span>);</span>
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Average: "</span> + average + <span class="st">"ms"</span>);          <span class="cm">// looks healthy</span>
+<span class="hl">    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"p99 (worst 1%): "</span> + latenciesMs[<span class="nm">99</span>] + <span class="st">"ms"</span>); <span class="cm">// the real story</span></span>
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">Average: 29.9ms</span>
+<span class="er">p99 (worst 1%): 2000ms</span></div></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><span class="code-lang">Micrometer</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> io.micrometer.core.instrument.MeterRegistry;
+<span class="kw">import</span> io.micrometer.core.instrument.Timer;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">OrderService</span> {
+
+  <span class="kw">private final</span> <span class="cl">Timer</span> placeOrderTimer;
+
+  <span class="kw">public</span> <span class="cl">OrderService</span>(<span class="cl">MeterRegistry</span> registry) {
+<span class="hl">    <span class="kw">this</span>.placeOrderTimer = <span class="cl">Timer</span>.<span class="fn">builder</span>(<span class="st">"orders.place.duration"</span>)</span>
+<span class="hl">        .<span class="fn">publishPercentiles</span>(<span class="nm">0.5</span>, <span class="nm">0.95</span>, <span class="nm">0.99</span>) <span class="cm">// p50, p95, p99 — scraped by Prometheus</span></span>
+<span class="hl">        .<span class="fn">register</span>(registry);</span>
+  }
+
+  <span class="kw">public void</span> <span class="fn">placeOrder</span>(<span class="cl">Order</span> order) {
+    placeOrderTimer.<span class="fn">record</span>(() -> doPlaceOrder(order));
+  }
+
+  <span class="kw">private void</span> <span class="fn">doPlaceOrder</span>(<span class="cl">Order</span> order) { <span class="cm">/* repository.save(order), etc. */</span> }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Alert on <strong>p95/p99</strong>, never just on the average. What looks like noise in a dev environment with 100 test requests is a constant, measurable problem in production at 200 TPS.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q16 — Hide the problem, then reveal it</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Build an endpoint with a 1% chance of an artificial 2-second delay. Record both the average and p99 over 500 calls. Confirm the average looks fine while p99 screams.</p>
+              <div class="practice-hints"><span class="hint-chip">1% slow path</span><span class="hint-chip">500 samples</span><span class="hint-chip">compare avg vs p99</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 17 -->
+  <div class="concept" data-id="17">
+    <div class="concept-node">17</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Capacity Planning: A Worked Example</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Putting concepts 1, 5, and 6 together: given a <strong>200 TPS</strong> target and <strong>150ms</strong> p95 DB latency, work out the Hikari pool size and Tomcat thread count — and see exactly how much a <strong>90% cache hit rate</strong> shrinks both.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">public class</span> <span class="cl">Main</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="cl">String</span>[] args) {
+
+    <span class="kw">double</span> targetTps = <span class="nm">200</span>;
+    <span class="kw">double</span> dbLatencySeconds = <span class="nm">0.150</span>;       <span class="cm">// p95 latency of a DB-hitting request</span>
+    <span class="kw">double</span> cacheHitLatencySeconds = <span class="nm">0.005</span>; <span class="cm">// 5ms for a Redis cache hit</span>
+
+<span class="hl">    <span class="cm">// Step 1 — Little's Law if EVERY request hit the DB (no cache at all)</span></span>
+    <span class="kw">double</span> worstCaseConcurrency = targetTps * dbLatencySeconds;
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"No cache: need "</span> + worstCaseConcurrency + <span class="st">" DB connections"</span>);
+
+<span class="hl">    <span class="cm">// Step 2 — only cache MISSES hit the DB; assume a 90% hit rate</span></span>
+    <span class="kw">double</span> cacheHitRate = <span class="nm">0.90</span>;
+    <span class="kw">double</span> missTps = targetTps * (<span class="nm">1</span> - cacheHitRate); <span class="cm">// 20 TPS actually reach the DB</span>
+    <span class="kw">double</span> dbConcurrencyNeeded = missTps * dbLatencySeconds;
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"With 90% cache hit rate: "</span> + missTps + <span class="st">" TPS hit the DB"</span>);
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Hikari maximum-pool-size needed: ~"</span> + <span class="cl">Math</span>.<span class="fn">ceil</span>(dbConcurrencyNeeded));
+
+<span class="hl">    <span class="cm">// Step 3 — Tomcat threads must cover BOTH fast cache hits and slow misses</span></span>
+    <span class="kw">double</span> hitConcurrency = (targetTps * cacheHitRate) * cacheHitLatencySeconds;
+    <span class="kw">double</span> totalConcurrency = hitConcurrency + dbConcurrencyNeeded;
+    <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"server.tomcat.threads.max needed: ~"</span> + <span class="cl">Math</span>.<span class="fn">ceil</span>(totalConcurrency * <span class="nm">1.5</span>) + <span class="st">" (50% burst headroom)"</span>);
+  }
+}</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">Output</div>
+            <div class="output-box"><span class="ok">No cache: need 30.0 DB connections
+With 90% cache hit rate: 20.0 TPS hit the DB
+Hikari maximum-pool-size needed: ~3.0
+server.tomcat.threads.max needed: ~6.0 (50% burst headroom)</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A 90% cache hit rate didn't just "help a bit" — it cut the required DB connection pool by <strong>10x</strong> (30 &#x2192; 3). DB connections are usually the scarcest resource in the whole system, which is exactly why caching strategy (concept 6) is so high-leverage.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q17 — Stress-test the assumption</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Re-run the calculator at a <strong>99%</strong> cache hit rate. Then simulate a <strong>cache outage</strong> dropping the hit rate to 50% — recompute the DB connections needed. What does the gap tell you about why cache availability itself needs its own monitoring?</p>
+              <div class="practice-hints"><span class="hint-chip">cacheHitRate = 0.99</span><span class="hint-chip">cacheHitRate = 0.50</span><span class="hint-chip">compare DB connections needed</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 18 -->
+  <div class="concept" data-id="18">
+    <div class="concept-node">18</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A crib sheet wiring every concept above into the answers a senior/staff interview actually wants to hear.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Notes</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "How would you design an API to handle 200 TPS?"</span>
+<span class="cm">// A: Start from Little's Law (concept 1) to size concurrency. Make the</span>
+<span class="cm">//    service stateless (2) so it scales horizontally behind a load balancer (3).</span>
+<span class="cm">//    Size the thread pool around the DB pool, not bigger (4, 5). Cache</span>
+<span class="cm">//    aggressively to multiply effective capacity (6, 17). Use async I/O only</span>
+<span class="cm">//    where it's genuinely I/O-bound (7). Scale reads via replicas (8), and the</span>
+<span class="cm">//    DB itself via sharding once replicas aren't enough (9). Protect the</span>
+<span class="cm">//    budget with rate limiting (10) and shed load deliberately past capacity</span>
+<span class="cm">//    (11). Isolate failure domains with bulkheads/circuit breakers (12).</span>
+<span class="cm">//    Make retries safe with idempotency keys (13). Move non-critical work</span>
+<span class="cm">//    off the request path via queues (14). Eliminate N+1s and batch writes</span>
+<span class="cm">//    (15). Measure p99, not average (16).</span>
+
+<span class="cm">// Q: "What's the difference between throughput and latency, and why do both matter?"</span>
+<span class="cm">// A: Throughput = work completed per second (TPS). Latency = time for ONE unit</span>
+<span class="cm">//    of work. Little's Law (concept 1) ties them together via concurrency —</span>
+<span class="cm">//    you cannot raise throughput without either lowering latency or raising</span>
+<span class="cm">//    concurrency. A system can have great average latency and terrible</span>
+<span class="cm">//    throughput (low concurrency) or vice versa.</span>
+
+<span class="cm">// Q: "How do you find the bottleneck when TPS is too low?"</span>
+<span class="cm">// A: Measure concurrency at each layer (Tomcat threads in-use, Hikari</span>
+<span class="cm">//    active connections, downstream call latency p99). Whichever layer is</span>
+<span class="cm">//    saturated first — threads waiting on a smaller resource (concept 4) —</span>
+<span class="cm">//    is the bottleneck. Don't guess; measure each tier independently.</span>
+
+<span class="cm">// Q: "What's a thundering herd and how do you prevent it?"</span>
+<span class="cm">// A: Many requests miss the cache at the EXACT same instant (concept 6),</span>
+<span class="cm">//    usually because a hot key expired, and all of them hit the DB at once.</span>
+<span class="cm">//    Prevent it with request coalescing (one thread refills, others wait) and</span>
+<span class="cm">//    jittered TTLs so keys don't expire in lockstep.</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Senior interviews aren't testing whether you know Redis exists — they're testing whether you can <strong>connect</strong> Little's Law &#x2192; thread pools &#x2192; caching &#x2192; resilience into one coherent story under follow-up questions.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q18 — Final boss: design it end to end</span></div>
+            <div class="practice-body">
+              <p class="practice-q">On a whiteboard (or paper), design a complete order-placement API for <strong>200 TPS</strong>: stateless auth, load balancer, Tomcat + Hikari sizing using the concept 17 formula, Redis cache-aside for product lookups, a circuit breaker around the payment gateway, an idempotency key on checkout, and Kafka for the confirmation email. Talk through what breaks first if traffic doubles to 400 TPS.</p>
+              <div class="practice-hints"><span class="hint-chip">stateless + LB</span><span class="hint-chip">size pools with Little's Law</span><span class="hint-chip">cache + resilience + queue</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Actually build it: a small Spring Boot service combining <strong>ExecutorService sizing</strong> + <strong>Redis cache-aside</strong> + <strong>Resilience4j circuit breaker</strong> + <strong>idempotency keys</strong> + <strong>Kafka producer</strong>. Load-test it with a tool like <code>wrk</code> at 200 req/s and watch your own p99 dashboard.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; You're capacity-planning ready!</h2>
+    <p>From "what is TPS" to designing the thread pools, caches, and resilience patterns that keep 200 req/s flowing reliably.</p>
+    <div class="concept-grid">
+      <!-- GRID_PLACEHOLDER -->
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+var TOTAL = 18;
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / TOTAL) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / ' + TOTAL;
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

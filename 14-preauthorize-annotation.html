@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>@PreAuthorize &amp; Method Security — Complete Tutorial</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Sora:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #0c0a14;
+  --surface: #120f1c;
+  --surface2: #181425;
+  --border: #241f33;
+  --border2: #2e2740;
+  --accent: #a78bfa;
+  --accent2: #7c3aed;
+  --green: #3ddc84;
+  --yellow: #ffcc44;
+  --red: #ff5a5a;
+  --cyan: #44ddee;
+  --orange: #ff9944;
+  --text: #e6e2f2;
+  --muted: #8479a0;
+  --muted2: #9d92b8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Sora', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.layout { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 270px;
+  min-width: 270px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 0;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  overflow-y: auto;
+}
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  padding: 0 20px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.nav-section { margin-bottom: 4px; }
+.nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  padding: 10px 20px 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 20px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted2);
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+.nav-item:hover { color: var(--text); background: var(--surface2); }
+.nav-item.active { color: var(--accent); border-left-color: var(--accent); background: #1c1530; }
+.nav-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border2); flex-shrink: 0;
+}
+.nav-item.active .nav-dot { background: var(--accent); }
+.nav-item.done .nav-dot { background: var(--green); }
+.nav-item.done { color: var(--muted2); }
+
+.main {
+  margin-left: 270px;
+  flex: 1;
+  padding: 48px 48px 80px;
+  max-width: 920px;
+}
+
+.section { display: none; }
+.section.active { display: block; }
+
+.hero {
+  margin-bottom: 40px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+.hero-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.hero h1 {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  color: #fff;
+}
+.hero p {
+  color: var(--muted2);
+  font-size: 14px;
+  max-width: 620px;
+}
+
+.section-header { margin-bottom: 28px; }
+.section-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.section-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.section-header p { color: var(--muted2); font-size: 13px; max-width: 620px; }
+
+h3 { font-size: 15px; font-weight: 600; color: #fff; margin: 28px 0 10px; }
+h4 { font-size: 13px; font-weight: 600; color: var(--accent); margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+p { margin-bottom: 14px; color: var(--muted2); font-size: 13px; }
+p strong { color: var(--text); font-weight: 600; }
+
+.file-label {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  padding: 8px 14px;
+  border-radius: 6px 6px 0 0;
+}
+.file-label span { color: var(--text); }
+pre {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+  padding: 20px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.8;
+  margin-bottom: 24px;
+  tab-size: 2;
+}
+pre.standalone { border-radius: 6px; }
+.kw { color: #ff7b72; }
+.cls { color: #ffa657; }
+.str { color: #a5d6ff; }
+.cmt { color: #4d5f70; font-style: italic; }
+.ann { color: #b07fff; }
+.fn { color: #79c0ff; }
+.num { color: #f0a050; }
+.bool { color: #ff7b72; }
+
+.callout {
+  border-radius: 6px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  border-left: 3px solid;
+  line-height: 1.6;
+}
+.callout p { margin: 0; }
+.info { background: #1c1530; border-color: var(--accent); color: var(--muted2); }
+.info strong { color: var(--accent); }
+.success { background: #091a0f; border-color: var(--green); color: var(--muted2); }
+.success strong { color: var(--green); }
+.warn { background: #1a160a; border-color: var(--yellow); color: var(--muted2); }
+.warn strong { color: var(--yellow); }
+.tip { background: #0a1a1c; border-color: var(--cyan); color: var(--muted2); }
+.tip strong { color: var(--cyan); }
+.danger { background: #1a0909; border-color: var(--red); color: var(--muted2); }
+.danger strong { color: var(--red); }
+
+.flow { margin: 20px 0 28px; }
+.flow-row { display: flex; align-items: stretch; gap: 0; margin-bottom: 0; }
+.flow-box {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 2px;
+}
+.flow-box.accent { border-color: var(--accent); background: #1c1530; }
+.flow-box.green { border-color: var(--green); background: #091a0f; }
+.flow-box.red { border-color: var(--red); background: #1a0909; }
+.flow-box.cyan { border-color: var(--cyan); background: #0a1a1c; }
+.flow-box.yellow { border-color: var(--yellow); background: #1a160a; }
+.flow-title { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.flow-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.flow-arrow { text-align: center; color: var(--border2); font-size: 16px; margin: 2px 0; line-height: 1; }
+
+.steps { margin: 20px 0; }
+.step { display: flex; gap: 16px; margin-bottom: 20px; align-items: flex-start; }
+.step-num {
+  width: 28px; height: 28px; min-width: 28px;
+  border-radius: 50%;
+  background: var(--accent2);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 2px;
+}
+.step-body { flex: 1; }
+.step-title { font-weight: 600; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+.step-desc { font-size: 12px; color: var(--muted2); line-height: 1.6; }
+
+table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 12px; }
+th {
+  background: var(--surface2);
+  color: var(--accent);
+  padding: 10px 14px;
+  text-align: left;
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+td { padding: 10px 14px; border: 1px solid var(--border); color: var(--muted2); vertical-align: top; line-height: 1.5; }
+td strong { color: var(--text); }
+tr:nth-child(even) td { background: #100d1a; }
+.yes { color: var(--green); font-weight: 600; }
+.no { color: var(--red); }
+
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  margin: 2px 2px 0 0;
+}
+.tag-violet { background: #1c1530; color: var(--accent); border: 1px solid var(--accent2); }
+.tag-green { background: #091a0f; color: var(--green); border: 1px solid #1a5c30; }
+.tag-cyan { background: #0a1a1c; color: var(--cyan); border: 1px solid #1a5a5c; }
+.tag-yellow { background: #1a160a; color: var(--yellow); border: 1px solid #5a4a00; }
+.tag-red { background: #1a0909; color: var(--red); border: 1px solid #5a1a1a; }
+
+.nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+.btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: 'Sora', sans-serif;
+  transition: all 0.15s;
+}
+.btn-primary { background: var(--accent); color: #1a0a2e; }
+.btn-primary:hover { background: #c4b0ff; }
+.btn-ghost { background: var(--surface2); color: var(--muted2); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.progress-bar { position: fixed; top: 0; left: 270px; right: 0; height: 2px; background: var(--border); z-index: 100; }
+.progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--accent);
+}
+
+.divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+.scenario { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 16px 20px; margin-bottom: 16px; }
+.scenario-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.scenario pre { margin: 0; border: none; border-radius: 4px; background: var(--bg); padding: 12px 14px; font-size: 11px; }
+
+.faq { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; }
+.faq-q { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 8px; }
+.faq-a { font-size: 13px; color: var(--muted2); line-height: 1.7; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="progress-bar"><div class="progress-fill" id="progress" style="width:11%"></div></div>
+
+<div class="layout">
+
+<aside class="sidebar">
+  <div class="sidebar-title">@PreAuthorize Tutorial</div>
+
+  <div class="nav-section">
+    <div class="nav-label">Foundation</div>
+    <div class="nav-item active" onclick="goTo(0)" id="nav-0"><div class="nav-dot"></div>Overview &amp; Setup</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Core Annotations</div>
+    <div class="nav-item" onclick="goTo(1)" id="nav-1"><div class="nav-dot"></div>@PreAuthorize</div>
+    <div class="nav-item" onclick="goTo(2)" id="nav-2"><div class="nav-dot"></div>@PostAuthorize</div>
+    <div class="nav-item" onclick="goTo(3)" id="nav-3"><div class="nav-dot"></div>SpEL &amp; Arguments</div>
+    <div class="nav-item" onclick="goTo(4)" id="nav-4"><div class="nav-dot"></div>@PreFilter / @PostFilter</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Advanced</div>
+    <div class="nav-item" onclick="goTo(5)" id="nav-5"><div class="nav-dot"></div>@Secured &amp; Custom Permissions</div>
+    <div class="nav-item" onclick="goTo(6)" id="nav-6"><div class="nav-dot"></div>Self-Invocation Gotcha</div>
+    <div class="nav-item" onclick="goTo(7)" id="nav-7"><div class="nav-dot"></div>Testing Secured Methods</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Wrap Up</div>
+    <div class="nav-item" onclick="goTo(8)" id="nav-8"><div class="nav-dot"></div>Interview FAQ</div>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- SECTION 0: Overview -->
+<div class="section active" id="section-0">
+  <div class="hero">
+    <div class="hero-eyebrow">Complete Step-by-Step Tutorial</div>
+    <h1>@PreAuthorize &amp; Method Security<br/>in Spring Boot</h1>
+    <p>URL security protects an HTTP path. Method security protects a Java method — no matter how it gets called. Learn the full toolkit from "hasRole" to custom permission evaluators.</p>
+  </div>
+
+  <h3>Two different layers of security</h3>
+  <p>If you've done the JWT tutorial, you already built <strong>URL-based security</strong>: <code>SecurityConfig</code> decides which HTTP paths need a token, using <code>authorizeHttpRequests()</code>. That happens in a servlet <code>Filter</code>, before the request ever reaches a controller.</p>
+  <p><strong>Method security</strong> is a second, independent layer. It protects an individual <em>method call</em> — whether that call comes from a REST controller, an internal service-to-service call, a scheduled <code>@Scheduled</code> job, or a Kafka listener. The HTTP layer doesn't even need to be involved.</p>
+
+  <div class="flow">
+    <div class="flow-box accent">
+      <div class="flow-title">URL security — authorizeHttpRequests()</div>
+      <div class="flow-desc">Protects a PATH. "/admin/** needs ROLE_ADMIN." Runs in a servlet Filter, before any controller code executes.</div>
+    </div>
+    <div class="flow-arrow">vs</div>
+    <div class="flow-box cyan">
+      <div class="flow-title">Method security — @PreAuthorize</div>
+      <div class="flow-desc">Protects a METHOD. "This Java method needs ROLE_ADMIN." Runs via an AOP proxy, no matter who calls the method or how.</div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <p><strong>Why use both — defense in depth.</strong> Imagine someone refactors <code>SecurityConfig</code> and accidentally removes the rule that protected <code>/admin/**</code>. If <code>AdminService.deleteEverything()</code> also has <code>@PreAuthorize("hasRole('ADMIN')")</code> directly on it, the request still gets rejected — the method itself refuses to run for a non-admin caller, regardless of which URL led to it.</p>
+  </div>
+
+  <h3>Enabling method security</h3>
+  <p>Method security annotations are silently <strong>ignored</strong> until you turn them on. In Spring Security 6+ (Spring Boot 3+), that's a single annotation: <code>@EnableMethodSecurity</code>.</p>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/config/SecurityConfig.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.config;
+
+<span class="kw">import</span> org.springframework.context.annotation.Bean;
+<span class="kw">import</span> org.springframework.context.annotation.Configuration;
+<span class="kw">import</span> org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+<span class="kw">import</span> org.springframework.security.config.annotation.web.builders.HttpSecurity;
+<span class="kw">import</span> org.springframework.security.config.http.SessionCreationPolicy;
+<span class="kw">import</span> org.springframework.security.web.SecurityFilterChain;
+
+<span class="ann">@Configuration</span>
+<span class="ann">@EnableMethodSecurity</span>
+<span class="cmt">// @EnableMethodSecurity turns ON processing of @PreAuthorize, @PostAuthorize,
+// @PreFilter and @PostFilter across the whole application context.
+// Without this annotation the annotations compile fine but are NEVER checked —
+// no error, no warning, just silently unprotected methods. This is one of the
+// most common Spring Security misconfigurations in real codebases.
+//
+// (Spring Security 5 and earlier used @EnableGlobalMethodSecurity(prePostEnabled = true).
+// @EnableMethodSecurity is the modern replacement and enables pre/post-style
+// checks by default. @Secured and @RolesAllowed need to be turned on explicitly —
+// see the "@Secured" section later in this tutorial.)</span>
+<span class="kw">public class</span> <span class="cls">SecurityConfig</span> {
+
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> <span class="cls">SecurityFilterChain</span> <span class="fn">filterChain</span>(<span class="cls">HttpSecurity</span> http) <span class="kw">throws</span> <span class="cls">Exception</span> {
+        http
+            .<span class="fn">csrf</span>(csrf -> csrf.<span class="fn">disable</span>())
+            .<span class="fn">sessionManagement</span>(session -> session
+                .<span class="fn">sessionCreationPolicy</span>(<span class="cls">SessionCreationPolicy</span>.STATELESS))
+            .<span class="fn">authorizeHttpRequests</span>(auth -> auth
+                .<span class="fn">requestMatchers</span>(<span class="str">"/auth/**"</span>).<span class="fn">permitAll</span>()
+                .<span class="fn">anyRequest</span>().<span class="fn">authenticated</span>()
+                <span class="cmt">// this is the URL layer — coarse, path-based</span>
+            );
+        <span class="kw">return</span> http.<span class="fn">build</span>();
+    }
+}</pre>
+
+  <div class="callout tip">
+    <p><strong>Mental model:</strong> URL security is a bouncer at the front door checking IDs by neighborhood. Method security is a lock on every individual room's door, checked every time — no matter which hallway you walked down to reach it.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" disabled>← Previous</button>
+    <button class="btn btn-primary" onclick="goTo(1)">@PreAuthorize →</button>
+  </div>
+</div>
+
+<!-- SECTION 1: @PreAuthorize -->
+<div class="section" id="section-1">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 1</div>
+    <h2>@PreAuthorize — Check BEFORE the Method Runs</h2>
+    <p>The workhorse annotation. Evaluates a SpEL (Spring Expression Language) boolean expression before the method body executes. If it's false, the method never runs.</p>
+  </div>
+
+  <h3>The full SpEL vocabulary you'll actually use</h3>
+  <table>
+    <tr><th>Expression</th><th>Meaning</th></tr>
+    <tr><td><code>hasRole('ADMIN')</code></td><td>Authority must literally be <code>ROLE_ADMIN</code> — Spring prepends <code>ROLE_</code> for you</td></tr>
+    <tr><td><code>hasAuthority('ORDERS_READ')</code></td><td>Authority must literally be <code>ORDERS_READ</code> — no prefix added, use for fine-grained permissions</td></tr>
+    <tr><td><code>hasAnyRole('ADMIN','SUPPORT')</code></td><td>True if the user has any one of the listed roles</td></tr>
+    <tr><td><code>isAuthenticated()</code></td><td>Any logged-in user — no specific role needed</td></tr>
+    <tr><td><code>permitAll()</code></td><td>Always true — used to document "intentionally open" methods</td></tr>
+    <tr><td><code>denyAll()</code></td><td>Always false — useful while a method is still under construction</td></tr>
+    <tr><td><code>hasRole('ADMIN') or hasRole('SUPPORT')</code></td><td>Full boolean logic — <code>and</code>, <code>or</code>, <code>not</code> all work</td></tr>
+  </table>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/orders/OrderService.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.orders;
+
+<span class="kw">import</span> org.springframework.security.access.prepost.PreAuthorize;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+
+    <span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN')"</span>)
+    <span class="kw">public void</span> <span class="fn">deleteAllOrders</span>() {
+        System.out.<span class="fn">println</span>(<span class="str">"All orders deleted."</span>);
+    }
+
+    <span class="ann">@PreAuthorize</span>(<span class="str">"hasAuthority('ORDERS_READ')"</span>)
+    <span class="kw">public</span> String <span class="fn">viewOrder</span>(String orderId) {
+        <span class="kw">return</span> <span class="str">"Order "</span> + orderId;
+    }
+
+    <span class="ann">@PreAuthorize</span>(<span class="str">"isAuthenticated()"</span>)
+    <span class="kw">public</span> String <span class="fn">viewOwnProfile</span>() {
+        <span class="kw">return</span> <span class="str">"Profile data"</span>;
+    }
+
+    <span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN') or hasRole('SUPPORT')"</span>)
+    <span class="kw">public void</span> <span class="fn">refundOrder</span>(String orderId) {
+        System.out.<span class="fn">println</span>(<span class="str">"Refunding "</span> + orderId);
+    }
+}</pre>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/orders/OrderAdminController.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.orders;
+
+<span class="kw">import</span> org.springframework.http.ResponseEntity;
+<span class="kw">import</span> org.springframework.web.bind.annotation.*;
+
+<span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="str">"/admin/orders"</span>)
+<span class="kw">public class</span> <span class="cls">OrderAdminController</span> {
+
+    <span class="kw">private final</span> <span class="cls">OrderService</span> orderService;
+
+    <span class="kw">public</span> <span class="cls">OrderAdminController</span>(<span class="cls">OrderService</span> orderService) {
+        <span class="kw">this</span>.orderService = orderService;
+    }
+
+    <span class="ann">@DeleteMapping</span>(<span class="str">"/all"</span>)
+    <span class="kw">public</span> <span class="cls">ResponseEntity</span>&lt;String&gt; <span class="fn">deleteAll</span>() {
+        orderService.<span class="fn">deleteAllOrders</span>(); <span class="cmt">// @PreAuthorize check happens HERE, inside the proxy</span>
+        <span class="kw">return</span> <span class="cls">ResponseEntity</span>.<span class="fn">ok</span>(<span class="str">"Deleted"</span>);
+    }
+}</pre>
+
+  <h3>What happens when the check fails</h3>
+  <p>If the SpEL expression evaluates to <code>false</code>, the proxy throws <code>AccessDeniedException</code> <strong>before your method body ever runs</strong> — not a single line inside <code>deleteAllOrders()</code> executes. Spring Security's exception-handling filter catches it and turns it into an HTTP response.</p>
+
+  <pre class="standalone">curl -X DELETE http://localhost:8080/admin/orders/all \
+  -H "Authorization: Bearer &lt;token-for-a-non-admin-user&gt;"
+
+<span class="cmt"># Response: 403 Forbidden
+# Body: {"error": "Forbidden", "message": "Access Denied"}
+# The console NEVER prints "All orders deleted." — the method body didn't run.</span></pre>
+
+  <div class="callout warn">
+    <p><strong>Common gotcha:</strong> <code>hasRole('ADMIN')</code> checks for the authority string <code>ROLE_ADMIN</code>, not <code>ADMIN</code>. If your JWT/database stores the raw role as <code>"ADMIN"</code> without the prefix, <code>hasRole('ADMIN')</code> will <strong>always fail</strong>. Either store roles with the <code>ROLE_</code> prefix, or switch to <code>hasAuthority('ADMIN')</code> which does no prefixing.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(0)">← Overview</button>
+    <button class="btn btn-primary" onclick="goTo(2)">@PostAuthorize →</button>
+  </div>
+</div>
+
+<!-- SECTION 2: @PostAuthorize -->
+<div class="section" id="section-2">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 2</div>
+    <h2>@PostAuthorize — Check AFTER the Method Runs</h2>
+    <p>Sometimes you can't decide if a caller is allowed until you've actually loaded the data and can inspect it. That's what @PostAuthorize is for.</p>
+  </div>
+
+  <p>Classic case: "you can view this order, <strong>but only if you own it</strong>." You don't know who owns <code>ORD-1</code> until you've fetched it from storage — so the security check has to happen <em>after</em> the method runs, against the <strong>return value</strong>.</p>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/orders/OrderService.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.orders;
+
+<span class="kw">import</span> org.springframework.security.access.prepost.PostAuthorize;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+
+<span class="kw">import</span> java.util.Map;
+<span class="kw">import</span> java.util.concurrent.ConcurrentHashMap;
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+
+    <span class="kw">private final</span> Map&lt;String, Order&gt; orders = <span class="kw">new</span> ConcurrentHashMap&lt;&gt;();
+
+    <span class="kw">public</span> <span class="cls">OrderService</span>() {
+        orders.<span class="fn">put</span>(<span class="str">"ORD-1"</span>, <span class="kw">new</span> Order(<span class="str">"ORD-1"</span>, <span class="str">"sandeep"</span>));
+        orders.<span class="fn">put</span>(<span class="str">"ORD-2"</span>, <span class="kw">new</span> Order(<span class="str">"ORD-2"</span>, <span class="str">"alex"</span>));
+    }
+
+    <span class="ann">@PostAuthorize</span>(<span class="str">"returnObject.ownerUsername == authentication.name or hasRole('ADMIN')"</span>)
+    <span class="cmt">// "returnObject" is whatever this method returns. The method ALREADY RAN
+    // by the time this check fires — it fetched the order from the map below.
+    // If the check fails, AccessDeniedException is thrown and the caller
+    // never sees the data, but the lookup itself already happened.</span>
+    <span class="kw">public</span> Order <span class="fn">getOrder</span>(String orderId) {
+        <span class="kw">return</span> orders.<span class="fn">get</span>(orderId);
+    }
+
+    <span class="kw">public static class</span> <span class="cls">Order</span> {
+        <span class="kw">public final</span> String id;
+        <span class="kw">public final</span> String ownerUsername; <span class="cmt">// field name must match "returnObject.ownerUsername" above</span>
+
+        <span class="kw">public</span> <span class="cls">Order</span>(String id, String ownerUsername) {
+            <span class="kw">this</span>.id = id;
+            <span class="kw">this</span>.ownerUsername = ownerUsername;
+        }
+    }
+}</pre>
+
+  <pre class="standalone"><span class="cmt"># Logged in as "sandeep" — owns ORD-1</span>
+curl http://localhost:8080/orders/ORD-1 -H "Authorization: Bearer &lt;sandeeps-token&gt;"
+<span class="cmt"># 200 OK — { "id": "ORD-1", "ownerUsername": "sandeep" }</span>
+
+<span class="cmt"># Logged in as "sandeep" — does NOT own ORD-2</span>
+curl http://localhost:8080/orders/ORD-2 -H "Authorization: Bearer &lt;sandeeps-token&gt;"
+<span class="cmt"># 403 Forbidden — the order WAS fetched internally, then the response was blocked</span></pre>
+
+  <div class="callout danger">
+    <p><strong>Important caveat:</strong> because the method body runs <em>first</em>, never put anything irreversible inside a <code>@PostAuthorize</code>-protected method — like sending an email, charging a card, or writing an audit log entry. Those side effects already happened by the time the security check rejects the caller.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(1)">← @PreAuthorize</button>
+    <button class="btn btn-primary" onclick="goTo(3)">SpEL &amp; Arguments →</button>
+  </div>
+</div>
+
+<!-- SECTION 3: SpEL & Method Arguments -->
+<div class="section" id="section-3">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 3</div>
+    <h2>Reaching Into Method Arguments With SpEL</h2>
+    <p>You can reference any method parameter by name inside the SpEL expression using <code>#paramName</code> — this unlocks "only the owner can do this" checks.</p>
+  </div>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/users/UserService.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.users;
+
+<span class="kw">import</span> org.springframework.security.access.prepost.PreAuthorize;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">UserService</span> {
+
+    <span class="ann">@PreAuthorize</span>(<span class="str">"#username == authentication.name or hasRole('ADMIN')"</span>)
+    <span class="cmt">// #username refers to the METHOD PARAMETER named "username" below — Spring
+    // Security binds parameter names via reflection at startup. This requires
+    // the "-parameters" javac flag, which Spring Boot's Maven/Gradle plugin
+    // enables automatically — you don't need to configure anything extra.
+    //
+    // "authentication.name" is the username of the currently logged-in caller
+    // (taken from the SecurityContext that JwtFilter populated).</span>
+    <span class="kw">public</span> String <span class="fn">getUserProfile</span>(String username) {
+        <span class="kw">return</span> <span class="str">"Profile for "</span> + username;
+    }
+}</pre>
+
+  <pre class="standalone"><span class="cmt"># Logged in as "sandeep", asking for OWN profile — allowed</span>
+curl http://localhost:8080/users/sandeep/profile -H "Authorization: Bearer &lt;sandeeps-token&gt;"
+<span class="cmt"># 200 OK — "Profile for sandeep"</span>
+
+<span class="cmt"># Logged in as "sandeep", asking for SOMEONE ELSE's profile — denied</span>
+curl http://localhost:8080/users/alex/profile -H "Authorization: Bearer &lt;sandeeps-token&gt;"
+<span class="cmt"># 403 Forbidden, unless sandeep has ROLE_ADMIN</span></pre>
+
+  <div class="callout tip">
+    <p><strong>You can also reach into object fields:</strong> if a method takes a DTO parameter, e.g. <code>updateOrder(OrderUpdateRequest request)</code>, you can write <code>@PreAuthorize("#request.ownerUsername == authentication.name")</code> — SpEL property navigation works exactly like Java field/getter access.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(2)">← @PostAuthorize</button>
+    <button class="btn btn-primary" onclick="goTo(4)">@PreFilter / @PostFilter →</button>
+  </div>
+</div>
+
+<!-- SECTION 4: @PreFilter & @PostFilter -->
+<div class="section" id="section-4">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 4</div>
+    <h2>@PreFilter &amp; @PostFilter — Trimming Collections</h2>
+    <p>Instead of allowing or denying the WHOLE call, these two annotations silently remove individual elements from a List argument or a List return value.</p>
+  </div>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/orders/BatchOrderService.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.orders;
+
+<span class="kw">import</span> org.springframework.security.access.prepost.PostFilter;
+<span class="kw">import</span> org.springframework.security.access.prepost.PreFilter;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+
+<span class="kw">import</span> java.util.List;
+<span class="kw">import</span> java.util.Map;
+<span class="kw">import</span> java.util.concurrent.ConcurrentHashMap;
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">BatchOrderService</span> {
+
+    <span class="kw">private final</span> Map&lt;String, OrderService.Order&gt; orders = <span class="kw">new</span> ConcurrentHashMap&lt;&gt;();
+
+    <span class="kw">public</span> <span class="cls">BatchOrderService</span>() {
+        orders.<span class="fn">put</span>(<span class="str">"ORD-1"</span>, <span class="kw">new</span> OrderService.Order(<span class="str">"ORD-1"</span>, <span class="str">"sandeep"</span>));
+        orders.<span class="fn">put</span>(<span class="str">"ORD-2"</span>, <span class="kw">new</span> OrderService.Order(<span class="str">"ORD-2"</span>, <span class="str">"alex"</span>));
+    }
+
+    <span class="ann">@PreFilter</span>(<span class="str">"filterObject.ownerUsername == authentication.name"</span>)
+    <span class="cmt">// PreFilter runs BEFORE the method, removing any element of the List
+    // argument where the SpEL expression is false. "filterObject" is the
+    // current element while Spring iterates the list — like an implicit loop
+    // variable. By the time the method body runs, the list has already
+    // been trimmed down to only the caller's own orders.</span>
+    <span class="kw">public void</span> <span class="fn">cancelOrders</span>(List&lt;OrderService.Order&gt; ordersToCancel) {
+        ordersToCancel.<span class="fn">forEach</span>(o -> System.out.<span class="fn">println</span>(<span class="str">"Cancelled "</span> + o.id));
+    }
+
+    <span class="ann">@PostFilter</span>(<span class="str">"filterObject.ownerUsername == authentication.name or hasRole('ADMIN')"</span>)
+    <span class="cmt">// PostFilter runs AFTER the method, removing elements from the RETURNED
+    // list that fail the check. The method itself sees and returns
+    // EVERYTHING — security trims the list afterward, before the caller
+    // ever sees it.</span>
+    <span class="kw">public</span> List&lt;OrderService.Order&gt; <span class="fn">getAllOrders</span>() {
+        <span class="kw">return</span> List.<span class="fn">copyOf</span>(orders.<span class="fn">values</span>()); <span class="cmt">// unfiltered — security trims the result</span>
+    }
+}</pre>
+
+  <div class="callout warn">
+    <p><strong>Performance note:</strong> <code>@PostFilter</code> loads the FULL unfiltered dataset into memory before trimming it — it cannot push the filter down into a database query. For large datasets, prefer filtering in the repository query itself (e.g. <code>findByOwnerUsername(username)</code>) and reserve <code>@PostFilter</code> for small, already-in-memory collections.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(3)">← SpEL &amp; Arguments</button>
+    <button class="btn btn-primary" onclick="goTo(5)">@Secured &amp; Custom Permissions →</button>
+  </div>
+</div>
+
+<!-- SECTION 5: @Secured & Custom PermissionEvaluator -->
+<div class="section" id="section-5">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 5</div>
+    <h2>@Secured, @RolesAllowed &amp; Custom Permissions</h2>
+    <p>The simpler, SpEL-free alternatives — plus how to plug in your own business-logic-driven permission checks.</p>
+  </div>
+
+  <h3>@Secured and @RolesAllowed (JSR-250)</h3>
+  <p>Both predate the SpEL-based <code>@PreAuthorize</code> and only support a plain list of role names — no expressions, no <code>and</code>/<code>or</code>, no method arguments. You'll mostly see these in older codebases.</p>
+
+  <table>
+    <tr><th>Annotation</th><th>Syntax</th><th>Notes</th></tr>
+    <tr><td><code>@PreAuthorize</code></td><td>Full SpEL — <code>"hasRole('ADMIN') or #id == authentication.name"</code></td><td>Spring-specific, most powerful, on by default with <code>@EnableMethodSecurity</code></td></tr>
+    <tr><td><code>@Secured</code></td><td>Plain role list — <code>{"ROLE_ADMIN", "ROLE_SUPPORT"}</code></td><td>Spring-specific, needs <code>securedEnabled = true</code> explicitly</td></tr>
+    <tr><td><code>@RolesAllowed</code></td><td>Plain role list — <code>{"ADMIN", "SUPPORT"}</code> (no prefix)</td><td>JSR-250 standard, portable outside Spring, needs <code>jsr250Enabled = true</code></td></tr>
+  </table>
+
+  <div class="file-label">📄 <span>SecurityConfig.java — opt in to the legacy annotations</span></div>
+  <pre><span class="ann">@Configuration</span>
+<span class="ann">@EnableMethodSecurity</span>(securedEnabled = <span class="bool">true</span>, jsr250Enabled = <span class="bool">true</span>)
+<span class="cmt">// @PreAuthorize/@PostAuthorize/@PreFilter/@PostFilter are ON by default.
+// @Secured and @RolesAllowed are OFF by default — you must opt in explicitly.</span>
+<span class="kw">public class</span> <span class="cls">SecurityConfig</span> { <span class="cmt">/* ...same filterChain() bean as before... */</span> }</pre>
+
+  <pre><span class="ann">@Secured</span>(<span class="str">"ROLE_ADMIN"</span>) <span class="cmt">// note the explicit ROLE_ prefix — @Secured does NOT add it for you</span>
+<span class="kw">public void</span> <span class="fn">legacyAdminOnly</span>() { System.out.<span class="fn">println</span>(<span class="str">"Admin action"</span>); }
+
+<span class="ann">@RolesAllowed</span>(<span class="str">"ADMIN"</span>) <span class="cmt">// no prefix — JSR-250 doesn't use the ROLE_ convention</span>
+<span class="kw">public void</span> <span class="fn">jsr250AdminOnly</span>() { System.out.<span class="fn">println</span>(<span class="str">"Admin action"</span>); }</pre>
+
+  <h3>Custom PermissionEvaluator — business-logic-driven checks</h3>
+  <p>When "owns it" isn't as simple as comparing one field, write a <code>PermissionEvaluator</code> and call <code>hasPermission(...)</code> from SpEL.</p>
+
+  <div class="file-label">📄 <span>src/main/java/com/example/demo/security/OrderPermissionEvaluator.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.security;
+
+<span class="kw">import</span> com.example.demo.orders.OrderService;
+<span class="kw">import</span> org.springframework.security.access.PermissionEvaluator;
+<span class="kw">import</span> org.springframework.security.core.Authentication;
+<span class="kw">import</span> org.springframework.stereotype.Component;
+
+<span class="kw">import</span> java.io.Serializable;
+
+<span class="ann">@Component</span>
+<span class="kw">public class</span> <span class="cls">OrderPermissionEvaluator</span> <span class="kw">implements</span> <span class="cls">PermissionEvaluator</span> {
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">hasPermission</span>(<span class="cls">Authentication</span> auth, Object targetDomainObject, Object permission) {
+        <span class="kw">if</span> (!(targetDomainObject <span class="kw">instanceof</span> OrderService.Order order)) <span class="kw">return false</span>;
+        <span class="kw">if</span> (<span class="str">"EDIT"</span>.<span class="fn">equals</span>(permission)) {
+            <span class="kw">return</span> order.ownerUsername.<span class="fn">equals</span>(auth.<span class="fn">getName</span>());
+        }
+        <span class="kw">return false</span>;
+    }
+
+    <span class="ann">@Override</span>
+    <span class="kw">public boolean</span> <span class="fn">hasPermission</span>(<span class="cls">Authentication</span> auth, Serializable targetId, String targetType, Object permission) {
+        <span class="kw">return false</span>; <span class="cmt">// not used in this example — required to satisfy the interface</span>
+    }
+}</pre>
+
+  <div class="file-label">📄 <span>SecurityConfig.java — wire the evaluator in</span></div>
+  <pre><span class="kw">import</span> org.springframework.security.access.expression.method.DefaultMethodSecurityExpressionHandler;
+<span class="kw">import</span> org.springframework.security.access.expression.method.MethodSecurityExpressionHandler;
+
+<span class="ann">@Bean</span>
+<span class="kw">static</span> <span class="cls">MethodSecurityExpressionHandler</span> <span class="fn">methodSecurityExpressionHandler</span>(<span class="cls">OrderPermissionEvaluator</span> evaluator) {
+    <span class="cls">DefaultMethodSecurityExpressionHandler</span> handler = <span class="kw">new</span> <span class="cls">DefaultMethodSecurityExpressionHandler</span>();
+    handler.<span class="fn">setPermissionEvaluator</span>(evaluator);
+    <span class="kw">return</span> handler;
+}</pre>
+
+  <pre><span class="ann">@PreAuthorize</span>(<span class="str">"hasPermission(#order, 'EDIT')"</span>)
+<span class="cmt">// #order is the method parameter — passed straight into your evaluator's
+// "targetDomainObject" argument above.</span>
+<span class="kw">public void</span> <span class="fn">editOrder</span>(OrderService.Order order) {
+    System.out.<span class="fn">println</span>(<span class="str">"Editing "</span> + order.id);
+}</pre>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(4)">← @PreFilter / @PostFilter</button>
+    <button class="btn btn-primary" onclick="goTo(6)">Self-Invocation Gotcha →</button>
+  </div>
+</div>
+
+<!-- SECTION 6: Self-Invocation Gotcha -->
+<div class="section" id="section-6">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 6</div>
+    <h2>The Self-Invocation Gotcha</h2>
+    <p>The single most common way @PreAuthorize "mysteriously" doesn't work — and it's the exact same proxy mechanism behind @Transactional and @Cacheable.</p>
+  </div>
+
+  <p>Method security is implemented as an <strong>AOP proxy</strong> — Spring wraps your real bean in a proxy object at startup. When code calls <code>orderService.deleteOrder(id)</code> through that proxy, the proxy intercepts the call, runs the <code>@PreAuthorize</code> check, and only then forwards to the real method. This is the identical mechanism documented for the <strong>Proxy design pattern</strong> (see the Design Patterns tutorial's @Transactional example) — same proxy, same self-invocation bug.</p>
+
+  <div class="scenario">
+    <div class="scenario-title"><span class="tag tag-red">Broken</span> Calling through <code>this</code> bypasses the proxy entirely</div>
+    <pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderService</span> {
+
+    <span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN')"</span>)
+    <span class="kw">public void</span> <span class="fn">deleteOrder</span>(String id) {
+        System.out.<span class="fn">println</span>(<span class="str">"Deleting "</span> + id);
+    }
+
+    <span class="kw">public void</span> <span class="fn">bulkDelete</span>(List&lt;String&gt; ids) {
+        <span class="kw">for</span> (String id : ids) {
+            <span class="kw">this</span>.<span class="fn">deleteOrder</span>(id); <span class="cmt">// &#x1F631; @PreAuthorize is SILENTLY skipped here!
+            // "this" refers to the RAW object, not the Spring-generated proxy
+            // that wraps it. The proxy is what intercepts calls and runs the
+            // @PreAuthorize check — going through "this" never touches the proxy.</span>
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="scenario">
+    <div class="scenario-title"><span class="tag tag-green">Fixed</span> Extract the secured method into a separate bean</div>
+    <pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderDeletionService</span> {
+    <span class="ann">@PreAuthorize</span>(<span class="str">"hasRole('ADMIN')"</span>)
+    <span class="kw">public void</span> <span class="fn">deleteOrder</span>(String id) {
+        System.out.<span class="fn">println</span>(<span class="str">"Deleting "</span> + id);
+    }
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderBulkService</span> {
+    <span class="kw">private final</span> <span class="cls">OrderDeletionService</span> deletionService;
+
+    <span class="kw">public</span> <span class="cls">OrderBulkService</span>(<span class="cls">OrderDeletionService</span> deletionService) {
+        <span class="kw">this</span>.deletionService = deletionService; <span class="cmt">// injected — this IS the proxy</span>
+    }
+
+    <span class="kw">public void</span> <span class="fn">bulkDelete</span>(List&lt;String&gt; ids) {
+        <span class="kw">for</span> (String id : ids) deletionService.<span class="fn">deleteOrder</span>(id); <span class="cmt">// &#x2705; goes through the real proxy</span>
+    }
+}</pre>
+  </div>
+
+  <div class="callout warn">
+    <p><strong>The other workaround</strong> — <code>AopContext.currentProxy()</code> with <code>@EnableAspectJAutoProxy(exposeProxy = true)</code> — lets you fetch the proxy from inside the same class and call through it. It works, but most teams consider it a code smell; extracting to a separate bean (shown above) is the cleaner, more testable fix.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(5)">← @Secured &amp; Custom Permissions</button>
+    <button class="btn btn-primary" onclick="goTo(7)">Testing Secured Methods →</button>
+  </div>
+</div>
+
+<!-- SECTION 7: Testing -->
+<div class="section" id="section-7">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 7</div>
+    <h2>Testing Secured Methods</h2>
+    <p>Use @WithMockUser to simulate a logged-in user with specific roles, without needing a real JWT.</p>
+  </div>
+
+  <div class="file-label">📄 <span>src/test/java/com/example/demo/orders/OrderServiceSecurityTest.java</span></div>
+  <pre><span class="kw">package</span> com.example.demo.orders;
+
+<span class="kw">import</span> org.junit.jupiter.api.Test;
+<span class="kw">import</span> org.springframework.beans.factory.annotation.Autowired;
+<span class="kw">import</span> org.springframework.boot.test.context.SpringBootTest;
+<span class="kw">import</span> org.springframework.security.access.AccessDeniedException;
+<span class="kw">import</span> org.springframework.security.test.context.support.WithMockUser;
+
+<span class="kw">import static</span> org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+<span class="kw">import static</span> org.junit.jupiter.api.Assertions.assertThrows;
+
+<span class="ann">@SpringBootTest</span>
+<span class="kw">class</span> <span class="cls">OrderServiceSecurityTest</span> {
+
+    <span class="ann">@Autowired</span>
+    <span class="kw">private</span> <span class="cls">OrderService</span> orderService;
+
+    <span class="ann">@Test</span>
+    <span class="ann">@WithMockUser</span>(roles = <span class="str">"ADMIN"</span>)
+    <span class="cmt">// @WithMockUser populates the SecurityContext for this test method only —
+    // no real JWT, no real login flow needed.</span>
+    <span class="kw">void</span> <span class="fn">adminCanDeleteAllOrders</span>() {
+        assertDoesNotThrow(() -> orderService.<span class="fn">deleteAllOrders</span>());
+    }
+
+    <span class="ann">@Test</span>
+    <span class="ann">@WithMockUser</span>(roles = <span class="str">"USER"</span>)
+    <span class="kw">void</span> <span class="fn">nonAdminCannotDeleteAllOrders</span>() {
+        assertThrows(<span class="cls">AccessDeniedException</span>.<span class="kw">class</span>, () -> orderService.<span class="fn">deleteAllOrders</span>());
+    }
+}</pre>
+
+  <div class="callout success">
+    <p><strong>Why this matters:</strong> these tests run against the REAL <code>@PreAuthorize</code>-protected proxy (because <code>@SpringBootTest</code> wires up the actual application context) — so they catch the exact self-invocation and "wrong role string" bugs covered earlier, not just whatever your test mocks assume.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(6)">← Self-Invocation Gotcha</button>
+    <button class="btn btn-primary" onclick="goTo(8)">Interview FAQ →</button>
+  </div>
+</div>
+
+<!-- SECTION 8: FAQ -->
+<div class="section" id="section-8">
+  <div class="section-header">
+    <div class="section-eyebrow">Step 8</div>
+    <h2>Senior Interview FAQ</h2>
+    <p>The questions that come up once an interviewer knows you've actually used this in production.</p>
+  </div>
+
+  <div class="faq">
+    <div class="faq-q">Q: @PreAuthorize vs @Secured — why would you ever pick @Secured?</div>
+    <div class="faq-a">You usually wouldn't for new code — @PreAuthorize is a strict superset (SpEL includes plain role checks as a special case). @Secured shows up in legacy codebases predating Spring's SpEL-based method security, or in teams that want to forbid expressions entirely for auditability.</div>
+  </div>
+
+  <div class="faq">
+    <div class="faq-q">Q: How does method security actually work under the hood?</div>
+    <div class="faq-a">Spring AOP. At startup, any bean with a method-security annotation gets wrapped in a dynamic proxy (CGLIB by default for classes, JDK proxies for interfaces). The proxy registers a <code>MethodInterceptor</code> (<code>AuthorizationManagerBeforeMethodInterceptor</code> for @PreAuthorize) that evaluates the SpEL expression against the current <code>SecurityContext</code> before delegating to the real method. It's the same proxy infrastructure that powers @Transactional and @Cacheable.</div>
+  </div>
+
+  <div class="faq">
+    <div class="faq-q">Q: Why doesn't @PreAuthorize fire when you call a method from inside the same class?</div>
+    <div class="faq-a">Because <code>this</code> inside a class refers to the raw, unwrapped object — not the proxy Spring created around it. The check only runs when the call passes through the proxy, i.e. when some OTHER bean holds an injected reference and calls through it. See the Self-Invocation Gotcha section.</div>
+  </div>
+
+  <div class="faq">
+    <div class="faq-q">Q: @PreAuthorize vs URL-based security — which should you use?</div>
+    <div class="faq-a">Both, layered. URL security is fast, coarse, and catches most traffic before it reaches a controller. Method security is the precise, can't-be-bypassed-by-a-config-typo backstop, and it's the only option for code paths that don't go through HTTP at all (scheduled jobs, message listeners, internal service calls). Relying on only one layer is the actual anti-pattern.</div>
+  </div>
+
+  <div class="faq">
+    <div class="faq-q">Q: What's the practical difference between @PreFilter/@PostFilter and just filtering in your repository query?</div>
+    <div class="faq-a">@PostFilter loads the full unfiltered result set into memory first, then discards rows — it cannot push the condition into SQL/Mongo. For anything beyond small, already-in-memory lists, filter in the query (<code>findByOwnerUsername</code>) for performance; reserve @PreFilter/@PostFilter for cases where the filtering logic genuinely can't be expressed as a query predicate.</div>
+  </div>
+
+  <div class="callout success">
+    <p><strong>You now have the full toolkit:</strong> @PreAuthorize/@PostAuthorize for single-object checks, @PreFilter/@PostFilter for collections, @Secured/@RolesAllowed for simple legacy role checks, custom PermissionEvaluator for business-logic-driven permissions — and you know exactly why the self-invocation bug happens and how to avoid it.</p>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn btn-ghost" onclick="goTo(7)">← Testing Secured Methods</button>
+    <button class="btn btn-ghost" disabled>Done ✓</button>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const TOTAL = 9;
+let current = 0;
+
+function goTo(index) {
+  document.getElementById('section-' + current).classList.remove('active');
+  document.getElementById('nav-' + current).classList.remove('active');
+  if (index > current) {
+    document.getElementById('nav-' + current).classList.add('done');
+  }
+
+  current = index;
+  document.getElementById('section-' + current).classList.add('active');
+  document.getElementById('nav-' + current).classList.add('active');
+
+  const pct = Math.round(((current + 1) / TOTAL) * 100);
+  document.getElementById('progress').style.width = pct + '%';
+
+  document.querySelector('.main').scrollTop = 0;
+  window.scrollTo(0, 0);
+}
+</script>
+</body>
+</html>

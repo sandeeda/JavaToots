@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redis Basics — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0A0707; --surface:#160F0F; --surface2:#201414; --border:#332020; --border2:#432A2A;
+  --accent:#DC2626; --accent2:#EF4444; --accent3:#FCA5A5; --glow:rgba(220,38,38,0.18);
+  --text:#F1E8E8; --muted:#A98989; --muted2:#7A5C5C;
+  --green:#4ADE80; --orange:#FB923C; --pink:#F472B6; --yellow:#FACC15; --cyan:#22D3EE; --red:#F87171;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.7; overflow-x:hidden; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:100px 24px 80px; overflow:hidden; }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%,rgba(220,38,38,.15) 0%,transparent 70%),
+              radial-gradient(ellipse 40% 30% at 80% 20%,rgba(239,68,68,.08) 0%,transparent 60%);
+  pointer-events:none; }
+.hero-eyebrow { display:inline-flex; align-items:center; gap:8px; background:rgba(220,38,38,.1);
+  border:1px solid rgba(220,38,38,.25); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:32px; }
+.hero-eyebrow span { width:6px; height:6px; background:var(--accent2); border-radius:50%; animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(38px,6vw,72px); font-weight:700; line-height:1.08; letter-spacing:-.03em; margin-bottom:20px; }
+.hero h1 em { font-style:normal; background:linear-gradient(135deg,var(--accent2) 0%,var(--accent3) 50%,#FECACA 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { color:var(--muted); font-size:17px; max-width:520px; margin:0 auto 48px; }
+.hero-stats { display:inline-flex; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
+.stat { padding:18px 32px; border-right:1px solid var(--border); text-align:center; }
+.stat:last-child { border-right:none; }
+.stat-num { font-family:'Space Grotesk',monospace; font-size:28px; font-weight:700; color:var(--accent2); display:block; line-height:1; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
+/* PROGRESS */
+.progress-wrap { position:sticky; top:0; z-index:100; background:rgba(10,7,7,.85); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; }
+.progress-label { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+.progress-bar-bg { flex:1; height:4px; background:var(--border2); border-radius:2px; overflow:hidden; }
+.progress-bar-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:2px; transition:width .3s ease; }
+.progress-count { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--accent2); white-space:nowrap; }
+
+/* LAYOUT */
+.main { max-width:900px; margin:0 auto; padding:60px 24px 120px; position:relative; }
+.thread-line { position:absolute; left:52px; top:60px; bottom:120px; width:2px;
+  background:linear-gradient(to bottom,transparent,var(--border2) 5%,var(--border2) 95%,transparent); z-index:0; }
+.thread-line-fill { width:100%; height:0%; background:linear-gradient(to bottom,var(--accent),var(--accent2));
+  border-radius:2px; transition:height .4s ease; box-shadow:0 0 8px var(--accent); }
+
+/* CONCEPT */
+.concept { position:relative; display:flex; gap:32px; margin-bottom:20px; z-index:1; }
+.concept-node { flex-shrink:0; width:40px; height:40px; border-radius:50%; border:2px solid var(--border2);
+  background:var(--surface); display:flex; align-items:center; justify-content:center;
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:500; color:var(--muted2);
+  margin-top:20px; position:relative; z-index:2; transition:all .3s ease; cursor:pointer; }
+.concept.active .concept-node, .concept.done .concept-node {
+  border-color:var(--accent); background:rgba(220,38,38,.15); color:var(--accent2);
+  box-shadow:0 0 0 4px rgba(220,38,38,.12),0 0 16px rgba(220,38,38,.2); }
+.concept-body { flex:1; min-width:0; }
+.concept-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; overflow:hidden; transition:border-color .3s,box-shadow .3s; cursor:pointer; }
+.concept-card:hover { border-color:var(--border2); }
+.concept.active .concept-card { border-color:rgba(220,38,38,.35); box-shadow:0 0 0 1px rgba(220,38,38,.1),0 8px 40px rgba(0,0,0,.4); }
+.card-header { display:flex; align-items:center; gap:16px; padding:20px 24px; user-select:none; }
+.card-tag { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; padding:3px 10px; border-radius:100px; border:1px solid; flex-shrink:0; }
+.tag-basic  { color:var(--green);  border-color:rgba(74,222,128,.25);  background:rgba(74,222,128,.06); }
+.tag-inter  { color:var(--orange); border-color:rgba(251,146,60,.25); background:rgba(251,146,60,.06); }
+.tag-advanced { color:var(--pink); border-color:rgba(244,114,182,.25); background:rgba(244,114,182,.06); }
+.card-title { font-family:'Space Grotesk',sans-serif; font-size:17px; font-weight:600; color:var(--text); flex:1; }
+.card-chevron { width:28px; height:28px; border-radius:8px; border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--muted2); transition:all .3s; flex-shrink:0; }
+.card-chevron svg { transition:transform .3s; }
+.concept.active .card-chevron { border-color:var(--accent); color:var(--accent2); background:rgba(220,38,38,.1); }
+.concept.active .card-chevron svg { transform:rotate(180deg); }
+.card-content { display:none; padding:0 24px 24px; border-top:1px solid var(--border); }
+.concept.active .card-content { display:block; }
+.card-summary { padding:16px 0 20px; color:var(--muted); font-size:14px; line-height:1.7; border-bottom:1px solid var(--border); margin-bottom:20px; }
+.card-summary strong { color:var(--text); font-weight:500; }
+
+/* CODE */
+.code-wrap { background:#0F0A0A; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:20px; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:10px 16px;
+  background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:10px; height:10px; border-radius:50%; }
+.dot-r { background:#FF5F57; } .dot-y { background:#FFBD2E; } .dot-g { background:#28CA41; }
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+.copy-btn { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); background:none;
+  border:1px solid var(--border2); border-radius:6px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.copy-btn:hover { color:var(--accent2); border-color:var(--accent); }
+pre { padding:18px 20px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.7; tab-size:4; }
+code { font-family:inherit; }
+.kw { color:#C792EA; } .cl { color:#82AAFF; } .fn { color:#82AAFF; } .st { color:#C3E88D; }
+.nm { color:#F78C6C; } .cm { color:#546E7A; font-style:italic; } .an { color:#FFCB6B; }
+.sy { color:var(--muted); } .op { color:#89DDFF; }
+.ok { color:var(--green); } .er { color:var(--red); }
+.hl { background:rgba(220,38,38,.12); display:block; border-left:2px solid var(--accent); padding-left:4px; margin-left:-4px; }
+
+/* ANALOGY */
+.analogy { display:flex; gap:12px; background:rgba(220,38,38,.06); border:1px solid rgba(220,38,38,.18);
+  border-radius:12px; padding:14px 16px; margin-bottom:20px; }
+.analogy-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.analogy p { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.analogy p strong { color:var(--accent3); }
+
+/* OUTPUT */
+.output-wrap { margin-bottom:20px; }
+.output-label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase;
+  letter-spacing:.08em; margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+.output-label::after { content:''; flex:1; height:1px; background:var(--border); }
+.output-box { background:#080505; border:1px solid var(--border); border-radius:10px; padding:14px 18px;
+  font-family:'JetBrains Mono',monospace; font-size:13px; line-height:1.8; color:#A5F3A5; }
+
+/* TAKEAWAY */
+.takeaway { display:flex; gap:12px; align-items:flex-start; background:rgba(250,204,21,.05);
+  border:1px solid rgba(250,204,21,.15); border-radius:12px; padding:14px 16px; margin-bottom:24px; }
+.takeaway-icon { font-size:16px; flex-shrink:0; margin-top:2px; }
+.takeaway p { font-size:13.5px; color:#E8DFA0; line-height:1.6; }
+.takeaway p code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(250,204,21,.1);
+  border-radius:4px; padding:1px 6px; color:var(--yellow); }
+
+/* PRACTICE */
+.practice { background:var(--surface2); border:1px solid var(--border2); border-radius:14px; overflow:hidden; }
+.practice-header { display:flex; align-items:center; gap:10px; padding:14px 18px;
+  background:rgba(220,38,38,.08); border-bottom:1px solid var(--border); }
+.practice-badge { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; padding:3px 10px; border-radius:100px;
+  background:rgba(220,38,38,.2); border:1px solid rgba(220,38,38,.3); color:var(--accent3); }
+.practice-title { font-family:'Space Grotesk',sans-serif; font-size:14px; font-weight:600; color:var(--text); }
+.practice-body { padding:16px 18px; }
+.practice-q { font-size:14px; color:var(--text); line-height:1.7; margin-bottom:12px; }
+.practice-q strong { color:var(--accent3); }
+.practice-hints { display:flex; flex-wrap:wrap; gap:8px; }
+.hint-chip { font-family:'JetBrains Mono',monospace; font-size:11px; padding:4px 12px; border-radius:100px;
+  background:rgba(34,211,238,.07); border:1px solid rgba(34,211,238,.18); color:var(--cyan); }
+.bonus-q { margin-top:14px; padding-top:14px; border-top:1px dashed var(--border2); }
+.bonus-label { font-family:'JetBrains Mono',monospace; font-size:10px; text-transform:uppercase;
+  letter-spacing:.1em; color:var(--orange); margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.bonus-label::before { content:''; width:14px; height:1px; background:var(--orange); opacity:.5; }
+.bonus-text { font-size:13.5px; color:var(--muted); line-height:1.6; }
+.bonus-text strong { color:#FBD38D; }
+
+/* COMPLETION */
+.completion { text-align:center; padding:80px 24px; position:relative; }
+.completion::before { content:''; position:absolute; inset:0;
+  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(220,38,38,.1) 0%,transparent 70%); pointer-events:none; }
+.completion h2 { font-family:'Space Grotesk',sans-serif; font-size:36px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+.completion p { color:var(--muted); max-width:420px; margin:0 auto 40px; }
+.concept-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; max-width:800px; margin:0 auto; text-align:left; }
+.grid-item { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px; font-size:13px; }
+.grid-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent2); background:rgba(220,38,38,.1); border-radius:6px; padding:2px 7px; flex-shrink:0; }
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+@media(max-width:640px) {
+  .hero-stats { flex-direction:column; }
+  .stat { border-right:none; border-bottom:1px solid var(--border); }
+  .stat:last-child { border-bottom:none; }
+  .thread-line { display:none; }
+  .concept { gap:16px; }
+  .concept-node { width:32px; height:32px; font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<section class="hero">
+  <div class="hero-eyebrow"><span></span> Redis — Visual Guide</div>
+  <h1>Master<br><em>Redis</em><br>Visually</h1>
+  <p class="hero-sub">16 concepts. From zero to confident. Each one explained simply, with colour-coded code and a practice question.</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">16</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">16</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
+  </div>
+</section>
+
+<div class="progress-wrap">
+  <span class="progress-label">Progress</span>
+  <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+  <span class="progress-count" id="progressCount">0 / 16</span>
+</div>
+
+<div class="main">
+  <div class="thread-line"><div class="thread-line-fill" id="threadFill"></div></div>
+
+  <!-- 1 -->
+  <div class="concept" data-id="1">
+    <div class="concept-node">01</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">What is Redis?</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><strong>Redis</strong> (REmote DIctionary Server) is an <strong>in-memory data store</strong>. Everything lives in RAM, so reads/writes take microseconds instead of the milliseconds a disk-backed database needs. It's commonly used as a cache, but it's really a fast key-value engine with several built-in data structures.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4DD;</div><p><strong>Sticky notes on your desk vs filing cabinet down the hall:</strong> Your database is the filing cabinet — durable, organized, but a walk away. Redis is the sticky note stuck to your monitor — instantly visible, but if the building burns down (server restarts without persistence), it's gone unless you photographed it first (RDB/AOF).</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis-cli</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># start a local Redis server (default port 6379), then connect:</span>
+<span class="fn">redis-cli</span>
+
+<span class="cm"># every Redis command below is typed straight into that prompt</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">SET</span> greeting <span class="st">"hello"</span>
+<span class="ok">OK</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">GET</span> greeting
+<span class="ok">"hello"</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">PING</span>
+<span class="ok">PONG</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Redis is <strong>single-threaded</strong> for command execution — one command runs to completion before the next starts. That's actually why it's fast and predictable (no lock contention), but it also means a slow command (like <code>KEYS *</code> on a huge keyspace) blocks every other client until it finishes. Use <code>SCAN</code> instead of <code>KEYS</code> in production.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q1 — Install and connect</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Install Redis locally (or run <code>docker run -p 6379:6379 redis</code>). Connect with <code>redis-cli</code>. Run <code>SET</code>, <code>GET</code>, and <code>PING</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">docker run redis</span><span class="hint-chip">redis-cli</span><span class="hint-chip">SET / GET</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Run <code>INFO server</code> and find the <code>redis_version</code> and <code>tcp_port</code> fields.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="concept" data-id="2">
+    <div class="concept-node">02</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Core Data Structures</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Redis isn't just key &#x2192; string. Every key can hold a <strong>String, List, Set, Sorted Set, or Hash</strong> — each with its own commands. Picking the right structure for the job is most of what "knowing Redis" means.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis-cli</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># STRING — simplest type: counters, flags, cached blobs</span>
+<span class="kw">SET</span> page:views <span class="nm">0</span>
+<span class="kw">INCR</span> page:views          <span class="cm"># atomic +1, returns 1</span>
+<span class="kw">INCRBY</span> page:views <span class="nm">5</span>      <span class="cm"># atomic +5, returns 6</span>
+
+<span class="cm"># LIST — ordered, duplicates allowed: queues, recent-activity feeds</span>
+<span class="kw">LPUSH</span> recent:logins <span class="st">"sandeep"</span>   <span class="cm"># push to the LEFT (front)</span>
+<span class="kw">RPUSH</span> recent:logins <span class="st">"alice"</span>     <span class="cm"># push to the RIGHT (back)</span>
+<span class="kw">LRANGE</span> recent:logins <span class="nm">0</span> <span class="nm">-1</span>    <span class="cm"># 0 to -1 = the whole list</span>
+<span class="cm"># 1) "sandeep"  2) "alice"</span>
+
+<span class="cm"># SET — unordered, unique members: tags, "has this user done X"</span>
+<span class="kw">SADD</span> user:42:roles <span class="st">"ADMIN"</span> <span class="st">"USER"</span>
+<span class="kw">SMEMBERS</span> user:42:roles
+<span class="kw">SINTER</span> user:42:roles user:43:roles   <span class="cm"># roles BOTH users share</span>
+
+<span class="cm"># SORTED SET — unique members ranked by a score: leaderboards, rate limits</span>
+<span class="kw">ZADD</span> leaderboard <span class="nm">1500</span> <span class="st">"sandeep"</span>
+<span class="kw">ZADD</span> leaderboard <span class="nm">2200</span> <span class="st">"alice"</span>
+<span class="kw">ZRANGE</span> leaderboard <span class="nm">0</span> <span class="nm">-1</span> <span class="kw">WITHSCORES</span>
+<span class="cm"># 1) "sandeep" 2) "1500"  3) "alice" 4) "2200" — sorted ascending by score</span>
+<span class="kw">ZSCORE</span> leaderboard <span class="st">"alice"</span>            <span class="cm"># "2200"</span>
+
+<span class="cm"># HASH — field/value pairs under one key: storing an object's fields</span>
+<span class="kw">HSET</span> user:42 name <span class="st">"Sandeep"</span> city <span class="st">"Toronto"</span>
+<span class="kw">HGET</span> user:42 name           <span class="cm"># "Sandeep"</span>
+<span class="kw">HGETALL</span> user:42             <span class="cm"># all fields at once</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><strong>Sorted Set is the one senior engineers reach for most</strong> — score-ranked uniqueness covers leaderboards, priority queues, time-windowed rate limiters, and "top N" feeds without a single SQL <code>ORDER BY</code>.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Build a mini leaderboard</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Add 5 players with scores to a sorted set called <code>leaderboard</code>. Fetch the <strong>top 3</strong> using <code>ZREVRANGE leaderboard 0 2 WITHSCORES</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">ZADD</span><span class="hint-chip">ZREVRANGE</span><span class="hint-chip">WITHSCORES</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Use <code>ZRANK leaderboard "sandeep"</code> to find one player's rank without scanning the whole set.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">TTL and Expiration</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A key can have a <strong>Time-To-Live</strong> — after it expires, Redis deletes it automatically. This is the single most important habit for using Redis as a cache: <strong>almost every cache key should have a TTL</strong>, or you'll eventually run out of memory holding stale data forever.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis-cli</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">SET</span> session:abc123 <span class="st">"sandeep"</span>
+<span class="kw">EXPIRE</span> session:abc123 <span class="nm">1800</span>    <span class="cm"># expires in 1800 seconds (30 min)</span>
+<span class="kw">TTL</span> session:abc123         <span class="cm"># how many seconds are left? e.g. "1797"</span>
+
+<span class="cm"># SETEX = SET + EXPIRE in one atomic command — prefer this</span>
+<span class="kw">SETEX</span> session:def456 <span class="nm">1800</span> <span class="st">"alice"</span>
+
+<span class="cm"># remove the expiration — key now lives forever again</span>
+<span class="kw">PERSIST</span> session:abc123
+<span class="kw">TTL</span> session:abc123         <span class="cm"># "-1" means no TTL set</span>
+
+<span class="cm"># TTL on a key that doesn't exist:</span>
+<span class="kw">TTL</span> no_such_key            <span class="cm"># "-2" means the key is missing entirely</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Prefer <code>SETEX</code> (atomic) over a separate <code>SET</code> + <code>EXPIRE</code> — between those two calls a crash or race could leave the key without a TTL forever.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Expiring cache key</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Use <code>SETEX</code> to cache a value for 10 seconds. Run <code>TTL</code> immediately, then again after 11 seconds, then <code>GET</code> — confirm it's gone.</p>
+              <div class="practice-hints"><span class="hint-chip">SETEX key 10 value</span><span class="hint-chip">TTL key</span><span class="hint-chip">GET returns nil after expiry</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">Eviction Policies</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Redis has a configured <strong>maxmemory</strong> limit. When it's hit, the <strong>eviction policy</strong> decides what gets deleted to make room for new writes. Pick the wrong policy and either writes start failing, or the wrong keys disappear.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4E6;</div><p><strong>A full fridge:</strong> When there's no room for new groceries, do you refuse to buy more (noeviction), throw out whatever's oldest (LRU), or throw out whatever you eat least often (LFU)? Each strategy fits a different kitchen.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis.conf</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># set in redis.conf, or live with CONFIG SET</span>
+<span class="kw">maxmemory</span> <span class="nm">100mb</span>
+<span class="kw">maxmemory-policy</span> <span class="st">allkeys-lru</span>
+
+<span class="cm"># the policy options:
+# noeviction      — refuse new writes once full (errors out, nothing deleted)
+# allkeys-lru     — evict the Least Recently Used key, from ANY key
+# allkeys-lfu     — evict the Least Frequently Used key, from ANY key
+# volatile-lru    — evict LRU, but ONLY among keys that have a TTL set
+# volatile-ttl    — evict the key with the SHORTEST remaining TTL first
+# allkeys-random  — evict a random key (rarely what you want)</span>
+
+<span class="cm"># check current usage at any time:</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">INFO</span> memory
+<span class="cm"># used_memory_human:87.50M
+# maxmemory_policy:allkeys-lru</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>For a pure cache, <code>allkeys-lru</code> is the safe default. For a mixed workload (some keys are cache, some are durable data with no TTL), use <code>volatile-lru</code> so Redis only ever evicts keys you explicitly marked as expendable.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Watch eviction happen</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Set <code>maxmemory 1mb</code> and <code>maxmemory-policy allkeys-lru</code>. Write keys in a loop until <code>INFO memory</code> shows you're near the limit, then keep writing — confirm old keys start disappearing instead of writes failing.</p>
+              <div class="practice-hints"><span class="hint-chip">CONFIG SET maxmemory 1mb</span><span class="hint-chip">INFO memory</span><span class="hint-chip">DBSIZE</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Switch to <code>noeviction</code> and repeat — confirm you now get an <code>OOM command not allowed</code> error instead of silent deletion.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Cache-Aside Pattern</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The most common caching pattern: <strong>check cache first, fall back to the database on a miss, then populate the cache</strong> for next time. The application owns the logic — Redis itself doesn't know about your database.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.data.redis.core.RedisTemplate;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> java.time.Duration;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">ProductService</span> {
+
+    <span class="kw">private final</span> <span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">Product</span>&gt; redis;
+    <span class="kw">private final</span> <span class="cl">ProductRepository</span> db;
+
+    <span class="kw">public</span> <span class="fn">ProductService</span>(<span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">Product</span>&gt; redis, <span class="cl">ProductRepository</span> db) {
+        <span class="kw">this</span>.redis = redis;
+        <span class="kw">this</span>.db = db;
+    }
+
+    <span class="kw">public</span> <span class="cl">Product</span> <span class="fn">getProduct</span>(<span class="cl">String</span> id) {
+        <span class="cl">String</span> key = <span class="st">"product:"</span> + id;
+
+<span class="hl">        <span class="cl">Product</span> cached = redis.<span class="fn">opsForValue</span>().<span class="fn">get</span>(key); <span class="cm">// 1. check cache</span></span>
+        <span class="kw">if</span> (cached != <span class="kw">null</span>) {
+            <span class="kw">return</span> cached;             <span class="cm">// cache hit — fast path, done</span>
+        }
+
+<span class="hl">        <span class="cl">Product</span> fromDb = db.<span class="fn">findById</span>(id)        <span class="cm">// 2. miss — go to the DB</span></span>
+            .<span class="fn">orElseThrow</span>(() -&gt; <span class="kw">new</span> <span class="cl">ProductNotFoundException</span>(id));
+
+<span class="hl">        redis.<span class="fn">opsForValue</span>().<span class="fn">set</span>(key, fromDb, <span class="cl">Duration</span>.<span class="fn">ofMinutes</span>(<span class="nm">10</span>)); <span class="cm">// 3. populate cache, with a TTL</span></span>
+        <span class="kw">return</span> fromDb;
+    }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Cache-aside is <strong>lazy</strong> — nothing is cached until it's actually requested once. That's usually exactly what you want: you only spend cache memory on data that's actually being read.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Time the difference</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Add a 200ms <code>Thread.sleep</code> inside the DB lookup path to simulate a slow query. Call <code>getProduct()</code> twice for the same id and print elapsed time for each call — the second should be near-instant.</p>
+              <div class="practice-hints"><span class="hint-chip">System.nanoTime()</span><span class="hint-chip">first call ~200ms</span><span class="hint-chip">second call &lt;5ms</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="concept" data-id="6">
+    <div class="concept-node">06</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">@Cacheable, @CacheEvict, @CachePut</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Spring's caching annotations write the cache-aside pattern from concept 5 <strong>for you</strong>, via an AOP proxy (the same proxy mechanism behind <code>@Transactional</code> and <code>@PreAuthorize</code>). One annotation replaces the manual check-miss-populate dance.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.cache.annotation.CacheEvict;
+<span class="kw">import</span> org.springframework.cache.annotation.CachePut;
+<span class="kw">import</span> org.springframework.cache.annotation.Cacheable;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">ProductService</span> {
+
+    <span class="kw">private final</span> <span class="cl">ProductRepository</span> db;
+    <span class="kw">public</span> <span class="fn">ProductService</span>(<span class="cl">ProductRepository</span> db) { <span class="kw">this</span>.db = db; }
+
+<span class="hl">    <span class="an">@Cacheable</span>(value = <span class="st">"products"</span>, key = <span class="st">"#id"</span>)</span>
+    <span class="kw">public</span> <span class="cl">Product</span> <span class="fn">getProduct</span>(<span class="cl">String</span> id) {
+        <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"Cache MISS — hitting the DB for "</span> + id);
+        <span class="kw">return</span> db.<span class="fn">findById</span>(id).<span class="fn">orElseThrow</span>();
+        <span class="cm">// Spring only runs this method body on a cache miss.
+        // On a hit, the method body never executes at all — the proxy
+        // intercepts the call and returns the cached value directly.</span>
+    }
+
+<span class="hl">    <span class="an">@CachePut</span>(value = <span class="st">"products"</span>, key = <span class="st">"#product.id"</span>)</span>
+    <span class="kw">public</span> <span class="cl">Product</span> <span class="fn">updateProduct</span>(<span class="cl">Product</span> product) {
+        <span class="kw">return</span> db.<span class="fn">save</span>(product);
+        <span class="cm">// @CachePut ALWAYS runs the method, then updates the cache with the
+        // return value — used for writes, where you want the DB updated
+        // AND the cache refreshed to match, not served from a stale cache.</span>
+    }
+
+<span class="hl">    <span class="an">@CacheEvict</span>(value = <span class="st">"products"</span>, key = <span class="st">"#id"</span>)</span>
+    <span class="kw">public void</span> <span class="fn">deleteProduct</span>(<span class="cl">String</span> id) {
+        db.<span class="fn">deleteById</span>(id);
+        <span class="cm">// removes the entry from the cache so the next getProduct(id)
+        // call is forced to go back to the DB (or correctly 404)</span>
+    }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Just like <code>@PreAuthorize</code> and <code>@Transactional</code>, these annotations are proxy-based — calling <code>getProduct()</code> from <strong>inside the same class</strong> bypasses the proxy and skips the cache entirely. Same self-invocation gotcha, every time.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Prove the method body is skipped</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Add a <code>println</code> inside <code>getProduct()</code>. Call it 3 times with the same id via a <code>@RestController</code> (not from inside the same class). Confirm the println only fires once.</p>
+              <div class="practice-hints"><span class="hint-chip">@EnableCaching</span><span class="hint-chip">call via a controller</span><span class="hint-chip">println fires once</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Cache Invalidation Strategies</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">"There are only two hard things in Computer Science: cache invalidation, and naming things." Stale cached data is worse than no cache at all if nobody ever clears it. There are three main strategies, often combined.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// STRATEGY 1 — TTL-based: just let it expire. Simple, eventually consistent.</span>
+redis.<span class="fn">opsForValue</span>().<span class="fn">set</span>(<span class="st">"product:42"</span>, product, <span class="cl">Duration</span>.<span class="fn">ofMinutes</span>(<span class="nm">10</span>));
+<span class="cm">// up to 10 minutes of staleness after a DB update — fine for product listings,
+// NOT fine for a bank balance</span>
+
+<span class="cm">// STRATEGY 2 — explicit eviction on write: clear it the moment data changes</span>
+<span class="an">@CacheEvict</span>(value = <span class="st">"products"</span>, key = <span class="st">"#product.id"</span>)
+<span class="kw">public void</span> <span class="fn">onProductUpdated</span>(<span class="cl">Product</span> product) { <span class="cl">System</span>.out.<span class="fn">println</span>(<span class="st">"evicted"</span>); }
+<span class="cm">// zero staleness window, but only works if EVERY write path remembers to evict —
+// miss one update path and you have a silent, hard-to-find stale-cache bug</span>
+
+<span class="cm">// STRATEGY 3 — stale-while-revalidate: serve the old value immediately,
+// kick off a background refresh, so nobody ever waits on a cache miss</span>
+<span class="kw">public</span> <span class="cl">Product</span> <span class="fn">getProductStaleOk</span>(<span class="cl">String</span> id) {
+    <span class="cl">Product</span> cached = redis.<span class="fn">opsForValue</span>().<span class="fn">get</span>(<span class="st">"product:"</span> + id);
+    <span class="kw">if</span> (cached != <span class="kw">null</span>) {
+        <span class="kw">if</span> (<span class="fn">isNearExpiry</span>(id)) <span class="fn">refreshInBackground</span>(id); <span class="cm">// async, doesn't block this request</span>
+        <span class="kw">return</span> cached; <span class="cm">// caller still gets an instant response</span>
+    }
+    <span class="kw">return</span> <span class="fn">loadAndCache</span>(id);
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Default to <strong>TTL + explicit eviction together</strong>: evict on write for correctness, but keep a TTL as a safety net in case an eviction path is ever missed. Belt and suspenders.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Find the missed eviction</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Build a service with <code>updateName()</code> (correctly evicts) and <code>updateEmail()</code> (a deliberate bug — forgets to evict). Show that reading after <code>updateEmail()</code> returns stale data until the TTL expires.</p>
+              <div class="practice-hints"><span class="hint-chip">@CacheEvict on one method only</span><span class="hint-chip">read stale data</span><span class="hint-chip">wait for TTL</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Cache Stampede</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A hot key expires. In the same instant, <strong>thousands of requests</strong> all miss the cache and all hammer the database at once trying to refill it — the "thundering herd." The DB that was handling 200 cached reads/sec suddenly gets 200 simultaneous queries.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F3DB;&#xFE0F;</div><p><strong>One door, one cashier, a sold-out concert:</strong> The moment the box office opens, everyone rushes the same door at once. A bouncer who lets one person through to "check if tickets exist" while everyone else waits outside avoids the crush.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.data.redis.core.RedisTemplate;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> java.time.Duration;
+<span class="kw">import</span> java.util.concurrent.ThreadLocalRandom;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">ProductService</span> {
+
+    <span class="kw">private final</span> <span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">String</span>&gt; redis;
+    <span class="kw">public</span> <span class="fn">ProductService</span>(<span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">String</span>&gt; redis) { <span class="kw">this</span>.redis = redis; }
+
+    <span class="kw">public</span> <span class="cl">String</span> <span class="fn">getProduct</span>(<span class="cl">String</span> id) {
+        <span class="cl">String</span> key = <span class="st">"product:"</span> + id;
+        <span class="cl">String</span> cached = redis.<span class="fn">opsForValue</span>().<span class="fn">get</span>(key);
+        <span class="kw">if</span> (cached != <span class="kw">null</span>) <span class="kw">return</span> cached;
+
+<span class="hl">        <span class="cl">String</span> lockKey = <span class="st">"lock:"</span> + key; <span class="cm">// 1. only ONE caller wins this lock</span></span>
+<span class="hl">        <span class="kw">boolean</span> gotLock = <span class="cl">Boolean</span>.<span class="fn">TRUE</span>.<span class="fn">equals</span>(</span>
+<span class="hl">            redis.<span class="fn">opsForValue</span>().<span class="fn">setIfAbsent</span>(lockKey, <span class="st">"1"</span>, <span class="cl">Duration</span>.<span class="fn">ofSeconds</span>(<span class="nm">5</span>)));</span>
+
+        <span class="kw">if</span> (!gotLock) {
+            <span class="fn">sleepBriefly</span>();                  <span class="cm">// 2. losers back off and retry the cache read</span>
+            <span class="kw">return</span> <span class="fn">getProduct</span>(id);            <span class="cm">// the winner will have populated it by then</span>
+        }
+
+        <span class="kw">try</span> {
+            <span class="cl">String</span> fromDb = <span class="fn">loadFromDatabase</span>(id); <span class="cm">// 3. only the lock winner hits the DB</span>
+<span class="hl">            <span class="kw">int</span> jitterSeconds = ThreadLocalRandom.<span class="fn">current</span>().<span class="fn">nextInt</span>(<span class="nm">30</span>); <span class="cm">// jittered TTL</span></span>
+            redis.<span class="fn">opsForValue</span>().<span class="fn">set</span>(key, fromDb, <span class="cl">Duration</span>.<span class="fn">ofMinutes</span>(<span class="nm">10</span>).<span class="fn">plusSeconds</span>(jitterSeconds));
+            <span class="kw">return</span> fromDb;
+        } <span class="kw">finally</span> {
+            redis.<span class="fn">delete</span>(lockKey);
+        }
+    }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Two cheap mitigations, usually used together: <strong>request coalescing</strong> (a short lock so only one caller refills) and <strong>jittered TTLs</strong> (add a random few seconds so 10,000 keys cached at the same moment don't all expire in the same millisecond).</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Simulate the herd</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Fire 50 concurrent threads at <code>getProduct("42")</code> the instant its cache entry expires, with a fake DB call that sleeps 500ms and counts how many times it was invoked. Without the lock, expect ~50 DB hits. With it, expect 1.</p>
+              <div class="practice-hints"><span class="hint-chip">ExecutorService(50)</span><span class="hint-chip">AtomicInteger dbCallCount</span><span class="hint-chip">setIfAbsent (SETNX)</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Without coalescing, what stops 2 callers from both winning the lock due to a race? Walk through why <code>SETNX</code> (atomic set-if-not-exists) — not a check-then-set — is required here.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9 -->
+  <div class="concept" data-id="9">
+    <div class="concept-node">09</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Distributed Locks</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">The <code>SET key value NX EX seconds</code> pattern from concept 8 generalizes into a full distributed lock: across <strong>multiple application instances</strong> (not just multiple threads in one JVM, which is what <code>synchronized</code>/<code>ReentrantLock</code> from the Java threading tutorial handle).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis-cli</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># NX = only set if the key does NOT already exist (the "acquire")
+# EX 10 = auto-expire in 10s — a safety net if this process crashes
+#         while holding the lock, so it's never held forever</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">SET</span> lock:order:42 <span class="st">"worker-A-uuid-1234"</span> <span class="kw">NX EX</span> <span class="nm">10</span>
+<span class="ok">OK</span>                          <span class="cm"># we got the lock</span>
+
+<span class="cm"># a second worker tries the SAME lock while it's held:</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">SET</span> lock:order:42 <span class="st">"worker-B-uuid-5678"</span> <span class="kw">NX EX</span> <span class="nm">10</span>
+<span class="er">(nil)</span>                       <span class="cm"># denied — someone else holds it</span>
+
+<span class="cm"># releasing MUST check you still own it before deleting (a Lua script,
+# run atomically, to avoid a race between the check and the delete) —
+# otherwise worker A could delete a lock that worker B now legitimately holds</span>
+<span class="kw">EVAL</span> <span class="st">"if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end"</span> <span class="nm">1</span> lock:order:42 <span class="st">"worker-A-uuid-1234"</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>This is <strong>"good enough" for most use cases</strong> (e.g. preventing two cron-job replicas from both running the same nightly batch). It is NOT bulletproof under clock drift or a process pausing past its TTL (a GC pause longer than the lock's expiry can let two holders overlap) — that's exactly the controversy behind the formal "Redlock" algorithm. For hard correctness (e.g. financial settlement), use a database-backed lock with real transactional guarantees instead.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q9 — Two workers, one job</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Simulate 5 "workers" (threads) all trying to acquire <code>lock:nightly-report</code> at the same time. Only one should print "Running report" — the rest should see <code>(nil)</code> and skip.</p>
+              <div class="practice-hints"><span class="hint-chip">SETNX / SET NX EX</span><span class="hint-chip">unique owner token per worker</span><span class="hint-chip">5 threads, 1 winner</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10 -->
+  <div class="concept" data-id="10">
+    <div class="concept-node">10</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Pub/Sub</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Redis can broadcast messages to anyone currently subscribed to a channel — the Observer pattern, network-wide instead of in-process — but it's <strong>fire-and-forget</strong>: nothing is stored, so a subscriber that's offline for even a second misses the message forever.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis-cli</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># terminal 1 — subscribe and wait (this call blocks)</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">SUBSCRIBE</span> room:general
+<span class="cm">Reading messages... (press Ctrl-C to quit)
+1) "subscribe" 2) "room:general" 3) (integer) 1</span>
+
+<span class="cm"># terminal 2 — publish a message to that channel</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">PUBLISH</span> room:general <span class="st">"sandeep joined the room"</span>
+<span class="ok">(integer) 1</span>          <span class="cm"># 1 subscriber received it</span>
+
+<span class="cm"># back in terminal 1, this appears instantly:
+1) "message" 2) "room:general" 3) "sandeep joined the room"</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>If you need <strong>"deliver this even if the consumer was briefly down"</strong> guarantees — durable, replayable, at-least-once delivery — Pub/Sub is the wrong tool. Reach for Redis Streams (concept 11) or a real broker like Kafka/RabbitMQ instead.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q10 — Prove messages are lost</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Subscribe to a channel, then unsubscribe (Ctrl-C). Publish 3 messages while nobody is subscribed. Re-subscribe — confirm none of those 3 messages ever arrive.</p>
+              <div class="practice-hints"><span class="hint-chip">SUBSCRIBE / UNSUBSCRIBE</span><span class="hint-chip">PUBLISH while offline</span><span class="hint-chip">messages are gone</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11 -->
+  <div class="concept" data-id="11">
+    <div class="concept-node">11</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Redis Streams</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Redis's answer to "I need Pub/Sub, but durable and replayable." A Stream is an <strong>append-only log</strong> — messages stay around after being read, consumers track their own position, and a <strong>consumer group</strong> lets several workers split the load without double-processing the same entry.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis-cli</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># producer appends entries — each gets an auto-generated ID like "1716220800000-0"</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">XADD</span> orders <span class="st">*</span> orderId <span class="nm">1001</span> status <span class="st">"PLACED"</span>
+<span class="ok">"1716220800000-0"</span>
+
+<span class="cm"># a consumer GROUP lets multiple workers share the stream without overlap</span>
+<span class="kw">XGROUP</span> CREATE orders order-processors <span class="nm">0</span>
+
+<span class="cm"># each worker calls XREADGROUP — Redis hands out entries round-robin,
+# and remembers what's been delivered to this group</span>
+<span class="kw">XREADGROUP</span> GROUP order-processors worker-1 COUNT <span class="nm">1</span> STREAMS orders <span class="st">&gt;</span>
+<span class="cm"># 1) "1716220800000-0" 2) "orderId" "1001" "status" "PLACED"</span>
+
+<span class="cm"># worker MUST acknowledge once it's done — unacked entries can be reclaimed
+# by another worker if this one crashes (at-least-once delivery)</span>
+<span class="kw">XACK</span> orders order-processors <span class="st">1716220800000-0</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Streams give you <strong>replay and consumer groups like Kafka</strong>, but Kafka still wins for huge multi-day retention, partition-level ordering guarantees at massive scale, and a richer ecosystem. Reach for Streams when you already run Redis and need "good enough" durable messaging without standing up a whole new system.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q11 — Two workers, no double-processing</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Create a stream with 10 entries and a consumer group with 2 workers. Have each worker <code>XREADGROUP</code> in a loop and print what it gets. Confirm the 10 entries are split between them with no overlap.</p>
+              <div class="practice-hints"><span class="hint-chip">XGROUP CREATE</span><span class="hint-chip">XREADGROUP</span><span class="hint-chip">XACK</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12 -->
+  <div class="concept" data-id="12">
+    <div class="concept-node">12</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">Persistence — RDB vs AOF</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">"In-memory" doesn't have to mean "gone on restart." Redis offers two optional persistence mechanisms, and you can use either, both, or neither depending on whether you're caching (fine to lose everything) or storing real data (need durability).</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis.conf</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># RDB — point-in-time SNAPSHOT, written on a schedule</span>
+<span class="kw">save</span> <span class="nm">900</span> <span class="nm">1</span>      <span class="cm"># snapshot if &gt;=1 key changed in the last 900s</span>
+<span class="kw">save</span> <span class="nm">60</span> <span class="nm">10000</span>  <span class="cm"># snapshot if &gt;=10000 keys changed in 60s</span>
+<span class="cm"># compact single file, fast restarts, BUT you can lose everything
+# written since the last snapshot if the process dies right before one</span>
+
+<span class="cm"># AOF — every write command is appended to a log as it happens</span>
+<span class="kw">appendonly</span> <span class="st">yes</span>
+<span class="kw">appendfsync</span> <span class="st">everysec</span>  <span class="cm"># fsync to disk once per second (the safe default)</span>
+<span class="cm"># much smaller data-loss window (at most ~1s), but a larger file on disk
+# and slightly slower writes than RDB-only
+
+# most production setups use BOTH — AOF for durability, RDB for fast
+# restarts and easy backups (just copy the .rdb file)</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A pure cache in front of a real database (concept 5) can usually run with <strong>persistence fully OFF</strong> — if Redis restarts empty, cache-aside just refills it from the DB on the next request, no data lost forever. A session store or primary data store needs AOF.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q12 — Watch data survive a restart</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Enable <code>appendonly yes</code>, set a few keys, then kill and restart the Redis process (not graceful shutdown — simulate a crash with <code>kill -9</code>). Confirm the keys are still there.</p>
+              <div class="practice-hints"><span class="hint-chip">appendonly yes</span><span class="hint-chip">kill -9 &lt;pid&gt;</span><span class="hint-chip">restart and KEYS *</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13 -->
+  <div class="concept" data-id="13">
+    <div class="concept-node">13</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Redis as a Session Store</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">If you DO need server-side session state (not every app gets to be stateless like the JWT tutorial's approach), storing sessions in Redis instead of in-process memory means <strong>any instance behind the load balancer can serve any user's request</strong> — the horizontal-scaling requirement from the high-TPS API design tutorial.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.data.redis.core.RedisTemplate;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> java.time.Duration;
+<span class="kw">import</span> java.util.Map;
+<span class="kw">import</span> java.util.UUID;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">SessionService</span> {
+
+    <span class="kw">private final</span> <span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">Object</span>&gt; redis;
+    <span class="kw">public</span> <span class="fn">SessionService</span>(<span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">Object</span>&gt; redis) { <span class="kw">this</span>.redis = redis; }
+
+    <span class="kw">public</span> <span class="cl">String</span> <span class="fn">createSession</span>(<span class="cl">String</span> userId) {
+        <span class="cl">String</span> sessionId = <span class="cl">UUID</span>.<span class="fn">randomUUID</span>().<span class="fn">toString</span>();
+<span class="hl">        redis.<span class="fn">opsForHash</span>().<span class="fn">putAll</span>(<span class="st">"session:"</span> + sessionId,</span>
+<span class="hl">            <span class="cl">Map</span>.<span class="fn">of</span>(<span class="st">"userId"</span>, userId, <span class="st">"loginTime"</span>, <span class="cl">System</span>.<span class="fn">currentTimeMillis</span>()));</span>
+<span class="hl">        redis.<span class="fn">expire</span>(<span class="st">"session:"</span> + sessionId, <span class="cl">Duration</span>.<span class="fn">ofMinutes</span>(<span class="nm">30</span>)); <span class="cm">// idle timeout</span></span>
+        <span class="kw">return</span> sessionId; <span class="cm">// this is what you'd put in a cookie</span>
+    }
+
+    <span class="kw">public</span> <span class="cl">String</span> <span class="fn">getUserId</span>(<span class="cl">String</span> sessionId) {
+        <span class="cl">Object</span> userId = redis.<span class="fn">opsForHash</span>().<span class="fn">get</span>(<span class="st">"session:"</span> + sessionId, <span class="st">"userId"</span>);
+        <span class="kw">if</span> (userId == <span class="kw">null</span>) <span class="kw">throw new</span> <span class="cl">SessionExpiredException</span>(sessionId);
+<span class="hl">        redis.<span class="fn">expire</span>(<span class="st">"session:"</span> + sessionId, <span class="cl">Duration</span>.<span class="fn">ofMinutes</span>(<span class="nm">30</span>)); <span class="cm">// sliding expiry</span></span>
+        <span class="kw">return</span> userId.<span class="fn">toString</span>();
+    }
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Using a <strong>HASH</strong> per session (not a JSON string blob) means you can update one field — like <code>lastActiveTime</code> — with <code>HSET</code> without reading, deserializing, modifying, and rewriting the whole session object.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q13 — Sliding session timeout</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Create a session with a 5-second TTL. Call <code>getUserId()</code> every 3 seconds for 20 seconds (refreshing the TTL each time). Confirm the session never expires as long as it's being actively used.</p>
+              <div class="practice-hints"><span class="hint-chip">HSET / HGETALL</span><span class="hint-chip">EXPIRE on every read</span><span class="hint-chip">sliding window</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 14 -->
+  <div class="concept" data-id="14">
+    <div class="concept-node">14</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Rate Limiting</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">An in-process <code>Semaphore</code> (from the Java threading tutorial) only limits requests on <strong>one</strong> server. The moment you have multiple instances behind a load balancer, the counter needs to live somewhere shared — Redis is the standard place.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="kw">import</span> org.springframework.data.redis.core.RedisTemplate;
+<span class="kw">import</span> org.springframework.stereotype.Service;
+<span class="kw">import</span> java.time.Duration;
+
+<span class="an">@Service</span>
+<span class="kw">public class</span> <span class="cl">RateLimiter</span> {
+
+    <span class="kw">private final</span> <span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">String</span>&gt; redis;
+    <span class="kw">public</span> <span class="fn">RateLimiter</span>(<span class="cl">RedisTemplate</span>&lt;<span class="cl">String</span>, <span class="cl">String</span>&gt; redis) { <span class="kw">this</span>.redis = redis; }
+
+    <span class="cm">// fixed-window limiter: max N requests per user per 60s window</span>
+    <span class="kw">public boolean</span> <span class="fn">allow</span>(<span class="cl">String</span> userId, <span class="kw">int</span> maxRequests) {
+<span class="hl">        <span class="cl">String</span> key = <span class="st">"ratelimit:"</span> + userId + <span class="st">":"</span> + (<span class="cl">System</span>.<span class="fn">currentTimeMillis</span>() / <span class="nm">60_000</span>);</span>
+        <span class="cm">// the window number changes every 60s, so the key naturally rotates</span>
+
+<span class="hl">        <span class="cl">Long</span> count = redis.<span class="fn">opsForValue</span>().<span class="fn">increment</span>(key); <span class="cm">// atomic INCR, returns the new count</span></span>
+        <span class="kw">if</span> (count == <span class="nm">1</span>L) {
+<span class="hl">            redis.<span class="fn">expire</span>(key, <span class="cl">Duration</span>.<span class="fn">ofSeconds</span>(<span class="nm">60</span>)); <span class="cm">// only set TTL on the FIRST request in the window</span></span>
+        }
+        <span class="kw">return</span> count &lt;= maxRequests;
+    }
+}
+
+<span class="cm">// usage in a filter/interceptor:</span>
+<span class="kw">if</span> (!rateLimiter.<span class="fn">allow</span>(userId, <span class="nm">100</span>)) {
+    response.<span class="fn">setStatus</span>(<span class="nm">429</span>); <span class="cm">// Too Many Requests</span>
+    <span class="kw">return</span>;
+}</code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Fixed-window is simple but has an edge case: a burst right at a window boundary (e.g. 100 requests at 0:59 and another 100 at 1:01) can let through 200 requests in 2 seconds. A <strong>sliding-window</strong> algorithm (tracked with a sorted set of timestamps, <code>ZADD</code> + <code>ZREMRANGEBYSCORE</code>) fixes this at the cost of more memory per user.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q14 — Hit the limit</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Set <code>maxRequests = 5</code>. Call <code>allow("user1", 5)</code> 8 times in a loop and print the result of each call — the first 5 should be <code>true</code>, the rest <code>false</code>.</p>
+              <div class="practice-hints"><span class="hint-chip">INCR / EXPIRE</span><span class="hint-chip">window key changes every 60s</span><span class="hint-chip">429 after limit</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Bonus</div><p class="bonus-text">Implement the sliding-window version with a sorted set and compare its behavior at a window boundary against the fixed-window version above.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15 -->
+  <div class="concept" data-id="15">
+    <div class="concept-node">15</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Redis Cluster Basics</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">A single Redis instance is bound by one machine's RAM and CPU. <strong>Redis Cluster</strong> shards data across multiple nodes automatically using <strong>16,384 hash slots</strong> — every key is hashed to exactly one slot, and each node owns a range of slots.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">redis-cli</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm"># which slot does a key land in? CRC16(key) mod 16384</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">CLUSTER KEYSLOT</span> user:42
+<span class="ok">(integer) 6918</span>
+
+<span class="cm"># a multi-key operation across DIFFERENT slots fails in cluster mode:</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">MGET</span> user:42 user:43
+<span class="er">(error) CROSSSLOT Keys in request don't hash to the same slot</span>
+
+<span class="cm"># FIX — hash tags: only the part inside {} is hashed, so you can force
+# related keys onto the SAME slot/node on purpose</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">CLUSTER KEYSLOT</span> <span class="st">{user:42}</span>:profile
+<span class="ok">(integer) 6918</span>          <span class="cm"># identical slot to user:42 — same node</span>
+<span class="nm">127.0.0.1:6379</span>&gt; <span class="kw">CLUSTER KEYSLOT</span> <span class="st">{user:42}</span>:orders
+<span class="ok">(integer) 6918</span>          <span class="cm"># also identical — now MGET across these two works</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>A bad shard key (e.g. one giant tenant ID that 90% of your traffic shares) creates a <strong>hot node</strong> — one shard doing all the work while the rest sit idle. The same hotspotting risk already covered for SQL sharding in the high-TPS tutorial, just applied to Redis.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q15 — Force two keys onto one node</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Spin up a local Redis Cluster (or reason through it with <code>CLUSTER KEYSLOT</code> against a single instance). Show that <code>order:42</code> and <code>order:43</code> hash to different slots, then use hash tags <code>{order:42}:items</code> and <code>{order:42}:status</code> to force them together.</p>
+              <div class="practice-hints"><span class="hint-chip">CLUSTER KEYSLOT</span><span class="hint-chip">{tag} syntax</span><span class="hint-chip">16384 slots total</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16 -->
+  <div class="concept" data-id="16">
+    <div class="concept-node">16</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-advanced">Advanced</span>
+          <span class="card-title">Senior Interview FAQ</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Four questions that come up constantly in senior backend interviews — each one is really asking whether you can connect Redis concepts together, not just recite commands.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">notes</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Q: "How would you use Redis to prevent a cache stampede?"
+// A: Request coalescing — the first caller to miss takes a short SETNX
+//    lock and refills the cache; everyone else briefly retries the read
+//    instead of also hitting the DB (concept 8). Combine with jittered
+//    TTLs so thousands of keys don't expire in the same millisecond.</span>
+
+<span class="cm">// Q: "Pub/Sub vs a message queue like Kafka/RabbitMQ — what's the difference?"
+// A: Pub/Sub is fire-and-forget with zero persistence — an offline
+//    subscriber misses messages forever (concept 10). A real queue
+//    persists messages and guarantees delivery even to a consumer
+//    that's down when the message is sent. Redis Streams (concept 11)
+//    close some of this gap with consumer groups + replay, but Kafka
+//    still wins on retention scale and partition ordering guarantees.</span>
+
+<span class="cm">// Q: "How does Redis achieve such high throughput despite being single-threaded?"
+// A: Everything lives in RAM (no disk seeks on the hot path), data
+//    structures are purpose-built for O(1)/O(log n) operations, and a
+//    single thread means ZERO lock contention between commands — no
+//    context switching or synchronization overhead. It trades away
+//    multi-core parallelism for predictability; that's the deal.</span>
+
+<span class="cm">// Q: "How would you implement a distributed lock with Redis, and what's risky about it?"
+// A: SET key uniqueOwnerToken NX EX seconds to acquire; a Lua script that
+//    checks ownership before DEL to release (concept 9). The risk: if a
+//    process pauses (GC, network partition) longer than the lock's TTL,
+//    a second process can acquire the "same" lock while the first still
+//    thinks it holds it — this is exactly why naive Redis locks are
+//    considered unsafe for hard correctness guarantees without something
+//    like the more rigorous (and debated) Redlock algorithm.</span></code></pre>
+          </div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Interviewers are listening for whether you reach for the <strong>right tool given the consistency/durability tradeoff</strong> — not whether you've memorized command syntax. Always name the tradeoff out loud.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q16 — Final boss: design it end to end</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Design a product page that needs to handle 5,000 reads/sec with occasional price updates. Decide: cache-aside or @Cacheable? What TTL? Stampede protection needed? Should you evict on write, rely on TTL, or both? Write out your reasoning for each choice.</p>
+              <div class="practice-hints"><span class="hint-chip">cache-aside + TTL</span><span class="hint-chip">stampede protection at scale</span><span class="hint-chip">evict-on-write for correctness</span></div>
+              <div class="bonus-q"><div class="bonus-label">&#x26A1; Final boss</div><p class="bonus-text">Build it for real: a Spring Boot <code>@RestController</code> + <code>@Cacheable</code> product endpoint, backed by an in-memory "DB" with a 300ms artificial delay, load-tested with concurrent requests to confirm the cache actually cuts DB calls down to ~1.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPLETION -->
+  <div class="completion">
+    <h2>&#x1F389; You did it!</h2>
+    <p>From "what is Redis" to designing cache strategies that survive a thundering herd at 3am.</p>
+    <div class="concept-grid">
+      <div class="grid-item"><span class="grid-num">01</span> What is Redis?</div>
+      <div class="grid-item"><span class="grid-num">02</span> Core Data Structures</div>
+      <div class="grid-item"><span class="grid-num">03</span> TTL and Expiration</div>
+      <div class="grid-item"><span class="grid-num">04</span> Eviction Policies</div>
+      <div class="grid-item"><span class="grid-num">05</span> Cache-Aside Pattern</div>
+      <div class="grid-item"><span class="grid-num">06</span> @Cacheable etc.</div>
+      <div class="grid-item"><span class="grid-num">07</span> Invalidation Strategies</div>
+      <div class="grid-item"><span class="grid-num">08</span> Cache Stampede</div>
+      <div class="grid-item"><span class="grid-num">09</span> Distributed Locks</div>
+      <div class="grid-item"><span class="grid-num">10</span> Pub/Sub</div>
+      <div class="grid-item"><span class="grid-num">11</span> Redis Streams</div>
+      <div class="grid-item"><span class="grid-num">12</span> Persistence (RDB/AOF)</div>
+      <div class="grid-item"><span class="grid-num">13</span> Session Store</div>
+      <div class="grid-item"><span class="grid-num">14</span> Rate Limiting</div>
+      <div class="grid-item"><span class="grid-num">15</span> Redis Cluster</div>
+      <div class="grid-item"><span class="grid-num">16</span> Interview FAQ</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var opened = new Set();
+
+function toggle(id) {
+  var el = document.querySelector('.concept[data-id="' + id + '"]');
+  if (!el) return;
+  var isActive = el.classList.contains('active');
+  document.querySelectorAll('.concept.active').forEach(function(c) { c.classList.remove('active'); });
+  if (!isActive) {
+    el.classList.add('active');
+    opened.add(id);
+  }
+  opened.forEach(function(oid) {
+    var oel = document.querySelector('.concept[data-id="' + oid + '"]');
+    if (oel && !oel.classList.contains('active')) oel.classList.add('done');
+  });
+  updateProgress();
+}
+
+function updateProgress() {
+  var pct = (opened.size / 16) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressCount').textContent = opened.size + ' / 16';
+  document.getElementById('threadFill').style.height = pct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.concept-card').forEach(function(card) {
+    card.querySelector('.card-header').addEventListener('click', function() {
+      toggle(parseInt(card.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.concept-node').forEach(function(node) {
+    node.addEventListener('click', function() {
+      toggle(parseInt(node.closest('.concept').getAttribute('data-id')));
+    });
+  });
+  document.querySelectorAll('.copy-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var text = btn.closest('.code-wrap').querySelector('pre').innerText;
+      navigator.clipboard.writeText(text).then(function() {
+        btn.textContent = 'Copied!';
+        setTimeout(function() { btn.textContent = 'Copy'; }, 1800);
+      }).catch(function() { btn.textContent = 'Copy'; });
+    });
+  });
+  toggle(1);
+});
+</script>
+</body>
+</html>

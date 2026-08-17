@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JPA &amp; MongoDB Annotations — Visual Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0a0d12; --surface:#10141b; --surface2:#151b24; --border:#1e2530; --border2:#2a3341;
+  --text:#e6ebf3; --muted:#8592a6; --muted2:#4c5566;
+  --sql:#5b9dff; --sql-dim:#0f1c30;
+  --mongo:#47c98a; --mongo-dim:#0c211a;
+  --cmp:#c9a4f5; --cmp-dim:#1c1530;
+  --red:#f4685f; --yellow:#fbbf24; --green:#4ade80;
+}
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:15px; line-height:1.65; }
+
+/* HERO */
+.hero { position:relative; text-align:center; padding:70px 24px 48px; overflow:hidden; border-bottom:1px solid var(--border); }
+.hero::before { content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 55% 60% at 22% 20%, rgba(91,157,255,.14) 0%, transparent 65%),
+              radial-gradient(ellipse 55% 60% at 78% 20%, rgba(71,201,138,.13) 0%, transparent 65%);
+  pointer-events:none; }
+.hero-eyebrow { position:relative; display:inline-flex; align-items:center; gap:8px; background:var(--surface);
+  border:1px solid var(--border2); border-radius:100px; padding:6px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);
+  letter-spacing:.08em; text-transform:uppercase; margin-bottom:22px; }
+.hero h1 { position:relative; font-family:'Space Grotesk',sans-serif; font-size:clamp(30px,5vw,50px); font-weight:700; line-height:1.12; letter-spacing:-.03em; margin-bottom:14px; }
+.hero h1 .a { background:linear-gradient(135deg,var(--sql),#a9c8ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero h1 .b { background:linear-gradient(135deg,var(--mongo),#a9f0cb); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.hero-sub { position:relative; color:var(--muted); font-size:16px; max-width:600px; margin:0 auto 26px; }
+.hero-pills { position:relative; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+.hero-pill { font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:5px 13px; border-radius:100px; border:1px solid; }
+.hp-sql { color:var(--sql); border-color:rgba(91,157,255,.35); background:rgba(91,157,255,.07); }
+.hp-mongo { color:var(--mongo); border-color:rgba(71,201,138,.35); background:rgba(71,201,138,.07); }
+.hp-cmp { color:var(--cmp); border-color:rgba(201,164,245,.35); background:rgba(201,164,245,.07); }
+
+/* LAYOUT */
+.app { display:grid; grid-template-columns:236px minmax(0,1fr); max-width:1180px; margin:0 auto; }
+.sidebar { border-right:1px solid var(--border); padding:26px 0; position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto; }
+.side-label { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted2); padding:0 18px 8px; }
+.nav-group { margin-bottom:4px; }
+.nav-group-label { font-size:10.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; padding:14px 18px 6px; }
+.nav-group-label.sql { color:var(--sql); } .nav-group-label.mongo { color:var(--mongo); } .nav-group-label.cmp { color:var(--cmp); }
+.side-link { display:block; padding:6px 18px; font-size:13px; color:var(--muted); text-decoration:none; border-left:2px solid transparent; }
+.side-link:hover { color:var(--text); background:var(--surface); }
+
+.main { min-width:0; padding:36px 32px 90px; }
+section.zone { margin-bottom:56px; scroll-margin-top:20px; }
+.zone-head { display:flex; align-items:baseline; gap:12px; margin-bottom:6px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+.zone-head h2 { font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:700; letter-spacing:-.02em; }
+.zone-head .zk { font-family:'JetBrains Mono',monospace; font-size:12px; padding:3px 10px; border-radius:100px; border:1px solid; }
+.zone-sql .zone-head .zk { color:var(--sql); border-color:rgba(91,157,255,.35); background:rgba(91,157,255,.08); }
+.zone-mongo .zone-head .zk { color:var(--mongo); border-color:rgba(71,201,138,.35); background:rgba(71,201,138,.08); }
+.zone-cmp .zone-head .zk { color:var(--cmp); border-color:rgba(201,164,245,.35); background:rgba(201,164,245,.08); }
+.zone-dek { color:var(--muted); font-size:14.5px; margin:14px 0 8px; max-width:70ch; }
+
+h3.sub { font-family:'Space Grotesk',sans-serif; font-size:18px; font-weight:600; margin:34px 0 4px; scroll-margin-top:20px; }
+h3.sub .n { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted2); margin-right:8px; }
+p.lead { color:var(--muted); font-size:14.5px; margin:6px 0 14px; max-width:74ch; }
+
+/* TABLES */
+.table-wrap { border:1px solid var(--border); border-radius:12px; overflow:hidden; overflow-x:auto; margin:12px 0 20px; }
+table { width:100%; border-collapse:collapse; font-size:13px; min-width:620px; }
+thead th { background:var(--surface2); text-align:left; padding:10px 14px; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--muted); font-weight:600; border-bottom:1px solid var(--border); white-space:nowrap; }
+td { padding:10px 14px; border-bottom:1px solid var(--border); color:var(--text); vertical-align:top; line-height:1.55; }
+tbody tr:last-child td { border-bottom:none; }
+tbody tr:hover td { background:rgba(255,255,255,.015); }
+td code, p code, li code, .box code { font-family:'JetBrains Mono',monospace; font-size:12px; background:rgba(255,255,255,.06); padding:1px 6px; border-radius:4px; white-space:nowrap; }
+.zone-sql td:first-child code { color:var(--sql); }
+.zone-mongo td:first-child code { color:var(--mongo); }
+.zone-cmp td code { color:var(--cmp); }
+td.note { color:var(--muted); white-space:normal; }
+
+/* CODE */
+.code-wrap { background:#0a0e14; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin:14px 0; }
+.code-header { display:flex; align-items:center; justify-content:space-between; padding:9px 15px; background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); }
+.code-dots { display:flex; gap:6px; }
+.code-dots span { width:9px; height:9px; border-radius:50%; }
+.dot-r{background:#f4685f;} .dot-y{background:#fbbf24;} .dot-g{background:#4ade80;}
+.code-lang { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted2); text-transform:uppercase; letter-spacing:.08em; }
+pre { padding:16px 18px; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:12.5px; line-height:1.7; }
+code { font-family:inherit; }
+.kw{color:#c792ea;} .cls{color:#82aaff;} .fn{color:#82aaff;} .str{color:#c3e88d;}
+.num{color:#f78c6c;} .cmt{color:#546e7a;font-style:italic;} .ann{color:#ffcb6b;}
+.hl { background:rgba(255,255,255,.05); display:block; border-left:2px solid var(--muted2); padding-left:5px; margin-left:-7px; }
+.hl-sql { border-left-color:var(--sql); background:rgba(91,157,255,.06); }
+.hl-mongo { border-left-color:var(--mongo); background:rgba(71,201,138,.06); }
+
+/* BOXES */
+.box { display:flex; gap:12px; border-radius:12px; padding:14px 16px; margin:16px 0; }
+.box-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+.box p { font-size:13.5px; line-height:1.65; color:var(--muted); margin:0; }
+.box p strong { color:var(--text); }
+.box p code { color:inherit; }
+.gotcha { background:rgba(244,104,95,.05); border:1px solid rgba(244,104,95,.18); }
+.gotcha p strong { color:#ffb3ad; }
+.tip { background:rgba(250,204,21,.05); border:1px solid rgba(250,204,21,.15); }
+.tip p strong { color:var(--yellow); }
+.note-box { background:var(--surface); border:1px solid var(--border); }
+
+footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-size:12px; font-family:'JetBrains Mono',monospace; border-top:1px solid var(--border); margin-top:20px; }
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+
+@media (max-width:880px){
+  .app{ grid-template-columns:1fr; }
+  .sidebar{ display:none; }
+  .main{ padding:28px 18px 70px; }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-eyebrow">Spring Data · persistence mapping</div>
+  <h1><span class="a">JPA</span> &amp; <span class="b">MongoDB</span><br>Annotation Reference</h1>
+  <p class="hero-sub">Every annotation you actually reach for when modeling data with Spring — relational side and document side — with what it does, its key attributes, and a working example around it.</p>
+  <div class="hero-pills">
+    <span class="hero-pill hp-sql">jakarta.persistence · Hibernate</span>
+    <span class="hero-pill hp-mongo">Spring Data MongoDB</span>
+    <span class="hero-pill hp-cmp">side-by-side comparison</span>
+  </div>
+</div>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="side-label">Contents</div>
+    <div class="nav-group">
+      <div class="nav-group-label sql">SQL · JPA</div>
+      <a class="side-link" href="#sql-entity">Entity &amp; table mapping</a>
+      <a class="side-link" href="#sql-embed">Embedded value objects</a>
+      <a class="side-link" href="#sql-rel">Relationships</a>
+      <a class="side-link" href="#sql-inherit">Inheritance</a>
+      <a class="side-link" href="#sql-audit">Auditing &amp; locking</a>
+      <a class="side-link" href="#sql-types">Type mapping extras</a>
+      <a class="side-link" href="#sql-repo">Repository &amp; query</a>
+      <a class="side-link" href="#sql-full">Full example</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label mongo">MongoDB</div>
+      <a class="side-link" href="#mongo-doc">Document mapping</a>
+      <a class="side-link" href="#mongo-index">Indexing</a>
+      <a class="side-link" href="#mongo-rel">Embedding &amp; references</a>
+      <a class="side-link" href="#mongo-audit">Auditing &amp; locking</a>
+      <a class="side-link" href="#mongo-repo">Repository &amp; query</a>
+      <a class="side-link" href="#mongo-full">Full example</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label cmp">Compare</div>
+      <a class="side-link" href="#compare">Same idea, different annotation</a>
+      <a class="side-link" href="#bonus">Bonus: validation &amp; Lombok</a>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ================= SQL / JPA ================= -->
+    <section class="zone zone-sql" id="sql">
+      <div class="zone-head"><h2>SQL — JPA / Hibernate</h2><span class="zk">jakarta.persistence.*</span></div>
+      <p class="zone-dek">The annotations that map a Java class onto a relational table, wire up foreign keys, and control how Hibernate loads and cascades related rows.</p>
+
+      <h3 class="sub" id="sql-entity"><span class="n">01</span>Entity &amp; table mapping</h3>
+      <p class="lead">The baseline set — every JPA entity needs most of these regardless of what it relates to.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Entity</code></td><td>Marks a class as a JPA-managed entity backed by a table.</td><td><code>name</code> — optional entity name used in JPQL (defaults to class name).</td></tr>
+            <tr><td><code>@Table</code></td><td>Customizes the table this entity maps to.</td><td><code>name</code>, <code>schema</code>, <code>uniqueConstraints</code>, <code>indexes</code>.</td></tr>
+            <tr><td><code>@Id</code></td><td>Marks the primary-key field.</td><td>No attributes — combine with <code>@GeneratedValue</code> for auto-increment keys.</td></tr>
+            <tr><td><code>@GeneratedValue</code></td><td>Delegates primary-key generation to the database or a generator.</td><td><code>strategy</code> — <code>AUTO</code>, <code>IDENTITY</code>, <code>SEQUENCE</code>, <code>TABLE</code>. See table below.</td></tr>
+            <tr><td><code>@SequenceGenerator</code> / <code>@TableGenerator</code></td><td>Defines a named generator for <code>SEQUENCE</code> / <code>TABLE</code> strategies.</td><td><code>name</code>, <code>sequenceName</code>, <code>allocationSize</code> — batching PK allocation to cut round trips.</td></tr>
+            <tr><td><code>@Column</code></td><td>Customizes how a field maps to its column.</td><td><code>name</code>, <code>nullable</code>, <code>unique</code>, <code>length</code>, <code>columnDefinition</code>, <code>updatable</code>, <code>insertable</code>.</td></tr>
+            <tr><td><code>@Transient</code></td><td>Excludes a field from persistence entirely — computed or cache-only fields.</td><td>No attributes.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>GenerationType</th><th>What actually happens</th></tr></thead>
+          <tbody>
+            <tr><td><code>IDENTITY</code></td><td>Relies on the column's own auto-increment (MySQL <code>AUTO_INCREMENT</code>, Postgres <code>SERIAL</code>/<code>IDENTITY</code>). Simple, but disables JDBC batch inserts since the ID is only known after the row is written.</td></tr>
+            <tr><td><code>SEQUENCE</code></td><td>Pulls the next value from a DB sequence. Works well with batching — Hibernate can pre-allocate a block via <code>allocationSize</code>.</td></tr>
+            <tr><td><code>TABLE</code></td><td>Emulates a sequence using a dedicated table of counters. Portable across any DB, but slower — rarely chosen unless the DB has no native sequence support.</td></tr>
+            <tr><td><code>AUTO</code></td><td>Lets Hibernate pick a strategy based on the configured dialect.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub" id="sql-embed"><span class="n">02</span>Embedded value objects</h3>
+      <p class="lead">For fields that belong to the entity conceptually but aren't entities themselves — an <code>Address</code>, a <code>Money</code> value — and live in the same table.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Embeddable</code></td><td>Marks a class as a value object that can be embedded into an entity's own table — no table of its own.</td><td>No attributes.</td></tr>
+            <tr><td><code>@Embedded</code></td><td>Placed on the field inside the owning entity to embed an <code>@Embeddable</code> type.</td><td>No attributes.</td></tr>
+            <tr><td><code>@EmbeddedId</code></td><td>Uses an <code>@Embeddable</code> class as a composite primary key.</td><td>No attributes — pair with an <code>@Embeddable</code> key class implementing <code>Serializable</code>.</td></tr>
+            <tr><td><code>@AttributeOverride(s)</code></td><td>Renames the column(s) an embedded field maps to, when the default clashes or needs to differ.</td><td><code>name</code> (the embeddable's field), <code>column</code> — a nested <code>@Column</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span></div>
+        <pre><code><span class="ann">@Embeddable</span>
+<span class="kw">public class</span> <span class="cls">Address</span> {
+    <span class="kw">private</span> String street;
+    <span class="kw">private</span> String city;
+    <span class="kw">private</span> String zipCode;
+}
+
+<span class="ann">@Entity</span>
+<span class="kw">public class</span> <span class="cls">Customer</span> {
+    <span class="ann">@Embedded</span>
+    <span class="ann">@AttributeOverride</span>(name = <span class="str">"city"</span>, column = <span class="ann">@Column</span>(name = <span class="str">"billing_city"</span>))
+    <span class="kw">private</span> <span class="cls">Address</span> billingAddress; <span class="cmt">// columns live directly on the customers table</span>
+}</code></pre>
+      </div>
+
+      <h3 class="sub" id="sql-rel"><span class="n">03</span>Relationships</h3>
+      <p class="lead">The part everyone half-remembers under interview pressure — four cardinalities, two ways to describe the foreign key, and two knobs (<code>cascade</code>, <code>fetch</code>) that decide what actually happens on read and write.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Cardinality</th><th>Default fetch</th><th>Key attributes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@OneToOne</code></td><td>1 ↔ 1</td><td><code>EAGER</code></td><td><code>mappedBy</code> (inverse side), <code>cascade</code>, <code>optional</code>.</td></tr>
+            <tr><td><code>@OneToMany</code></td><td>1 → many</td><td><code>LAZY</code></td><td><code>mappedBy</code>, <code>cascade</code>, <code>orphanRemoval</code>.</td></tr>
+            <tr><td><code>@ManyToOne</code></td><td>many → 1</td><td><code>EAGER</code></td><td><code>optional</code>, <code>fetch</code> — almost always overridden to <code>LAZY</code> in practice.</td></tr>
+            <tr><td><code>@ManyToMany</code></td><td>many ↔ many</td><td><code>LAZY</code></td><td><code>mappedBy</code> on the inverse side, <code>cascade</code> (avoid <code>REMOVE</code>/<code>ALL</code> here — see gotcha below).</td></tr>
+            <tr><td><code>@JoinColumn</code></td><td>—</td><td>—</td><td>Declares the actual foreign-key column, on the <strong>owning</strong> side. <code>name</code>, <code>referencedColumnName</code>, <code>nullable</code>.</td></tr>
+            <tr><td><code>@JoinTable</code></td><td>—</td><td>—</td><td>Declares a link table — the default for <code>@ManyToMany</code>, or for a unidirectional <code>@OneToMany</code>. <code>name</code>, <code>joinColumns</code>, <code>inverseJoinColumns</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="box tip">
+        <div class="box-icon">💡</div>
+        <p><strong>Owning side vs. inverse side:</strong> the side with the foreign-key column (usually the <code>@ManyToOne</code>) is the <strong>owning</strong> side — it's the one Hibernate actually writes when you save. The other side declares <code>mappedBy = "fieldNameOnOwningSide"</code> and is purely for convenient navigation; changes made only on the <code>mappedBy</code> side are silently not persisted unless you also update the owning side.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>CascadeType</th><th>What it propagates to related entities</th></tr></thead>
+          <tbody>
+            <tr><td><code>PERSIST</code></td><td>Saving the parent also saves new children.</td></tr>
+            <tr><td><code>MERGE</code></td><td>Merging detached-state changes on the parent also merges children.</td></tr>
+            <tr><td><code>REMOVE</code></td><td>Deleting the parent also deletes children — dangerous on shared/many-to-many relations.</td></tr>
+            <tr><td><code>REFRESH</code></td><td>Reloading the parent from the DB also reloads children, discarding in-memory changes.</td></tr>
+            <tr><td><code>DETACH</code></td><td>Detaching the parent from the persistence context also detaches children.</td></tr>
+            <tr><td><code>ALL</code></td><td>All of the above. Common on a strict parent-owns-children relation (e.g. <code>Order</code> → <code>OrderItem</code>); usually wrong on <code>@ManyToMany</code>, where entities are shared, not owned.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — bidirectional one-to-many + many-to-many</span></div>
+        <pre><code><span class="ann">@Entity</span>
+<span class="kw">public class</span> <span class="cls">Customer</span> {
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="kw">private</span> Long id;
+
+<span class="hl hl-sql">    <span class="ann">@OneToMany</span>(mappedBy = <span class="str">"customer"</span>, cascade = CascadeType.ALL, orphanRemoval = <span class="kw">true</span>)</span>
+    <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders = <span class="kw">new</span> ArrayList&lt;&gt;();
+}
+
+<span class="ann">@Entity</span>
+<span class="kw">public class</span> <span class="cls">Order</span> {
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>
+    <span class="kw">private</span> Long id;
+
+<span class="hl hl-sql">    <span class="ann">@ManyToOne</span>(fetch = FetchType.LAZY, optional = <span class="kw">false</span>)</span>
+<span class="hl hl-sql">    <span class="ann">@JoinColumn</span>(name = <span class="str">"customer_id"</span>, nullable = <span class="kw">false</span>) <span class="cmt">// owning side — this is the real FK column</span></span>
+    <span class="kw">private</span> <span class="cls">Customer</span> customer;
+
+<span class="hl hl-sql">    <span class="ann">@ManyToMany</span></span>
+<span class="hl hl-sql">    <span class="ann">@JoinTable</span>(name = <span class="str">"order_tags"</span>,</span>
+<span class="hl hl-sql">        joinColumns = <span class="ann">@JoinColumn</span>(name = <span class="str">"order_id"</span>),</span>
+<span class="hl hl-sql">        inverseJoinColumns = <span class="ann">@JoinColumn</span>(name = <span class="str">"tag_id"</span>))</span>
+    <span class="kw">private</span> Set&lt;<span class="cls">Tag</span>&gt; tags = <span class="kw">new</span> HashSet&lt;&gt;();
+}</code></pre>
+      </div>
+
+      <div class="box gotcha">
+        <div class="box-icon">⚠️</div>
+        <p><strong>N+1 by default:</strong> <code>@ManyToOne</code>/<code>@OneToOne</code> default to <code>EAGER</code>, which quietly triggers an extra query per row when you fetch a list of parents. Almost every real-world mapping overrides this to <code>fetch = FetchType.LAZY</code> explicitly and reaches for <code>@EntityGraph</code> (see §07) or a JPQL <code>JOIN FETCH</code> when eager loading is actually needed for one specific query.</p>
+      </div>
+
+      <h3 class="sub" id="sql-inherit"><span class="n">04</span>Inheritance mapping</h3>
+      <p class="lead">For a class hierarchy — <code>Payment</code> → <code>CardPayment</code>, <code>BankTransferPayment</code> — that needs to live in relational tables.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Inheritance</code></td><td>Declares the table strategy for a class hierarchy, on the root entity.</td><td><code>strategy</code> — <code>SINGLE_TABLE</code> (default), <code>JOINED</code>, <code>TABLE_PER_CLASS</code>.</td></tr>
+            <tr><td><code>@DiscriminatorColumn</code></td><td>Names the column that records which subclass a row belongs to (<code>SINGLE_TABLE</code>).</td><td><code>name</code>, <code>discriminatorType</code>.</td></tr>
+            <tr><td><code>@DiscriminatorValue</code></td><td>The value stored in that column for a given subclass.</td><td>e.g. <code>"CARD"</code>, <code>"BANK_TRANSFER"</code>.</td></tr>
+            <tr><td><code>@MappedSuperclass</code></td><td>Shares common fields (e.g. <code>id</code>, audit columns) across entities <em>without</em> itself being an entity or having a table.</td><td>No attributes.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box tip">
+        <div class="box-icon">💡</div>
+        <p><code>SINGLE_TABLE</code> is fastest (no joins, one query for polymorphic reads) but every column from every subclass ends up nullable in one wide table. <code>JOINED</code> is normalized (one table per subclass, joined by PK) at the cost of a join per read. <code>TABLE_PER_CLASS</code> duplicates shared columns into every subclass table and complicates polymorphic queries — the least commonly chosen of the three.</p>
+      </div>
+
+      <h3 class="sub" id="sql-audit"><span class="n">05</span>Auditing &amp; optimistic locking</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes / notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Version</code></td><td>Turns on optimistic locking — Hibernate checks this column hasn't changed before committing an update, throwing <code>OptimisticLockException</code> on conflict.</td><td>Field type <code>Long</code>, <code>Integer</code>, or <code>Timestamp</code>. No attributes.</td></tr>
+            <tr><td><code>@CreatedDate</code></td><td>Auto-populates the field with the timestamp when the entity is first persisted.</td><td>Spring Data commons — needs <code>@EnableJpaAuditing</code> on a config class.</td></tr>
+            <tr><td><code>@LastModifiedDate</code></td><td>Auto-updates the field on every save.</td><td>Same requirements as <code>@CreatedDate</code>.</td></tr>
+            <tr><td><code>@CreatedBy</code> / <code>@LastModifiedBy</code></td><td>Auto-populates the current principal, via a supplied <code>AuditorAware&lt;T&gt;</code> bean.</td><td>Requires an <code>AuditorAware</code> implementation registered in the auditing config.</td></tr>
+            <tr><td><code>@EntityListeners(AuditingEntityListener.class)</code></td><td>The piece that actually wires the four annotations above into the entity's lifecycle callbacks.</td><td>Placed directly on the entity — easy to forget, and auditing silently does nothing without it.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub" id="sql-types"><span class="n">06</span>Type mapping extras</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes / notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Enumerated</code></td><td>Controls how a Java <code>enum</code> field is stored.</td><td><code>EnumType.STRING</code> (readable, safe to reorder) vs. <code>EnumType.ORDINAL</code> (compact, breaks if enum order changes — avoid).</td></tr>
+            <tr><td><code>@Lob</code></td><td>Maps a field to a large-object column — <code>CLOB</code> for <code>String</code>, <code>BLOB</code> for <code>byte[]</code>.</td><td>No attributes.</td></tr>
+            <tr><td><code>@Temporal</code></td><td>Specifies precision for legacy <code>java.util.Date</code>/<code>Calendar</code> fields.</td><td><code>TemporalType.DATE</code>/<code>TIME</code>/<code>TIMESTAMP</code>. <strong>Not needed</strong> for <code>java.time</code> types (<code>LocalDate</code>, <code>Instant</code>, etc.) — JPA 2.2+ maps those natively.</td></tr>
+            <tr><td><code>@OrderBy</code></td><td>Orders a collection using a JPQL clause, evaluated by the database on fetch.</td><td>e.g. <code>@OrderBy("placedAt DESC")</code>.</td></tr>
+            <tr><td><code>@OrderColumn</code></td><td>Persists list order into a dedicated index column instead of sorting on read.</td><td><code>name</code> — needed when the collection is a <code>List</code> whose position is meaningful and mutable.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub" id="sql-repo"><span class="n">07</span>Repository &amp; query annotations</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes / notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Repository</code></td><td>Spring stereotype; also enables persistence-exception translation into Spring's <code>DataAccessException</code> hierarchy.</td><td>Usually implicit — <code>JpaRepository</code> subinterfaces get it automatically.</td></tr>
+            <tr><td><code>@Query</code></td><td>Supplies a custom JPQL or native SQL query for a repository method.</td><td><code>value</code>, <code>nativeQuery = true</code> to drop into raw SQL.</td></tr>
+            <tr><td><code>@Modifying</code></td><td>Marks a <code>@Query</code> as an <code>UPDATE</code>/<code>DELETE</code> bulk operation rather than a <code>SELECT</code>.</td><td>Pair with <code>@Transactional</code> on the calling service.</td></tr>
+            <tr><td><code>@Param</code></td><td>Binds a named parameter (<code>:name</code>) in <code>@Query</code> to a method argument.</td><td>Value must match the placeholder name.</td></tr>
+            <tr><td><code>@EntityGraph</code></td><td>Declares which associations to eager-fetch for one specific query — the clean fix for N+1.</td><td><code>attributePaths = {"items","customer"}</code>.</td></tr>
+            <tr><td><code>@Lock</code></td><td>Applies a JPA lock mode to the query.</td><td><code>LockModeType.PESSIMISTIC_WRITE</code>, <code>OPTIMISTIC</code>, etc.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — repository</span></div>
+        <pre><code><span class="kw">public interface</span> <span class="cls">OrderRepository</span> <span class="kw">extends</span> JpaRepository&lt;<span class="cls">Order</span>, Long&gt; {
+
+    <span class="ann">@Query</span>(<span class="str">"select o from Order o where o.customer.id = :customerId and o.status = :status"</span>)
+    List&lt;<span class="cls">Order</span>&gt; <span class="fn">findByCustomerAndStatus</span>(<span class="ann">@Param</span>(<span class="str">"customerId"</span>) Long customerId, <span class="ann">@Param</span>(<span class="str">"status"</span>) <span class="cls">OrderStatus</span> status);
+
+    <span class="ann">@Modifying</span>
+    <span class="ann">@Query</span>(<span class="str">"update Order o set o.status = :status where o.id = :id"</span>)
+    <span class="kw">int</span> <span class="fn">updateStatus</span>(<span class="ann">@Param</span>(<span class="str">"id"</span>) Long id, <span class="ann">@Param</span>(<span class="str">"status"</span>) <span class="cls">OrderStatus</span> status);
+
+    <span class="ann">@EntityGraph</span>(attributePaths = {<span class="str">"items"</span>, <span class="str">"customer"</span>})
+    Optional&lt;<span class="cls">Order</span>&gt; <span class="fn">findWithItemsById</span>(Long id);
+}</code></pre>
+      </div>
+
+      <h3 class="sub" id="sql-full"><span class="n">08</span>Full example, put together</h3>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — Customer / Order model</span></div>
+        <pre><code><span class="ann">@Entity</span>
+<span class="ann">@Table</span>(name = <span class="str">"customers"</span>, indexes = <span class="ann">@Index</span>(name = <span class="str">"idx_customer_email"</span>, columnList = <span class="str">"email"</span>, unique = <span class="kw">true</span>))
+<span class="ann">@EntityListeners</span>(AuditingEntityListener.class)
+<span class="kw">public class</span> <span class="cls">Customer</span> {
+
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="kw">private</span> Long id;
+
+    <span class="ann">@Column</span>(name = <span class="str">"full_name"</span>, nullable = <span class="kw">false</span>, length = <span class="num">120</span>)
+    <span class="kw">private</span> String fullName;
+
+    <span class="kw">private</span> String email;
+
+    <span class="ann">@Embedded</span>
+    <span class="kw">private</span> <span class="cls">Address</span> billingAddress;
+
+    <span class="ann">@Enumerated</span>(EnumType.STRING)
+    <span class="kw">private</span> <span class="cls">CustomerStatus</span> status;
+
+    <span class="ann">@OneToMany</span>(mappedBy = <span class="str">"customer"</span>, cascade = CascadeType.ALL, orphanRemoval = <span class="kw">true</span>)
+    <span class="ann">@OrderBy</span>(<span class="str">"placedAt DESC"</span>)
+    <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders = <span class="kw">new</span> ArrayList&lt;&gt;();
+
+    <span class="ann">@Version</span>
+    <span class="kw">private</span> Long version;
+
+    <span class="ann">@CreatedDate</span>
+    <span class="kw">private</span> Instant createdAt;
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= MONGODB ================= -->
+    <section class="zone zone-mongo" id="mongo">
+      <div class="zone-head"><h2>MongoDB — Spring Data</h2><span class="zk">org.springframework.data.mongodb.core.mapping</span></div>
+      <p class="zone-dek">No tables, no foreign keys, no joins — the annotations here mostly control document/collection naming, indexes, and the choice between embedding data and referencing another collection.</p>
+
+      <h3 class="sub" id="mongo-doc"><span class="n">01</span>Document mapping</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Document</code></td><td>Marks a class as mapping to a MongoDB collection.</td><td><code>collection</code> — name override; defaults to the decapitalized class name.</td></tr>
+            <tr><td><code>@Id</code></td><td>Maps the field to Mongo's <code>_id</code>.</td><td><em>Different import</em> from JPA's — <code>org.springframework.data.annotation.Id</code>. If a <code>String</code>-typed <code>@Id</code> is left <code>null</code> on save, Spring auto-generates an <code>ObjectId</code> hex string.</td></tr>
+            <tr><td><code>@Field</code></td><td>Customizes the stored field name and type.</td><td><code>name</code>, <code>order</code>, <code>targetType</code> — e.g. force an enum to store as <code>STRING</code>.</td></tr>
+            <tr><td><code>@Transient</code></td><td>Excludes a field from persistence.</td><td><code>org.springframework.data.annotation.Transient</code> (the plain Java <code>transient</code> keyword also works).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="sub" id="mongo-index"><span class="n">02</span>Indexing</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Indexed</code></td><td>Creates a single-field index.</td><td><code>unique</code>, <code>direction</code>, <code>sparse</code>, <code>expireAfterSeconds</code> — the last one turns it into a TTL index that auto-deletes documents.</td></tr>
+            <tr><td><code>@CompoundIndex</code></td><td>Declares a multi-field index at the class level.</td><td><code>name</code>, <code>def = "{'field1': 1, 'field2': -1}"</code>, <code>unique</code>.</td></tr>
+            <tr><td><code>@TextIndexed</code></td><td>Includes a field in the collection's full-text search index.</td><td><code>weight</code> — relative ranking weight. Only one text index allowed per collection.</td></tr>
+            <tr><td><code>@Sharded</code></td><td>Marks the shard key for a sharded collection (Spring Data MongoDB 4.1+).</td><td><code>shardKey</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box gotcha">
+        <div class="box-icon">⚠️</div>
+        <p><strong>These annotations alone don't guarantee the index exists.</strong> <code>spring.data.mongodb.auto-index-creation</code> defaults to <code>false</code> in current Spring Boot — annotated indexes are only created automatically if you turn that on, otherwise they're purely documentation until you create the indexes yourself (migration script, <code>mongosh</code>, or an <code>IndexOperations</code> call on startup).</p>
+      </div>
+
+      <h3 class="sub" id="mongo-rel"><span class="n">03</span>Embedding &amp; references</h3>
+      <p class="lead">Mongo has no <code>@OneToMany</code>/<code>@ManyToOne</code> — modeling a relationship is a design choice between <strong>embedding</strong> (nest the data, no annotation needed) and <strong>referencing</strong> (store a pointer to another collection).</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Approach</th><th>How</th><th>Trade-off</th></tr></thead>
+          <tbody>
+            <tr><td>Embed</td><td>A plain POJO or <code>List&lt;Pojo&gt;</code> field — no annotation at all, it's the default.</td><td>One read gets everything; the embedded data can't sensibly be queried/updated on its own or shared across parents.</td></tr>
+            <tr><td><code>@DBRef</code></td><td>Stores a reference (collection + <code>_id</code>) instead of embedding.</td><td><code>lazy = true</code> defers the load. Each reference resolves as a separate query — an N+1 risk — and there's no built-in cascading delete.</td></tr>
+            <tr><td><code>@DocumentReference</code></td><td>Newer, more flexible replacement for <code>@DBRef</code> (Spring Data MongoDB 4+).</td><td>Can reference by any field (not just <code>_id</code>), supports a custom <code>lookup</code> query, and plays better with reactive repositories.</td></tr>
+            <tr><td>Manual id field</td><td>Just store the related document's id as a plain <code>String</code>/<code>ObjectId</code> field, resolve it yourself in the service layer.</td><td>Most explicit and most common in practice — full control over when/how the second document is fetched.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — three ways to model "customer has orders"</span></div>
+        <pre><code><span class="cmt">// (a) embed — orders live inside the customer document</span>
+<span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders;
+
+<span class="cmt">// (b) @DBRef — orders stay in their own collection, referenced lazily</span>
+<span class="hl hl-mongo"><span class="ann">@DBRef</span>(lazy = <span class="kw">true</span>)</span>
+<span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders;
+
+<span class="cmt">// (c) @DocumentReference — the modern equivalent, more control over the lookup</span>
+<span class="hl hl-mongo"><span class="ann">@DocumentReference</span>(lazy = <span class="kw">true</span>)</span>
+<span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders;
+
+<span class="cmt">// (d) manual reference — just an id, resolved explicitly in the service</span>
+<span class="kw">private</span> List&lt;String&gt; orderIds;</code></pre>
+      </div>
+      <div class="box tip">
+        <div class="box-icon">💡</div>
+        <p><strong>Rule of thumb:</strong> embed data that's always read together and rarely updated independently (an <code>Address</code>, line items on an order at the moment it was placed). Reference data that has its own lifecycle, grows unbounded, or is shared across many parents (a <code>Customer</code>'s full order history).</p>
+      </div>
+
+      <h3 class="sub" id="mongo-audit"><span class="n">04</span>Auditing &amp; optimistic locking</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes / notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Version</code></td><td>Optimistic locking, same idea as JPA — a version field checked before overwriting a document.</td><td><code>Long</code>/<code>Integer</code> field.</td></tr>
+            <tr><td><code>@CreatedDate</code> / <code>@LastModifiedDate</code></td><td>Auto-populated timestamps.</td><td>Same annotations as the JPA side — shared <code>spring-data-commons</code> package. Requires <code>@EnableMongoAuditing</code>.</td></tr>
+            <tr><td><code>@CreatedBy</code> / <code>@LastModifiedBy</code></td><td>Auto-populated current principal.</td><td>Requires an <code>AuditorAware</code> bean, same as JPA.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box tip">
+        <div class="box-icon">💡</div>
+        <p>Unlike JPA, Mongo documents <strong>don't need</strong> an <code>@EntityListeners</code>-style annotation for auditing to work — once <code>@EnableMongoAuditing</code> is present, the mapping converter applies it to every document automatically.</p>
+      </div>
+
+      <h3 class="sub" id="mongo-repo"><span class="n">05</span>Repository &amp; query annotations</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>Purpose</th><th>Key attributes / notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Query</code></td><td>Supplies a raw MongoDB JSON query for a repository method.</td><td><code>value</code>, <code>fields</code> — a projection document.</td></tr>
+            <tr><td><code>@Aggregation</code></td><td>Runs a full aggregation pipeline for a repository method.</td><td><code>pipeline</code> — an array of pipeline-stage JSON strings.</td></tr>
+            <tr><td><code>@Meta</code></td><td>Attaches query execution options.</td><td><code>maxExecutionTimeMs</code>, <code>comment</code>, cursor batch size.</td></tr>
+            <tr><td><code>@Repository</code></td><td>Spring stereotype; implicit on <code>MongoRepository</code> subinterfaces.</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — repository</span></div>
+        <pre><code><span class="kw">public interface</span> <span class="cls">OrderRepository</span> <span class="kw">extends</span> MongoRepository&lt;<span class="cls">Order</span>, String&gt; {
+
+    <span class="ann">@Query</span>(<span class="str">"{ 'customerId': ?0, 'status': ?1 }"</span>)
+    List&lt;<span class="cls">Order</span>&gt; <span class="fn">findByCustomerAndStatus</span>(String customerId, String status);
+
+    <span class="ann">@Aggregation</span>(pipeline = {
+        <span class="str">"{ $match: { status: 'COMPLETED' } }"</span>,
+        <span class="str">"{ $group: { _id: '$customerId', total: { $sum: '$amount' } } }"</span>
+    })
+    List&lt;<span class="cls">CustomerSpend</span>&gt; <span class="fn">totalSpendPerCustomer</span>();
+}</code></pre>
+      </div>
+
+      <h3 class="sub" id="mongo-full"><span class="n">06</span>Full example, put together</h3>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — Customer / Order model</span></div>
+        <pre><code><span class="ann">@Document</span>(collection = <span class="str">"customers"</span>)
+<span class="kw">public class</span> <span class="cls">Customer</span> {
+
+    <span class="ann">@Id</span>
+    <span class="kw">private</span> String id; <span class="cmt">// maps to _id</span>
+
+    <span class="ann">@Field</span>(<span class="str">"full_name"</span>)
+    <span class="kw">private</span> String fullName;
+
+    <span class="ann">@Indexed</span>(unique = <span class="kw">true</span>)
+    <span class="kw">private</span> String email;
+
+    <span class="kw">private</span> <span class="cls">Address</span> billingAddress; <span class="cmt">// embedded automatically — plain POJO, no annotation</span>
+
+    <span class="ann">@Field</span>(targetType = FieldType.STRING)
+    <span class="kw">private</span> <span class="cls">CustomerStatus</span> status;
+
+    <span class="ann">@DBRef</span>(lazy = <span class="kw">true</span>)
+    <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders; <span class="cmt">// referenced — lives in its own "orders" collection</span>
+
+    <span class="ann">@Version</span>
+    <span class="kw">private</span> Long version;
+
+    <span class="ann">@CreatedDate</span>
+    <span class="kw">private</span> Instant createdAt;
+}
+
+<span class="ann">@Document</span>(collection = <span class="str">"orders"</span>)
+<span class="ann">@CompoundIndex</span>(name = <span class="str">"customer_status_idx"</span>, def = <span class="str">"{'customerId': 1, 'status': 1}"</span>)
+<span class="kw">public class</span> <span class="cls">Order</span> {
+
+    <span class="ann">@Id</span>
+    <span class="kw">private</span> String id;
+
+    <span class="kw">private</span> String customerId;
+    <span class="kw">private</span> List&lt;<span class="cls">OrderItem</span>&gt; items; <span class="cmt">// embedded — line items belong to this order alone</span>
+
+    <span class="ann">@Indexed</span>(expireAfterSeconds = <span class="num">2592000</span>) <span class="cmt">// TTL index — auto-deleted after 30 days</span>
+    <span class="kw">private</span> Instant placedAt;
+}</code></pre>
+      </div>
+    </section>
+
+    <!-- ================= COMPARE ================= -->
+    <section class="zone zone-cmp" id="compare">
+      <div class="zone-head"><h2>Same idea, different annotation</h2><span class="zk">quick lookup</span></div>
+      <p class="zone-dek">The two models solve the same problems with a strikingly similar vocabulary — this is the table to scan right before an interview.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Concept</th><th>JPA / SQL</th><th>MongoDB</th></tr></thead>
+          <tbody>
+            <tr><td>Mark the class as persistable</td><td><code>@Entity</code></td><td><code>@Document(collection=...)</code></td></tr>
+            <tr><td>Table / collection name override</td><td><code>@Table(name=)</code></td><td><code>@Document(collection=)</code></td></tr>
+            <tr><td>Primary key</td><td><code>@Id</code> + <code>@GeneratedValue</code></td><td><code>@Id</code> — maps to <code>_id</code>, auto-generated <code>ObjectId</code> if left null</td></tr>
+            <tr><td>Rename a field's storage name</td><td><code>@Column(name=)</code></td><td><code>@Field(name=)</code></td></tr>
+            <tr><td>Exclude a field</td><td><code>@Transient</code></td><td><code>@Transient</code></td></tr>
+            <tr><td>Optimistic locking</td><td><code>@Version</code></td><td><code>@Version</code></td></tr>
+            <tr><td>Single-field index</td><td><code>@Column(unique=)</code> or <code>@Table(indexes=)</code></td><td><code>@Indexed</code></td></tr>
+            <tr><td>Composite index</td><td><code>@Table(indexes = {@Index(columnList="a,b")})</code></td><td><code>@CompoundIndex</code></td></tr>
+            <tr><td>Full-text search index</td><td>Database-specific, not standard JPA</td><td><code>@TextIndexed</code></td></tr>
+            <tr><td>Auto-expiring rows</td><td>Not built in — needs a scheduled cleanup job</td><td><code>@Indexed(expireAfterSeconds=)</code> — a TTL index</td></tr>
+            <tr><td>"Has many" relationship</td><td><code>@OneToMany</code> + <code>mappedBy</code>/<code>@JoinColumn</code></td><td>Embedded list (default), or <code>@DBRef</code> / <code>@DocumentReference</code></td></tr>
+            <tr><td>"Belongs to" reference</td><td><code>@ManyToOne</code> + <code>@JoinColumn</code></td><td><code>@DBRef</code> / <code>@DocumentReference</code>, or a plain stored id</td></tr>
+            <tr><td>Nested value object, same row/document</td><td><code>@Embeddable</code> + <code>@Embedded</code></td><td>Plain POJO field — embedding needs no annotation</td></tr>
+            <tr><td>Enum storage</td><td><code>@Enumerated(EnumType.STRING)</code></td><td><code>@Field(targetType = FieldType.STRING)</code> (also the default)</td></tr>
+            <tr><td>Auditing timestamps</td><td><code>@CreatedDate</code>/<code>@LastModifiedDate</code> + <code>@EnableJpaAuditing</code> + <code>@EntityListeners</code></td><td>Same annotations + <code>@EnableMongoAuditing</code> — no listener annotation needed</td></tr>
+            <tr><td>Custom query on repository</td><td><code>@Query</code> (JPQL or <code>nativeQuery=true</code>)</td><td><code>@Query</code> (Mongo JSON) / <code>@Aggregation</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="box gotcha">
+        <div class="box-icon">⚠️</div>
+        <p><strong>Same annotation name, different import — the classic mistake.</strong> JPA's <code>@Id</code>, <code>@Version</code>, and <code>@Transient</code> come from <code>jakarta.persistence</code>. Mongo's come from <code>org.springframework.data.annotation</code>. <code>@CreatedDate</code>/<code>@LastModifiedDate</code>/<code>@CreatedBy</code>/<code>@LastModifiedBy</code> are the one genuine exception — those are always <code>org.springframework.data.annotation.*</code> and work identically on both sides, since they live in the shared <code>spring-data-commons</code> module both projects build on.</p>
+      </div>
+    </section>
+
+    <!-- ================= BONUS ================= -->
+    <section class="zone zone-cmp" id="bonus">
+      <div class="zone-head"><h2>Bonus: what usually sits right next to these</h2><span class="zk">not persistence, but always nearby</span></div>
+      <p class="zone-dek">Two annotation families that show up on almost every model class but aren't actually about persistence — worth knowing where the line is.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Annotation</th><th>From</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>@NotNull</code> / <code>@NotBlank</code> / <code>@NotEmpty</code></td><td>Jakarta Bean Validation</td><td>Rejects null / blank / empty values — enforced at the API/service boundary via <code>@Valid</code>, not by the database.</td></tr>
+            <tr><td><code>@Size</code> / <code>@Min</code> / <code>@Max</code></td><td>Jakarta Bean Validation</td><td>Bounds a string length or numeric range before it ever reaches persistence code.</td></tr>
+            <tr><td><code>@Email</code> / <code>@Pattern</code></td><td>Jakarta Bean Validation</td><td>Format validation via a built-in check or a custom regex.</td></tr>
+            <tr><td><code>@Data</code> / <code>@Getter</code> / <code>@Setter</code></td><td>Lombok</td><td>Generates accessors (and <code>equals</code>/<code>hashCode</code>/<code>toString</code> for <code>@Data</code>) so entities don't carry hand-written boilerplate.</td></tr>
+            <tr><td><code>@NoArgsConstructor</code> / <code>@AllArgsConstructor</code></td><td>Lombok</td><td>JPA specifically <strong>requires</strong> a no-args constructor on every entity — easy to forget without Lombok generating it.</td></tr>
+            <tr><td><code>@Builder</code></td><td>Lombok</td><td>Fluent construction for entities/documents with many optional fields.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>jpa · hibernate · spring-data-mongodb · annotation reference</footer>
+
+</body>
+</html>

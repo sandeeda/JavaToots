@@ -1,0 +1,1263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Spring Kafka — Visual Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600&family=Syne:wght@700;800&display=swap');
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #141720;
+    --surface2: #1c2030;
+    --border: #252a3a;
+    --accent: #7c6af7;
+    --accent2: #38d9a9;
+    --accent3: #f7a355;
+    --danger: #f76c6c;
+    --text: #e2e8f0;
+    --muted: #6b7694;
+    --code-bg: #0a0c11;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  /* LAYOUT */
+  .shell { display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 0;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    z-index: 100;
+  }
+
+  .sidebar-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--accent);
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.02em;
+  }
+  .sidebar-logo span { color: var(--accent2); }
+
+  .nav-section {
+    padding: 16px 20px 4px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { color: var(--text); background: var(--surface2); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(124,106,247,0.07); }
+  .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  /* MAIN */
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    padding: 48px 56px;
+    max-width: 920px;
+  }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* HERO */
+  .hero {
+    margin-bottom: 40px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent2);
+    background: rgba(56,217,169,0.1);
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 12px;
+    color: #fff;
+  }
+  .hero p { color: var(--muted); font-size: 15px; max-width: 560px; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .card-title .icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .icon-purple { background: rgba(124,106,247,0.15); }
+  .icon-green  { background: rgba(56,217,169,0.15); }
+  .icon-orange { background: rgba(247,163,85,0.15); }
+  .icon-red    { background: rgba(247,108,108,0.15); }
+
+  /* CODE */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    margin: 14px 0;
+    color: #c9d1e9;
+  }
+  .kw  { color: #7c6af7; }
+  .str { color: #38d9a9; }
+  .cm  { color: #4a5270; font-style: italic; }
+  .num { color: #f7a355; }
+  .ann { color: #f76c6c; }
+  .cls { color: #e8d080; }
+
+  /* DIAGRAM */
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    color: #8892b0;
+    margin: 14px 0;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .d-accent  { color: var(--accent2); }
+  .d-purple  { color: var(--accent); }
+  .d-orange  { color: var(--accent3); }
+  .d-red     { color: var(--danger); }
+  .d-white   { color: #fff; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--surface2);
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .badge-green  { background: rgba(56,217,169,0.12); color: var(--accent2); }
+  .badge-red    { background: rgba(247,108,108,0.12); color: var(--danger); }
+  .badge-purple { background: rgba(124,106,247,0.12); color: var(--accent); }
+  .badge-orange { background: rgba(247,163,85,0.12);  color: var(--accent3); }
+
+  /* CALLOUT */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: rgba(124,106,247,0.06);
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 14px 0;
+    font-size: 13px;
+    color: #a8b3d4;
+  }
+  .callout.warn  { border-color: var(--accent3); background: rgba(247,163,85,0.06); }
+  .callout.danger{ border-color: var(--danger);  background: rgba(247,108,108,0.06); }
+  .callout.good  { border-color: var(--accent2); background: rgba(56,217,169,0.06); }
+  .callout strong { color: var(--text); }
+
+  /* GRID */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+
+  .mini-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .mini-card h4 { font-size: 13px; font-weight: 600; color: var(--accent2); margin-bottom: 6px; }
+  .mini-card p  { font-size: 12px; color: var(--muted); }
+
+  p { margin-bottom: 10px; }
+  p:last-child { margin-bottom: 0; }
+
+  h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin: 22px 0 10px;
+  }
+  h4 { font-size: 13px; font-weight: 600; color: var(--accent3); margin: 14px 0 6px; }
+
+  .inline-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    color: var(--accent2);
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 32px;
+  }
+  .progress-step {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+  .progress-step.done { background: var(--accent2); }
+  .progress-step.current { background: var(--accent); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 200px; min-width: 200px; }
+    .main { margin-left: 200px; padding: 32px 24px; }
+    .grid2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">Spring <span>Kafka</span></div>
+
+  <div class="nav-section">Fundamentals</div>
+  <div class="nav-item active" onclick="show('core')"><span class="nav-dot"></span>Core Concepts</div>
+  <div class="nav-item" onclick="show('producer')"><span class="nav-dot"></span>Producer Config</div>
+  <div class="nav-item" onclick="show('idempotence')"><span class="nav-dot"></span>Idempotence</div>
+  <div class="nav-item" onclick="show('eos')"><span class="nav-dot"></span>Exactly-Once (EOS)</div>
+
+  <div class="nav-section">Consumer</div>
+  <div class="nav-item" onclick="show('consumer')"><span class="nav-dot"></span>Consumer Config</div>
+  <div class="nav-item" onclick="show('ack')"><span class="nav-dot"></span>Ack Modes</div>
+  <div class="nav-item" onclick="show('nack')"><span class="nav-dot"></span>Manual Ack & Nack</div>
+
+  <div class="nav-section">Advanced</div>
+  <div class="nav-item" onclick="show('headers')"><span class="nav-dot"></span>Kafka Headers</div>
+  <div class="nav-item" onclick="show('reply')"><span class="nav-dot"></span>Reply Pattern</div>
+  <div class="nav-item" onclick="show('beans')"><span class="nav-dot"></span>Spring Beans</div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- CORE CONCEPTS -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="core" class="section active">
+  <div class="hero">
+    <div class="hero-tag">Chapter 1</div>
+    <h1>Core Concepts</h1>
+    <p>Topics, partitions, offsets, brokers — how Kafka stores and routes messages.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">📦</div>Topic</div>
+    <p>A <strong>topic</strong> is a named channel where messages are sent and received.</p>
+    <div class="callout">Think of it like a YouTube channel — producers upload videos (messages), consumers subscribe and watch.</div>
+    <div class="diagram"><span class="d-white">Producer</span> → [<span class="d-accent">Topic: "payments"</span>] → <span class="d-white">Consumer</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">🔀</div>Partitions</div>
+    <p>Each topic is split into <strong>partitions</strong> — ordered, append-only logs.</p>
+    <div class="callout">Think of a highway with multiple lanes. More lanes = more throughput in parallel.</div>
+    <div class="diagram">Topic: <span class="d-accent">"payments"</span>
+├── <span class="d-purple">Partition 0</span>: [msg1, msg4, msg7]
+├── <span class="d-purple">Partition 1</span>: [msg2, msg5, msg8]
+└── <span class="d-purple">Partition 2</span>: [msg3, msg6, msg9]</div>
+    <table>
+      <tr><th>Rule</th><th>Detail</th></tr>
+      <tr><td>Within a partition</td><td>Messages are <span class="badge badge-green">ordered</span></td></tr>
+      <tr><td>Across partitions</td><td><span class="badge badge-red">No ordering guarantee</span></td></tr>
+      <tr><td>More partitions</td><td>Higher throughput, more consumers can work in parallel</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">📍</div>Offset</div>
+    <p>An <strong>offset</strong> is the position of a message within a partition — like a line number. Starts at 0.</p>
+    <div class="diagram">Partition 0: [<span class="d-accent">0: msg1</span>] [<span class="d-accent">1: msg4</span>] [<span class="d-orange">2: msg7</span>]
+                                              ↑
+                                    consumer is here (offset 2)</div>
+    <p>Kafka never deletes messages when consumed — consumers track their own offset. This lets you <strong>replay</strong> messages by resetting the offset.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🏢</div>Brokers & Replication</div>
+    <p>A <strong>broker</strong> is a Kafka server. A cluster = multiple brokers working together.</p>
+    <div class="diagram">Kafka Cluster
+├── <span class="d-white">Broker 1</span> (warehouse 1)
+├── <span class="d-white">Broker 2</span> (warehouse 2)
+└── <span class="d-white">Broker 3</span> (warehouse 3)</div>
+    <p>Each partition is replicated across brokers. One broker is the <strong>leader</strong> — producers always write to the leader. Replicas copy from it.</p>
+    <div class="diagram">Partition 0  (replication-factor: 3)
+├── <span class="d-accent">Broker 1 — LEADER</span>   ← producer writes here
+├── <span class="d-purple">Broker 2 — replica</span>  ← copies from leader
+└── <span class="d-purple">Broker 3 — replica</span>  ← copies from leader
+
+Partition 1
+├── <span class="d-accent">Broker 2 — LEADER</span>
+├── <span class="d-purple">Broker 1 — replica</span>
+└── <span class="d-purple">Broker 3 — replica</span></div>
+    <div class="callout warn"><strong>Rule:</strong> Replication factor cannot exceed number of brokers. 2 brokers → max replication factor = 2.</div>
+    <h3>5 Partitions, 3 Brokers</h3>
+    <div class="diagram">Partition 0 → Leader: <span class="d-accent">Broker 1</span>, Replicas: Broker 2, Broker 3
+Partition 1 → Leader: <span class="d-accent">Broker 2</span>, Replicas: Broker 1, Broker 3
+Partition 2 → Leader: <span class="d-accent">Broker 3</span>, Replicas: Broker 1, Broker 2
+Partition 3 → Leader: <span class="d-accent">Broker 1</span>, Replicas: Broker 2, Broker 3
+Partition 4 → Leader: <span class="d-accent">Broker 2</span>, Replicas: Broker 1, Broker 3
+
+<span class="d-orange">Broker 1 leads → P0, P3</span>
+<span class="d-orange">Broker 2 leads → P1, P4</span>
+<span class="d-orange">Broker 3 leads → P2</span>   ← not perfectly even, Kafka distributes best it can</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">🔑</div>Keys & Partition Routing</div>
+    <p>When a producer sends a message with a <strong>key</strong>, Kafka routes it to the same partition every time — guaranteeing ordering per key.</p>
+    <pre><span class="cm">// All messages for userId-123 always go to same partition</span>
+kafkaTemplate.send(<span class="str">"payments"</span>, <span class="str">"userId-123"</span>, payload);</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- PRODUCER CONFIG -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="producer" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 2</div>
+    <h1>Producer Config</h1>
+    <p>Sending messages, acks, batching, timeouts — and how they wire together.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">⚙️</div>application.yml</div>
+    <pre>spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      batch-size: 16384        <span class="cm"># 16KB</span>
+      properties:
+        retry.backoff.ms: 1000
+        delivery.timeout.ms: 120000
+        linger.ms: 5
+        enable.idempotence: <span class="kw">true</span></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">📤</div>KafkaTemplate — Sending</div>
+    <pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">PaymentProducer</span> {
+
+    <span class="kw">private final</span> <span class="cls">KafkaTemplate</span>&lt;<span class="cls">String</span>, <span class="cls">PaymentEvent</span>&gt; kafkaTemplate;
+
+    <span class="cm">// Fire and forget</span>
+    <span class="kw">public void</span> send(<span class="cls">PaymentEvent</span> event) {
+        kafkaTemplate.send(<span class="str">"payments"</span>, event.getUserId(), event);
+    }
+
+    <span class="cm">// With callback</span>
+    <span class="kw">public void</span> sendWithCallback(<span class="cls">PaymentEvent</span> event) {
+        kafkaTemplate.send(<span class="str">"payments"</span>, event.getUserId(), event)
+            .whenComplete((result, ex) -> {
+                <span class="kw">if</span> (ex != <span class="kw">null</span>) {
+                    log.error(<span class="str">"Failed: {}"</span>, ex.getMessage());
+                } <span class="kw">else</span> {
+                    log.info(<span class="str">"Sent → partition={} offset={}"</span>,
+                        result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset());
+                }
+            });
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">⚠️</div>acks — What They Mean</div>
+    <table>
+      <tr><th>acks value</th><th>Waits for</th><th>Risk</th></tr>
+      <tr><td><span class="inline-code">0</span></td><td>Nothing — fire and forget</td><td><span class="badge badge-red">message can be lost</span></td></tr>
+      <tr><td><span class="inline-code">1</span></td><td>Leader broker only</td><td><span class="badge badge-orange">lost if leader crashes before replication</span></td></tr>
+      <tr><td><span class="inline-code">all</span></td><td>Leader + all in-sync replicas</td><td><span class="badge badge-green">safest</span></td></tr>
+    </table>
+    <div class="callout warn"><strong>acks=0 + whenComplete:</strong> callback still fires but <span class="inline-code">ex</span> is always null and offset returns <span class="inline-code">-1</span>. You never know if the broker actually got the message.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">📦</div>Batching — batch.size & linger.ms</div>
+    <div class="diagram">Message created → sits in buffer (buffer.memory)
+         ↓
+Wait for batch to fill (batch.size = 16KB)
+         OR
+Wait linger.ms timer (e.g. 5ms)
+         ↓
+<span class="d-accent">Whichever hits first → flush batch to broker</span></div>
+    <div class="grid2">
+      <div class="mini-card"><h4>linger.ms = 0</h4><p>Send immediately. Best latency, lower throughput.</p></div>
+      <div class="mini-card"><h4>linger.ms = 5–10</h4><p>Sweet spot — lets batch fill up, improves throughput.</p></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">⏱️</div>Timeouts — How They Wire Together</div>
+    <div class="diagram"><span class="d-white">delivery.timeout.ms</span>  = total time budget for EVERYTHING
+    └── <span class="d-orange">request.timeout.ms</span>  = time per single broker attempt
+    └── <span class="d-purple">retry.backoff.ms</span>    = wait between retries
+
+How many retries fit?
+<span class="d-accent">delivery.timeout.ms / (request.timeout.ms + retry.backoff.ms)</span>
+
+Example:
+delivery = 120000ms
+request  = 30000ms
+backoff  = 1000ms
+→ each cycle = 31000ms
+→ max ~3 retries (even if retries=10)</div>
+    <div class="callout danger"><strong>Gotcha:</strong> delivery.timeout.ms always wins. If it expires, retries stop even if you haven't hit the retries count yet.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">📋</div>All Producer Properties</div>
+    <table>
+      <tr><th>Property</th><th>Default</th><th>What it does</th></tr>
+      <tr><td><span class="inline-code">delivery.timeout.ms</span></td><td>120000</td><td>Total time budget for send + all retries</td></tr>
+      <tr><td><span class="inline-code">request.timeout.ms</span></td><td>30000</td><td>Wait per broker attempt</td></tr>
+      <tr><td><span class="inline-code">retry.backoff.ms</span></td><td>100</td><td>Wait between retries</td></tr>
+      <tr><td><span class="inline-code">linger.ms</span></td><td>0</td><td>Wait to fill batch before sending</td></tr>
+      <tr><td><span class="inline-code">batch.size</span></td><td>16384</td><td>Max bytes per batch per partition</td></tr>
+      <tr><td><span class="inline-code">buffer.memory</span></td><td>33554432</td><td>Total producer memory for unsent batches</td></tr>
+      <tr><td><span class="inline-code">max.block.ms</span></td><td>60000</td><td>Block send() if buffer full, then fail</td></tr>
+      <tr><td><span class="inline-code">max.request.size</span></td><td>1048576</td><td>Max size of full request to broker</td></tr>
+      <tr><td><span class="inline-code">message.max.bytes</span></td><td>1000012</td><td>Max size of a single message/payload</td></tr>
+      <tr><td><span class="inline-code">max.in.flight.requests</span></td><td>5</td><td>Unacked requests in parallel</td></tr>
+    </table>
+    <div class="callout warn"><strong>max.request.size vs message.max.bytes:</strong> message.max.bytes = one JSON payload. max.request.size = the whole request (can contain a batch). Both must agree with the broker-side config or the broker rejects the request.</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- IDEMPOTENCE -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="idempotence" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 3</div>
+    <h1>Idempotence</h1>
+    <p>Prevent duplicate messages when retries cause the broker to receive the same message twice.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">💥</div>The Problem Without Idempotence</div>
+    <div class="diagram">Producer sends msg (offset unknown to broker)
+       ↓
+Broker receives & writes it <span class="d-accent">✅</span>
+       ↓
+Broker crashes before sending ack <span class="d-red">❌</span>
+       ↓
+Producer thinks it failed → retries
+       ↓
+Broker recovers → receives it AGAIN
+       ↓
+<span class="d-red">Duplicate message in partition 💥</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">✅</div>How Idempotence Fixes It</div>
+    <p>Kafka assigns every producer a unique <strong>Producer ID (PID)</strong> and a <strong>sequence number</strong> per partition.</p>
+    <div class="diagram">Producer (PID: 42) sends to Partition 0:
+→ msg1 (seq: 0)
+→ msg2 (seq: 1)
+→ msg3 (seq: 2)  ← broker crashes before ack
+
+Producer retries msg3 (PID: 42, seq: 2)
+Broker recovers → <span class="d-accent">seq 2 already written → ignores duplicate</span> ✅</div>
+    <pre>spring:
+  kafka:
+    producer:
+      properties:
+        enable.idempotence: <span class="kw">true</span>  <span class="cm"># auto-sets acks=all, retries=MAX, in-flight=5</span></pre>
+    <div class="callout warn"><strong>Low retries + idempotence = startup error.</strong> Kafka enforces retries must be effectively unlimited when idempotence is on.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">🧠</div>Idempotence vs Exactly-Once</div>
+    <table>
+      <tr><th></th><th>What it solves</th><th>Scope</th></tr>
+      <tr><td><span class="badge badge-purple">Idempotence</span></td><td>No duplicates from producer retries</td><td>Producer side only</td></tr>
+      <tr><td><span class="badge badge-green">Exactly-once (EOS)</span></td><td>No duplicates across producer + consumer + DB</td><td>Full pipeline</td></tr>
+    </table>
+    <p>If your consumer crashes and reprocesses the same message — idempotence won't help. That's where Kafka transactions come in.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- EXACTLY-ONCE SEMANTICS -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="eos" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 4</div>
+    <h1>Exactly-Once Semantics (EOS)</h1>
+    <p>Making "consume → transform → produce" succeed or fail as a single atomic unit — not just retry-safe on the producer.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">💥</div>What Idempotence Still Doesn't Cover</div>
+    <p>A typical service doesn't just produce — it <strong>reads</strong> a message, does something with it, and <strong>writes</strong> a result. Idempotence only protects the write. The read-then-write pair is still two separate, uncoordinated operations.</p>
+    <div class="diagram">Consumer reads msg (offset 5) from <span class="d-white">orders-raw</span>
+       ↓
+Service processes it, calls kafkaTemplate.send() to <span class="d-white">orders-enriched</span>
+       ↓
+<span class="d-red">Producer send SUCCEEDS ✅ — but consumer crashes before committing offset 5</span>
+       ↓
+Consumer restarts → re-reads offset 5 (nobody told it the send already happened)
+       ↓
+<span class="d-red">Same enriched order produced AGAIN → duplicate in orders-enriched 💥</span></div>
+    <div class="callout danger"><strong>The gap:</strong> idempotence guarantees msg2 written twice by a retrying producer only lands once. It says nothing about the consumer offset commit and the downstream produce being two independent operations that can succeed/fail independently of each other.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">✅</div>What EOS Actually Guarantees</div>
+    <p>Exactly-once wraps the <strong>consumed offset</strong> and the <strong>produced record(s)</strong> into one Kafka transaction. Either both become visible, or neither does.</p>
+    <div class="diagram">Input topic ──▶ consume (offset 5)
+                       │
+                       ▼
+                 process / transform
+                       │
+                       ▼
+Output topic ◀── produce (as part of the SAME transaction)
+                       │
+                       ▼
+        <span class="d-accent">commit offset 5  +  commit produced record</span>
+        <span class="d-accent">── ONE atomic Kafka transaction ──</span>
+                       │
+              success: both visible together
+              failure: NEITHER is — offset 5 gets redelivered, nothing downstream leaked</div>
+    <table>
+      <tr><th></th><th>Guarantees</th><th>Fails to cover</th></tr>
+      <tr><td><span class="badge badge-purple">Idempotence</span></td><td>A retried produce never double-writes</td><td>Consumer offset vs. downstream produce staying in sync</td></tr>
+      <tr><td><span class="badge badge-green">EOS</span></td><td>Offset commit + downstream produce succeed or fail <strong>together</strong></td><td>Anything outside Kafka — a DB write is <strong>not</strong> automatically part of the same transaction (see gotcha below)</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">🔒</div>The Building Block — transactional.id &amp; Fencing</div>
+    <p>Every transactional producer registers a stable <strong>transactional.id</strong>. The broker uses it to track a <strong>producer epoch</strong> — the mechanism that stops a stalled ("zombie") instance from committing after a replacement has already taken over.</p>
+    <div class="diagram">Instance A starts, transactional.id = <span class="d-white">"order-svc-tx-0"</span>, broker assigns epoch <span class="d-accent">5</span>
+Instance A stalls (long GC pause / network partition) — broker assumes it's dead
+Instance A's replacement starts with the SAME transactional.id → broker bumps epoch to <span class="d-accent">6</span>
+
+Stalled Instance A wakes up, tries to commit under epoch <span class="d-orange">5</span>
+       ↓
+<span class="d-red">Broker REJECTS it — epoch 5 is fenced, only epoch 6 may commit ✅</span></div>
+    <div class="callout warn"><strong>Practical rule:</strong> derive <span class="inline-code">transactional.id</span> from something stable per logical producer instance — e.g. <span class="inline-code">prefix + "-" + partition</span> — so a restarted instance reuses the same id and gets fenced protection, instead of a random id that gives every restart a clean slate (and no zombie protection).</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">⚙️</div>Spring Boot Config</div>
+    <pre>spring:
+  kafka:
+    producer:
+      properties:
+        enable.idempotence: <span class="kw">true</span>          <span class="cm"># EOS requires this — implied once transactional</span>
+      transaction-id-prefix: <span class="str">order-svc-tx-</span>  <span class="cm"># presence of this alone switches on a transactional producer factory</span>
+    consumer:
+      group-id: order-enrichment
+      properties:
+        isolation.level: read_committed  <span class="cm"># hide records from aborted/in-flight transactions</span></pre>
+    <div class="callout warn"><strong>Don't skip isolation.level.</strong> Without <span class="inline-code">read_committed</span> on every downstream consumer, they default to <span class="inline-code">read_uncommitted</span> — meaning they can still see records from a transaction that later gets aborted, which defeats the entire point of EOS.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">💻</div>Code — Consume, Transform, Produce, Atomically</div>
+    <p>Once <span class="inline-code">transaction-id-prefix</span> is set, Spring Kafka's listener container automatically opens a Kafka transaction before invoking the listener, and — if the method returns normally — sends the consumed offset into that same transaction and commits it. No extra annotation required for the basic case.</p>
+    <pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">OrderEnrichmentListener</span> {
+
+    <span class="kw">private final</span> <span class="cls">KafkaTemplate</span>&lt;<span class="cls">String</span>, <span class="cls">EnrichedOrder</span>&gt; kafkaTemplate;
+
+    <span class="ann">@KafkaListener</span>(topics = <span class="str">"orders-raw"</span>, groupId = <span class="str">"order-enrichment"</span>)
+    <span class="kw">public void</span> enrich(<span class="cls">ConsumerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">Order</span>&gt; record) {
+
+        <span class="cls">EnrichedOrder</span> enriched = enrichmentService.enrich(record.value());
+
+        <span class="cm">// container already opened a Kafka transaction before this method ran</span>
+        kafkaTemplate.send(<span class="str">"orders-enriched"</span>, record.key(), enriched);
+
+        <span class="cm">// method returns normally →</span>
+        <span class="cm">// container sends offset 5 into the SAME transaction, then commits</span>
+        <span class="cm">// throws instead → container aborts the transaction, offset is redelivered</span>
+    }
+}</pre>
+    <p>To make the transaction boundary explicit — or to combine it with other transactional Spring beans — wire a <span class="inline-code">KafkaTransactionManager</span> and reference it directly:</p>
+    <pre><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">KafkaTransactionManager</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; kafkaTransactionManager(<span class="cls">ProducerFactory</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; pf) {
+    <span class="kw">return new</span> <span class="cls">KafkaTransactionManager</span>&lt;&gt;(pf);
+}
+
+<span class="ann">@KafkaListener</span>(topics = <span class="str">"orders-raw"</span>, groupId = <span class="str">"order-enrichment"</span>)
+<span class="ann">@Transactional</span>(<span class="str">"kafkaTransactionManager"</span>)
+<span class="kw">public void</span> enrich(<span class="cls">ConsumerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">Order</span>&gt; record) {
+    kafkaTemplate.send(<span class="str">"orders-enriched"</span>, record.key(), enrichmentService.enrich(record.value()));
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">⚠️</div>Gotcha — EOS Doesn't Reach Your Database</div>
+    <p>A Kafka transaction only spans Kafka records. Writing to a database inside the same listener is a <strong>separate</strong> resource — Kafka's transaction coordinator has no idea it exists.</p>
+    <pre><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">ChainedKafkaTransactionManager</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; chainedTransactionManager(
+        <span class="cls">KafkaTransactionManager</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; kafkaTm,
+        <span class="cls">JpaTransactionManager</span> jpaTm) {
+    <span class="kw">return new</span> <span class="cls">ChainedKafkaTransactionManager</span>&lt;&gt;(kafkaTm, jpaTm);
+}</pre>
+    <div class="callout danger"><strong>Not a real 2PC:</strong> <span class="inline-code">ChainedKafkaTransactionManager</span> starts and commits both transaction managers in sequence — it is <strong>not</strong> an atomic XA commit. A crash between the two commits can still leave Kafka committed and the DB not (or vice versa). Treat it as "best effort ordering," and keep a DB-side idempotency key (e.g. a unique constraint on the message's business id) as the real safety net if a DB write has to stay consistent with a Kafka produce.</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- CONSUMER CONFIG -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="consumer" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 5</div>
+    <h1>Consumer Config</h1>
+    <p>Consumer groups, @KafkaListener, partition assignment, and offset reset.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">⚙️</div>application.yml</div>
+    <pre>spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: payment-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: <span class="str">"com.example.events"</span></pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">👥</div>Consumer Groups</div>
+    <p>Multiple consumers with the same <span class="inline-code">group-id</span> share the work. Each partition goes to exactly one consumer in the group.</p>
+    <div class="diagram">Topic: "payments" — 3 partitions
+Consumer Group: "payment-service" — 3 consumers
+
+<span class="d-accent">Consumer 1</span> → Partition 0
+<span class="d-accent">Consumer 2</span> → Partition 1
+<span class="d-accent">Consumer 3</span> → Partition 2</div>
+    <table>
+      <tr><th>Scenario</th><th>Result</th></tr>
+      <tr><td>consumers &lt; partitions</td><td>Each consumer handles multiple partitions</td></tr>
+      <tr><td>consumers = partitions</td><td>Perfect 1-1 mapping</td></tr>
+      <tr><td>consumers &gt; partitions</td><td>Extra consumers sit <span class="badge badge-red">idle</span></td></tr>
+    </table>
+    <div class="callout warn"><strong>Same group-id, 1 partition, 2 service instances:</strong> One instance will always be idle. Fix → increase partition count OR use different group-id per service.</div>
+    <h3>Two services, different group-id</h3>
+    <div class="diagram">Service A → group-id: "payment-service-a" → reads ALL partitions ✅
+Service B → group-id: "payment-service-b" → reads ALL partitions ✅
+
+<span class="d-orange">Use when: two different services both need every message</span>
+<span class="d-orange">(e.g. payment-service + audit-service)</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">📍</div>auto-offset-reset</div>
+    <p>Only applies when a consumer group reads a topic for the <strong>first time</strong> (no committed offset yet).</p>
+    <table>
+      <tr><th>Value</th><th>Behaviour</th></tr>
+      <tr><td><span class="inline-code">earliest</span></td><td>Start from the very first message</td></tr>
+      <tr><td><span class="inline-code">latest</span></td><td>Start from new messages only — skip existing</td></tr>
+      <tr><td><span class="inline-code">none</span></td><td>Throw exception if no offset found</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">📥</div>@KafkaListener</div>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>, groupId = <span class="str">"payment-service"</span>)
+<span class="kw">public void</span> consume(
+    <span class="ann">@Payload</span> <span class="cls">PaymentEvent</span> event,
+    <span class="ann">@Header</span>(<span class="cls">KafkaHeaders</span>.RECEIVED_TOPIC) <span class="cls">String</span> topic,
+    <span class="ann">@Header</span>(<span class="cls">KafkaHeaders</span>.RECEIVED_PARTITION) <span class="kw">int</span> partition,
+    <span class="ann">@Header</span>(<span class="cls">KafkaHeaders</span>.OFFSET) <span class="kw">long</span> offset,
+    <span class="ann">@Headers</span> <span class="cls">MessageHeaders</span> allHeaders     <span class="cm">// all headers as map</span>
+) {
+    log.info(<span class="str">"topic={} partition={} offset={}"</span>, topic, partition, offset);
+}</pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- ACK MODES -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="ack" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 6</div>
+    <h1>Acknowledgment Modes</h1>
+    <p>When does Kafka move the offset forward? You control it.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🤔</div>Why It Matters</div>
+    <div class="diagram">Consumer reads msg at offset 5
+→ processes it
+→ crashes before committing <span class="d-red">❌</span>
+
+Kafka still thinks consumer is at offset 4
+→ consumer restarts → reads offset 5 AGAIN
+→ <span class="d-orange">duplicate processing</span></div>
+    <p>Ack mode controls <strong>when the offset is committed</strong> — which determines what gets redelivered on restart.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">🗂️</div>All Ack Modes</div>
+    <table>
+      <tr><th>Mode</th><th>When offset commits</th><th>Control</th></tr>
+      <tr><td><span class="badge badge-purple">RECORD</span></td><td>After every single message</td><td>Auto — slowest but safest auto</td></tr>
+      <tr><td><span class="badge badge-purple">BATCH</span></td><td>After entire batch (default)</td><td>Auto — efficient</td></tr>
+      <tr><td><span class="badge badge-purple">TIME</span></td><td>Every n milliseconds</td><td>Auto</td></tr>
+      <tr><td><span class="badge badge-purple">COUNT</span></td><td>Every n messages</td><td>Auto</td></tr>
+      <tr><td><span class="badge badge-purple">COUNT_TIME</span></td><td>Whichever hits first</td><td>Auto</td></tr>
+      <tr><td><span class="badge badge-orange">MANUAL</span></td><td>When you call ack.acknowledge()</td><td>Full control</td></tr>
+      <tr><td><span class="badge badge-orange">MANUAL_IMMEDIATE</span></td><td>Instantly on ack call</td><td>Full control + immediate</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">⚠️</div>Risk with BATCH mode</div>
+    <div class="diagram">batch: [msg1, msg2, msg3]
+msg1 ✅  msg2 ✅  msg3 <span class="d-red">❌ crashes</span>
+
+→ batch never committed
+→ all 3 redelivered
+→ <span class="d-red">msg1 and msg2 processed TWICE 💥</span></div>
+    <div class="callout good">For critical data like payments — use <strong>MANUAL</strong>. Commit only after you know processing succeeded.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">🔧</div>TIME & COUNT Config</div>
+    <pre>spring:
+  kafka:
+    listener:
+      ack-mode: COUNT_TIME
+      ack-count: <span class="num">10</span>      <span class="cm"># commit every 10 messages</span>
+      ack-time: <span class="num">5000</span>    <span class="cm"># OR every 5s — whichever first</span></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- MANUAL ACK & NACK -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="nack" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 7</div>
+    <h1>Manual Ack & Nack</h1>
+    <p>Full control over offset commits — and what to do when processing fails.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">✅</div>acknowledge()</div>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>, groupId = <span class="str">"payment-service"</span>)
+<span class="kw">public void</span> consume(<span class="ann">@Payload</span> <span class="cls">PaymentEvent</span> event, <span class="cls">Acknowledgment</span> ack) {
+    process(event);
+    ack.acknowledge(); <span class="cm">// offset committed — won't be redelivered</span>
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">❌</div>nack(sleep)</div>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>, groupId = <span class="str">"payment-service"</span>)
+<span class="kw">public void</span> consume(<span class="ann">@Payload</span> <span class="cls">PaymentEvent</span> event, <span class="cls">Acknowledgment</span> ack) {
+    <span class="kw">try</span> {
+        process(event);
+        ack.acknowledge();
+    } <span class="kw">catch</span> (<span class="cls">Exception</span> e) {
+        ack.nack(<span class="num">5000</span>); <span class="cm">// wait 5s then seek back and redeliver</span>
+    }
+}</pre>
+    <div class="callout">nack doesn't tell the broker anything. The consumer seeks back to the failed offset client-side, then redelivers after the sleep.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">📦</div>nack(index, sleep) — Batch Listeners</div>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>)
+<span class="kw">public void</span> consume(<span class="ann">@Payload</span> <span class="cls">List</span>&lt;<span class="cls">PaymentEvent</span>&gt; events, <span class="cls">Acknowledgment</span> ack) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; events.size(); i++) {
+        <span class="kw">try</span> {
+            process(events.get(i));
+        } <span class="kw">catch</span> (<span class="cls">Exception</span> e) {
+            ack.nack(i, <span class="num">5000</span>); <span class="cm">// commit 0..i-1, redeliver i onwards</span>
+            <span class="kw">return</span>;
+        }
+    }
+    ack.acknowledge();
+}</pre>
+    <div class="diagram">batch: [msg0, msg1, msg2, msg3]
+msg0 ✅  msg1 ✅  msg2 <span class="d-red">❌</span>
+
+ack.nack(2, 5000)
+→ msg0, msg1 committed <span class="d-accent">✅</span>
+→ msg2, msg3 redelivered after 5s</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">⚠️</div>Infinite Loop — Poison Pill</div>
+    <div class="diagram"><span class="d-red">msg5 always fails → nack → redeliver → fail → nack → forever 💥</span></div>
+    <pre><span class="kw">private</span> <span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Integer</span>&gt; retryCount = <span class="kw">new</span> <span class="cls">ConcurrentHashMap</span>&lt;&gt;();
+
+<span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>)
+<span class="kw">public void</span> consume(<span class="ann">@Payload</span> <span class="cls">PaymentEvent</span> event, <span class="cls">Acknowledgment</span> ack) {
+    <span class="cls">String</span> key = event.getId();
+    <span class="kw">int</span> attempts = retryCount.getOrDefault(key, <span class="num">0</span>);
+    <span class="kw">try</span> {
+        process(event);
+        retryCount.remove(key);
+        ack.acknowledge();
+    } <span class="kw">catch</span> (<span class="cls">Exception</span> e) {
+        <span class="kw">if</span> (attempts >= <span class="num">3</span>) {
+            sendToDLQ(event);         <span class="cm">// give up → dead letter queue</span>
+            retryCount.remove(key);
+            ack.acknowledge();        <span class="cm">// commit so we don't loop forever</span>
+        } <span class="kw">else</span> {
+            retryCount.put(key, attempts + <span class="num">1</span>);
+            ack.nack(<span class="num">5000</span>);
+        }
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🧠</div>Summary</div>
+    <table>
+      <tr><th>Method</th><th>What happens</th><th>Use when</th></tr>
+      <tr><td><span class="inline-code">ack.acknowledge()</span></td><td>Offset committed, no redeliver</td><td>Processing succeeded</td></tr>
+      <tr><td><span class="inline-code">ack.nack(sleep)</span></td><td>Seeks back, redelivers after sleep</td><td>Transient error, want to retry</td></tr>
+      <tr><td><span class="inline-code">ack.nack(index, sleep)</span></td><td>Commits up to index, redelivers rest</td><td>Batch — partial failure</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- KAFKA HEADERS -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="headers" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 8</div>
+    <h1>Kafka Headers</h1>
+    <p>Metadata attached to messages — separate from the payload.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">📬</div>What Are Headers?</div>
+    <div class="callout">Think of it like an envelope — the payload is the letter inside, headers are what's written on the outside (to, from, tracking ID, priority).</div>
+    <div class="diagram">Message
+├── Key:   "userId-123"
+├── Value: { "amount": 500, "currency": "CAD" }   ← payload
+└── Headers:
+    ├── x-correlation-id:  "abc-123"
+    ├── x-source-service:  "order-service"
+    └── x-event-type:      "PAYMENT_INITIATED"</div>
+    <p>Headers are always <strong>byte arrays</strong> at the Kafka level — you convert to/from String manually.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">📤</div>Setting Headers — Producer Side</div>
+    <pre><span class="cls">ProducerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">PaymentEvent</span>&gt; record = <span class="kw">new</span> <span class="cls">ProducerRecord</span>&lt;&gt;(
+    <span class="str">"payments"</span>, <span class="kw">null</span>, event.getUserId(), event
+);
+
+record.headers().add(<span class="str">"x-correlation-id"</span>,
+    <span class="str">"abc-123"</span>.getBytes(<span class="cls">StandardCharsets</span>.UTF_8));
+record.headers().add(<span class="str">"x-source-service"</span>,
+    <span class="str">"order-service"</span>.getBytes(<span class="cls">StandardCharsets</span>.UTF_8));
+
+kafkaTemplate.send(record);</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">📥</div>Reading Headers — Consumer Side</div>
+    <h4>Option 1 — Specific header with @Header</h4>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>)
+<span class="kw">public void</span> consume(
+    <span class="ann">@Payload</span> <span class="cls">PaymentEvent</span> event,
+    <span class="ann">@Header</span>(<span class="str">"x-correlation-id"</span>) <span class="kw">byte</span>[] correlationIdBytes,
+    <span class="ann">@Header</span>(<span class="str">"x-source-service"</span>) <span class="cls">String</span> source  <span class="cm">// Spring auto-converts</span>
+) {
+    <span class="cls">String</span> correlationId = <span class="kw">new</span> <span class="cls">String</span>(correlationIdBytes, <span class="cls">StandardCharsets</span>.UTF_8);
+}</pre>
+    <h4>Option 2 — All headers as map</h4>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>)
+<span class="kw">public void</span> consume(<span class="ann">@Payload</span> <span class="cls">PaymentEvent</span> event, <span class="ann">@Headers</span> <span class="cls">MessageHeaders</span> headers) {
+    headers.forEach((key, value) -> {
+        <span class="kw">if</span> (value <span class="kw">instanceof byte</span>[]) {
+            log.info(<span class="str">"{} = {}"</span>, key, <span class="kw">new</span> <span class="cls">String</span>((<span class="kw">byte</span>[]) value, <span class="cls">StandardCharsets</span>.UTF_8));
+        }
+    });
+}</pre>
+    <h4>Option 3 — Via ConsumerRecord (full control)</h4>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>)
+<span class="kw">public void</span> consume(<span class="cls">ConsumerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">PaymentEvent</span>&gt; record) {
+    record.headers().forEach(header -> {
+        log.info(<span class="str">"{} = {}"</span>, header.key(),
+            <span class="kw">new</span> <span class="cls">String</span>(header.value(), <span class="cls">StandardCharsets</span>.UTF_8));
+    });
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🔁</div>Forwarding Headers Across Services</div>
+    <pre><span class="cm">// Forward ALL headers from incoming record to outbound record</span>
+record.headers().forEach(header ->
+    outbound.headers().add(header.key(), header.value())
+);</pre>
+    <div class="callout good">Always forward headers when chaining services — especially <strong>x-correlation-id</strong>. It's how you trace a message across Service A → B → C.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">📋</div>Built-in Spring Kafka Headers</div>
+    <table>
+      <tr><th>Header Key</th><th>Value</th></tr>
+      <tr><td><span class="inline-code">kafka_receivedTopic</span></td><td>Topic name</td></tr>
+      <tr><td><span class="inline-code">kafka_receivedPartitionId</span></td><td>Partition number</td></tr>
+      <tr><td><span class="inline-code">kafka_offset</span></td><td>Message offset</td></tr>
+      <tr><td><span class="inline-code">kafka_receivedTimestamp</span></td><td>Producer timestamp</td></tr>
+      <tr><td><span class="inline-code">kafka_groupId</span></td><td>Consumer group</td></tr>
+      <tr><td><span class="inline-code">kafka_correlationId</span></td><td>Used in request-reply pattern</td></tr>
+      <tr><td><span class="inline-code">kafka_replyTopic</span></td><td>Used in request-reply pattern</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- REPLY PATTERN -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="reply" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 9</div>
+    <h1>Multi-Service Reply Pattern</h1>
+    <p>Service A → B → C → A using plain KafkaTemplate and header forwarding.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🗺️</div>The Flow</div>
+    <div class="diagram">Service A → topic: <span class="d-accent">"payments"</span>            → Service B
+Service B → topic: <span class="d-accent">"payments.processed"</span>   → Service C
+Service C → topic: <span class="d-accent">"payments.final"</span>       → Service A
+
+Headers flow through every hop:
+x-correlation-id preserved end-to-end ✅</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">📤</div>Service A — Send & Listen for Final</div>
+    <pre><span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cls">ServiceA</span> {
+
+    <span class="kw">public void</span> send(<span class="cls">PaymentEvent</span> event) {
+        <span class="cls">ProducerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; record =
+            <span class="kw">new</span> <span class="cls">ProducerRecord</span>&lt;&gt;(<span class="str">"payments"</span>, event.getUserId(), event);
+
+        record.headers().add(<span class="str">"x-correlation-id"</span>,
+            <span class="cls">UUID</span>.randomUUID().toString().getBytes(<span class="cls">StandardCharsets</span>.UTF_8));
+        record.headers().add(<span class="str">"x-source-service"</span>,
+            <span class="str">"service-a"</span>.getBytes(<span class="cls">StandardCharsets</span>.UTF_8));
+
+        kafkaTemplate.send(record);
+    }
+
+    <span class="ann">@KafkaListener</span>(topics = <span class="str">"payments.final"</span>, groupId = <span class="str">"service-a"</span>)
+    <span class="kw">public void</span> receiveFinal(
+        <span class="ann">@Payload</span> <span class="cls">PaymentFinalEvent</span> event,
+        <span class="ann">@Header</span>(<span class="str">"x-correlation-id"</span>) <span class="kw">byte</span>[] correlationId,
+        <span class="cls">Acknowledgment</span> ack
+    ) {
+        log.info(<span class="str">"Final response. correlationId={}"</span>, <span class="kw">new</span> <span class="cls">String</span>(correlationId));
+        ack.acknowledge();
+    }
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">⚙️</div>Service B — Transform & Forward</div>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments"</span>, groupId = <span class="str">"service-b"</span>)
+<span class="kw">public void</span> consume(<span class="cls">ConsumerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">PaymentEvent</span>&gt; record, <span class="cls">Acknowledgment</span> ack) {
+    <span class="cls">PaymentProcessedEvent</span> processed = transform(record.value());
+
+    <span class="cls">ProducerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; outbound =
+        <span class="kw">new</span> <span class="cls">ProducerRecord</span>&lt;&gt;(<span class="str">"payments.processed"</span>, record.key(), processed);
+
+    <span class="cm">// forward ALL headers</span>
+    record.headers().forEach(h -> outbound.headers().add(h.key(), h.value()));
+    outbound.headers().add(<span class="str">"x-processed-by"</span>, <span class="str">"service-b"</span>.getBytes(<span class="cls">StandardCharsets</span>.UTF_8));
+
+    kafkaTemplate.send(outbound)
+        .whenComplete((result, ex) -> {
+            <span class="kw">if</span> (ex == <span class="kw">null</span>) ack.acknowledge();  <span class="cm">// ack AFTER forward confirmed</span>
+            <span class="kw">else</span> ack.nack(<span class="num">5000</span>);
+        });
+}</pre>
+    <div class="callout danger"><strong>Always ack AFTER the forward succeeds.</strong> If you ack before forwarding and the forward fails — the message is permanently lost.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-red">⚙️</div>Service C — Final Processing & Reply to A</div>
+    <pre><span class="ann">@KafkaListener</span>(topics = <span class="str">"payments.processed"</span>, groupId = <span class="str">"service-c"</span>)
+<span class="kw">public void</span> consume(<span class="cls">ConsumerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">PaymentProcessedEvent</span>&gt; record, <span class="cls">Acknowledgment</span> ack) {
+    <span class="cls">PaymentFinalEvent</span> finalEvent = finalize(record.value());
+
+    <span class="cls">ProducerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; outbound =
+        <span class="kw">new</span> <span class="cls">ProducerRecord</span>&lt;&gt;(<span class="str">"payments.final"</span>, record.key(), finalEvent);
+
+    <span class="cm">// forward all headers so A can match correlation id</span>
+    record.headers().forEach(h -> outbound.headers().add(h.key(), h.value()));
+    outbound.headers().add(<span class="str">"x-processed-by"</span>, <span class="str">"service-c"</span>.getBytes(<span class="cls">StandardCharsets</span>.UTF_8));
+
+    kafkaTemplate.send(outbound)
+        .whenComplete((result, ex) -> {
+            <span class="kw">if</span> (ex == <span class="kw">null</span>) ack.acknowledge();
+            <span class="kw">else</span> ack.nack(<span class="num">5000</span>);
+        });
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🧠</div>Header Trace</div>
+    <div class="diagram">Service A sends:
+  x-correlation-id: <span class="d-accent">"abc-123"</span>
+  x-source-service: <span class="d-accent">"service-a"</span>
+
+Service B forwards + adds:
+  x-correlation-id: <span class="d-accent">"abc-123"</span>   ← preserved
+  x-source-service: <span class="d-accent">"service-a"</span> ← preserved
+  x-processed-by:   <span class="d-orange">"service-b"</span>  ← added
+
+Service C forwards + adds:
+  x-correlation-id: <span class="d-accent">"abc-123"</span>   ← preserved
+  x-processed-by:   <span class="d-orange">"service-c"</span>  ← added
+
+Service A receives:
+  x-correlation-id: <span class="d-accent">"abc-123"</span>   ← matches original ✅</div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SPRING BEANS -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="beans" class="section">
+  <div class="hero">
+    <div class="hero-tag">Chapter 10</div>
+    <h1>Spring Kafka Beans</h1>
+    <p>ProducerFactory, ConsumerFactory, KafkaTemplate, ReplyingKafkaTemplate — how they wire together.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🏭</div>ProducerFactory</div>
+    <p>Creates Kafka producer instances with a fixed config. Think of it as the factory that manufactures delivery trucks.</p>
+    <pre><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">ProducerFactory</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; producerFactory() {
+    <span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; config = <span class="kw">new</span> <span class="cls">HashMap</span>&lt;&gt;();
+    config.put(<span class="cls">ProducerConfig</span>.BOOTSTRAP_SERVERS_CONFIG, <span class="str">"localhost:9092"</span>);
+    config.put(<span class="cls">ProducerConfig</span>.KEY_SERIALIZER_CLASS_CONFIG, <span class="cls">StringSerializer</span>.<span class="kw">class</span>);
+    config.put(<span class="cls">ProducerConfig</span>.VALUE_SERIALIZER_CLASS_CONFIG, <span class="cls">JsonSerializer</span>.<span class="kw">class</span>);
+    config.put(<span class="cls">ProducerConfig</span>.ACKS_CONFIG, <span class="str">"all"</span>);
+    config.put(<span class="cls">ProducerConfig</span>.ENABLE_IDEMPOTENCE_CONFIG, <span class="kw">true</span>);
+    <span class="kw">return new</span> <span class="cls">DefaultKafkaProducerFactory</span>&lt;&gt;(config);
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">📬</div>KafkaTemplate</div>
+    <p>Built on top of <span class="inline-code">ProducerFactory</span> — this is what you use to send messages.</p>
+    <pre><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">KafkaTemplate</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; kafkaTemplate() {
+    <span class="kw">return new</span> <span class="cls">KafkaTemplate</span>&lt;&gt;(producerFactory());
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">🏭</div>ConsumerFactory</div>
+    <pre><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">ConsumerFactory</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; consumerFactory() {
+    <span class="cls">Map</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; config = <span class="kw">new</span> <span class="cls">HashMap</span>&lt;&gt;();
+    config.put(<span class="cls">ConsumerConfig</span>.BOOTSTRAP_SERVERS_CONFIG, <span class="str">"localhost:9092"</span>);
+    config.put(<span class="cls">ConsumerConfig</span>.GROUP_ID_CONFIG, <span class="str">"payment-service"</span>);
+    config.put(<span class="cls">ConsumerConfig</span>.AUTO_OFFSET_RESET_CONFIG, <span class="str">"earliest"</span>);
+    config.put(<span class="cls">ConsumerConfig</span>.KEY_DESERIALIZER_CLASS_CONFIG, <span class="cls">StringDeserializer</span>.<span class="kw">class</span>);
+    config.put(<span class="cls">ConsumerConfig</span>.VALUE_DESERIALIZER_CLASS_CONFIG, <span class="cls">JsonDeserializer</span>.<span class="kw">class</span>);
+    config.put(<span class="cls">JsonDeserializer</span>.TRUSTED_PACKAGES, <span class="str">"com.example.events"</span>);
+    <span class="kw">return new</span> <span class="cls">DefaultKafkaConsumerFactory</span>&lt;&gt;(config);
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-purple">🎧</div>ConcurrentKafkaListenerContainerFactory</div>
+    <p>Powers <span class="inline-code">@KafkaListener</span>. Manages listener threads and ack mode.</p>
+    <pre><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">ConcurrentKafkaListenerContainerFactory</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; kafkaListenerContainerFactory() {
+    <span class="cls">ConcurrentKafkaListenerContainerFactory</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; factory =
+        <span class="kw">new</span> <span class="cls">ConcurrentKafkaListenerContainerFactory</span>&lt;&gt;();
+    factory.setConsumerFactory(consumerFactory());
+    factory.setConcurrency(<span class="num">3</span>);  <span class="cm">// 3 consumer threads</span>
+    factory.getContainerProperties()
+        .setAckMode(<span class="cls">ContainerProperties</span>.<span class="cls">AckMode</span>.MANUAL);
+    <span class="kw">return</span> factory;
+}</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-green">🔁</div>ReplyingKafkaTemplate</div>
+    <p>Send a message and block until a response comes back — like HTTP over Kafka.</p>
+    <pre><span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">KafkaMessageListenerContainer</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; replyContainer() {
+    <span class="cls">ContainerProperties</span> props = <span class="kw">new</span> <span class="cls">ContainerProperties</span>(<span class="str">"payments.reply"</span>);
+    <span class="kw">return new</span> <span class="cls">KafkaMessageListenerContainer</span>&lt;&gt;(consumerFactory(), props);
+}
+
+<span class="ann">@Bean</span>
+<span class="kw">public</span> <span class="cls">ReplyingKafkaTemplate</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>, <span class="cls">Object</span>&gt; replyingKafkaTemplate() {
+    <span class="cls">ReplyingKafkaTemplate</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>, <span class="cls">Object</span>&gt; template =
+        <span class="kw">new</span> <span class="cls">ReplyingKafkaTemplate</span>&lt;&gt;(producerFactory(), replyContainer());
+    template.setDefaultReplyTimeout(<span class="cls">Duration</span>.ofSeconds(<span class="num">10</span>));
+    <span class="kw">return</span> template;
+}
+
+<span class="cm">// Send and wait</span>
+<span class="cls">RequestReplyFuture</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>, <span class="cls">Object</span>&gt; future =
+    replyingKafkaTemplate.sendAndReceive(record);
+<span class="cls">ConsumerRecord</span>&lt;<span class="cls">String</span>, <span class="cls">Object</span>&gt; response = future.get(<span class="num">10</span>, <span class="cls">TimeUnit</span>.SECONDS);</pre>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><div class="icon icon-orange">🧠</div>How All Beans Wire Together</div>
+    <div class="diagram"><span class="d-white">ProducerFactory</span>
+    ├── <span class="d-accent">KafkaTemplate</span>              ← send messages
+    └── <span class="d-accent">ReplyingKafkaTemplate</span>      ← send and wait for reply
+
+<span class="d-white">ConsumerFactory</span>
+    ├── <span class="d-purple">ConcurrentKafkaListenerContainerFactory</span>  ← powers @KafkaListener
+    └── <span class="d-purple">KafkaMessageListenerContainer</span>            ← powers reply listener</div>
+    <table>
+      <tr><th>Bean</th><th>What it does</th></tr>
+      <tr><td><span class="inline-code">ProducerFactory</span></td><td>Creates producers with config</td></tr>
+      <tr><td><span class="inline-code">ConsumerFactory</span></td><td>Creates consumers with config</td></tr>
+      <tr><td><span class="inline-code">KafkaTemplate</span></td><td>Send messages</td></tr>
+      <tr><td><span class="inline-code">ReplyingKafkaTemplate</span></td><td>Send and wait for reply</td></tr>
+      <tr><td><span class="inline-code">ConcurrentKafkaListenerContainerFactory</span></td><td>Powers @KafkaListener</td></tr>
+      <tr><td><span class="inline-code">KafkaMessageListenerContainer</span></td><td>Single container (reply listener)</td></tr>
+      <tr><td><span class="inline-code">ProducerRecord</span></td><td>Full control over outbound message</td></tr>
+      <tr><td><span class="inline-code">ConsumerRecord</span></td><td>Full control over inbound message</td></tr>
+    </table>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+  const sections = ['core','producer','idempotence','eos','consumer','ack','nack','headers','reply','beans'];
+  const totalSteps = sections.length;
+
+  function show(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.getAttribute('onclick') === `show('${id}')`) n.classList.add('active');
+    });
+  }
+</script>
+</body>
+</html>
