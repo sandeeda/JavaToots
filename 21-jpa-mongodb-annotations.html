@@ -196,6 +196,45 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
         </table>
       </div>
 
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — Customer model, entity &amp; table mapping</span></div>
+        <pre><code><span class="ann">@Entity</span>(name = <span class="str">"CustomerEntity"</span>) <span class="cmt">// name used in JPQL — table name is set separately below</span>
+<span class="ann">@Table</span>(
+    name = <span class="str">"customers"</span>,
+    schema = <span class="str">"shop"</span>,
+    uniqueConstraints = <span class="ann">@UniqueConstraint</span>(name = <span class="str">"uq_customer_email"</span>, columnNames = <span class="str">"email"</span>),
+    indexes = <span class="ann">@Index</span>(name = <span class="str">"idx_customer_last_name"</span>, columnList = <span class="str">"last_name"</span>)
+)
+<span class="kw">public class</span> <span class="cls">Customer</span> {
+
+<span class="hl hl-sql">    <span class="ann">@Id</span></span>
+<span class="hl hl-sql">    <span class="ann">@GeneratedValue</span>(strategy = GenerationType.SEQUENCE, generator = <span class="str">"customer_seq"</span>)</span>
+<span class="hl hl-sql">    <span class="ann">@SequenceGenerator</span>(name = <span class="str">"customer_seq"</span>, sequenceName = <span class="str">"customer_id_seq"</span>, allocationSize = <span class="num">50</span>)</span>
+    <span class="kw">private</span> Long id;
+
+    <span class="ann">@Column</span>(name = <span class="str">"first_name"</span>, nullable = <span class="kw">false</span>, length = <span class="num">60</span>)
+    <span class="kw">private</span> String firstName;
+
+    <span class="ann">@Column</span>(name = <span class="str">"last_name"</span>, nullable = <span class="kw">false</span>, length = <span class="num">60</span>)
+    <span class="kw">private</span> String lastName;
+
+    <span class="cmt">// no @Column here — Hibernate defaults to a column named "email"</span>
+    <span class="kw">private</span> String email;
+
+    <span class="ann">@Column</span>(name = <span class="str">"created_at"</span>, updatable = <span class="kw">false</span>) <span class="cmt">// set once on insert, never touched again</span>
+    <span class="kw">private</span> Instant createdAt;
+
+    <span class="ann">@Transient</span> <span class="cmt">// derived at runtime — never read from or written to the DB</span>
+    <span class="kw">private</span> <span class="kw">int</span> loyaltyScoreCache;
+
+    <span class="cmt">// getters / setters / constructors omitted</span>
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p>Walking through it: <code>@Entity</code>'s <code>name</code> only affects JPQL (<code>select c from CustomerEntity c</code>) — the actual table is named by <code>@Table</code>. <code>@Id</code> + <code>@GeneratedValue(strategy = SEQUENCE)</code> pulls the next PK from a DB sequence, and <code>@SequenceGenerator</code> names that sequence and sets <code>allocationSize = 50</code> so Hibernate grabs 50 IDs per round trip instead of one at a time. <code>@Column</code> is only needed when you want something other than the default (a different name, a length limit, <code>nullable = false</code>) — <code>email</code> above has none, so it just maps to a column called <code>email</code>. <code>@Transient</code> keeps <code>loyaltyScoreCache</code> in the Java object only — it's never selected, inserted, or updated.</p>
+      </div>
+
       <h3 class="sub" id="sql-embed"><span class="n">02</span>Embedded value objects</h3>
       <p class="lead">For fields that belong to the entity conceptually but aren't entities themselves — an <code>Address</code>, a <code>Money</code> value — and live in the same table.</p>
       <div class="table-wrap">
@@ -211,19 +250,25 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
       </div>
       <div class="code-wrap">
         <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span></div>
-        <pre><code><span class="ann">@Embeddable</span>
+        <pre><code><span class="ann">@Embeddable</span> <span class="cmt">// says "this class has no table of its own, I just live inside whoever embeds me"</span>
 <span class="kw">public class</span> <span class="cls">Address</span> {
-    <span class="kw">private</span> String street;
-    <span class="kw">private</span> String city;
-    <span class="kw">private</span> String zipCode;
+    <span class="kw">private</span> String street;   <span class="cmt">// becomes a plain "street" column on WHATEVER table embeds this</span>
+    <span class="kw">private</span> String city;     <span class="cmt">// becomes a plain "city" column, unless overridden (see below)</span>
+    <span class="kw">private</span> String zipCode;  <span class="cmt">// becomes a plain "zip_code" column</span>
 }
 
 <span class="ann">@Entity</span>
 <span class="kw">public class</span> <span class="cls">Customer</span> {
-    <span class="ann">@Embedded</span>
+    <span class="ann">@Embedded</span> <span class="cmt">// "flatten Address's fields into MY table" — no separate addresses table, no foreign key</span>
     <span class="ann">@AttributeOverride</span>(name = <span class="str">"city"</span>, column = <span class="ann">@Column</span>(name = <span class="str">"billing_city"</span>))
-    <span class="kw">private</span> <span class="cls">Address</span> billingAddress; <span class="cmt">// columns live directly on the customers table</span>
+    <span class="cmt">// ^ without this, the column would just be called "city" — override it because</span>
+    <span class="cmt">//   "city" alone is ambiguous once you also embed a shippingAddress below</span>
+    <span class="kw">private</span> <span class="cls">Address</span> billingAddress; <span class="cmt">// columns live directly on the customers table: street, billing_city, zip_code</span>
 }</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> <code>Address</code> isn't a "real" entity — it has no <code>@Id</code>, no table, and can't be queried on its own. <code>@Embeddable</code> just marks it as a reusable group of fields. When <code>Customer</code> declares <code>@Embedded private Address billingAddress</code>, Hibernate doesn't create a relationship at all — it literally copies <code>Address</code>'s fields onto the <code>customers</code> table as if you'd typed <code>street</code>, <code>city</code>, and <code>zipCode</code> directly into <code>Customer</code>. <code>@AttributeOverride</code> exists for the one problem this causes: if you embedded a <em>second</em> <code>Address</code> (say, <code>shippingAddress</code>) you'd get a column-name collision, so you rename one field's column to keep them apart. <code>@EmbeddedId</code> (not shown) is the same trick applied to primary keys — useful when a table's real-world key is a combination of fields, like <code>(orderId, lineNumber)</code>, rather than one auto-generated column.</p>
       </div>
 
       <h3 class="sub" id="sql-rel"><span class="n">03</span>Relationships</h3>
@@ -269,6 +314,9 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
     <span class="kw">private</span> Long id;
 
 <span class="hl hl-sql">    <span class="ann">@OneToMany</span>(mappedBy = <span class="str">"customer"</span>, cascade = CascadeType.ALL, orphanRemoval = <span class="kw">true</span>)</span>
+    <span class="cmt">// mappedBy = "customer" -> "I don't own the FK, look at the `customer` field over on Order for it"</span>
+    <span class="cmt">// cascade = ALL         -> saving/deleting a Customer also saves/deletes its Orders</span>
+    <span class="cmt">// orphanRemoval = true  -> removing an Order from this list deletes that Order row too</span>
     <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders = <span class="kw">new</span> ArrayList&lt;&gt;();
 }
 
@@ -278,15 +326,23 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
     <span class="kw">private</span> Long id;
 
 <span class="hl hl-sql">    <span class="ann">@ManyToOne</span>(fetch = FetchType.LAZY, optional = <span class="kw">false</span>)</span>
+    <span class="cmt">// fetch = LAZY   -> don't load the Customer row until .getCustomer() is actually called</span>
+    <span class="cmt">// optional=false -> every Order MUST have a Customer; generates a NOT NULL FK column</span>
 <span class="hl hl-sql">    <span class="ann">@JoinColumn</span>(name = <span class="str">"customer_id"</span>, nullable = <span class="kw">false</span>) <span class="cmt">// owning side — this is the real FK column</span></span>
     <span class="kw">private</span> <span class="cls">Customer</span> customer;
 
 <span class="hl hl-sql">    <span class="ann">@ManyToMany</span></span>
+    <span class="cmt">// no mappedBy here -> Order is the owning side of this relationship</span>
 <span class="hl hl-sql">    <span class="ann">@JoinTable</span>(name = <span class="str">"order_tags"</span>,</span>
-<span class="hl hl-sql">        joinColumns = <span class="ann">@JoinColumn</span>(name = <span class="str">"order_id"</span>),</span>
-<span class="hl hl-sql">        inverseJoinColumns = <span class="ann">@JoinColumn</span>(name = <span class="str">"tag_id"</span>))</span>
+<span class="cmt">        // order_tags is a plain link table: (order_id, tag_id) — Hibernate manages it, you never map it as an entity</span>
+<span class="hl hl-sql">        joinColumns = <span class="ann">@JoinColumn</span>(name = <span class="str">"order_id"</span>),        <span class="cmt">// the column pointing back to THIS entity (Order)</span></span>
+<span class="hl hl-sql">        inverseJoinColumns = <span class="ann">@JoinColumn</span>(name = <span class="str">"tag_id"</span>))    <span class="cmt">// the column pointing to the OTHER entity (Tag)</span></span>
     <span class="kw">private</span> Set&lt;<span class="cls">Tag</span>&gt; tags = <span class="kw">new</span> HashSet&lt;&gt;();
 }</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> a <code>Customer</code> has many <code>Order</code>s, and each <code>Order</code> belongs to exactly one <code>Customer</code> — that's the <code>@OneToMany</code>/<code>@ManyToOne</code> pair. The foreign key (<code>customer_id</code>) physically lives on the <code>orders</code> table, so <code>Order</code> is the "owning" side and gets <code>@JoinColumn</code>; <code>Customer</code> just says "my orders are wherever <code>customer</code> points at me" via <code>mappedBy</code> — it doesn't create or store anything extra. <code>cascade = ALL</code> plus <code>orphanRemoval = true</code> on the <code>Customer</code> side means the app never has to manually delete an order — deleting the customer, or just removing an order from the customer's list, does it automatically. Separately, an <code>Order</code> can have many <code>Tag</code>s and a <code>Tag</code> can be on many <code>Order</code>s — that many-to-many needs its own link table (<code>order_tags</code>) to store the pairings, which <code>@JoinTable</code> describes.</p>
       </div>
 
       <div class="box gotcha">
@@ -312,6 +368,43 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
         <p><code>SINGLE_TABLE</code> is fastest (no joins, one query for polymorphic reads) but every column from every subclass ends up nullable in one wide table. <code>JOINED</code> is normalized (one table per subclass, joined by PK) at the cost of a join per read. <code>TABLE_PER_CLASS</code> duplicates shared columns into every subclass table and complicates polymorphic queries — the least commonly chosen of the three.</p>
       </div>
 
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — Payment hierarchy, single-table strategy</span></div>
+        <pre><code><span class="ann">@MappedSuperclass</span> <span class="cmt">// NOT an entity, NOT a table — just a field template every subclass inherits</span>
+<span class="kw">public abstract class</span> <span class="cls">BaseEntity</span> {
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>
+    <span class="kw">protected</span> Long id;              <span class="cmt">// every Payment subtype gets an "id" column this way</span>
+
+    <span class="ann">@CreatedDate</span>
+    <span class="kw">protected</span> Instant createdAt;    <span class="cmt">// and a "created_at" column, without repeating it per class</span>
+}
+
+<span class="ann">@Entity</span>
+<span class="ann">@Table</span>(name = <span class="str">"payments"</span>)                                  <span class="cmt">// ONE physical table holds every subtype's rows</span>
+<span class="ann">@Inheritance</span>(strategy = InheritanceType.SINGLE_TABLE)      <span class="cmt">// all subclasses share this one table</span>
+<span class="ann">@DiscriminatorColumn</span>(name = <span class="str">"payment_type"</span>, discriminatorType = DiscriminatorType.STRING)
+<span class="cmt">// ^ adds a "payment_type" column that records which subclass each row actually is</span>
+<span class="kw">public abstract class</span> <span class="cls">Payment</span> <span class="kw">extends</span> <span class="cls">BaseEntity</span> {
+    <span class="kw">protected</span> BigDecimal amount;    <span class="cmt">// shared column, present for every subtype</span>
+}
+
+<span class="ann">@Entity</span>
+<span class="ann">@DiscriminatorValue</span>(<span class="str">"CARD"</span>) <span class="cmt">// rows for this subclass get payment_type = 'CARD'</span>
+<span class="kw">public class</span> <span class="cls">CardPayment</span> <span class="kw">extends</span> <span class="cls">Payment</span> {
+    <span class="kw">private</span> String last4;         <span class="cmt">// column only meaningful for card payments — nullable for other rows</span>
+}
+
+<span class="ann">@Entity</span>
+<span class="ann">@DiscriminatorValue</span>(<span class="str">"BANK_TRANSFER"</span>) <span class="cmt">// rows for this subclass get payment_type = 'BANK_TRANSFER'</span>
+<span class="kw">public class</span> <span class="cls">BankTransferPayment</span> <span class="kw">extends</span> <span class="cls">Payment</span> {
+    <span class="kw">private</span> String iban;           <span class="cmt">// column only meaningful for bank-transfer payments</span>
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> you have one Java concept, "a payment," that comes in different shapes — a card payment has a card number, a bank transfer has an IBAN — but you still want to query "all payments for this order" as one list. <code>@Inheritance(strategy = SINGLE_TABLE)</code> tells Hibernate to store every subtype in one wide <code>payments</code> table; <code>@DiscriminatorColumn</code>/<code>@DiscriminatorValue</code> add a column (<code>payment_type</code>) that records which subtype each row actually is, so Hibernate knows whether to hydrate a row as a <code>CardPayment</code> or a <code>BankTransferPayment</code> when you read it back. <code>@MappedSuperclass</code> is a separate, simpler trick: <code>BaseEntity</code> isn't part of the inheritance hierarchy Hibernate tracks at all — it's just a way to avoid retyping <code>id</code> and <code>createdAt</code> on every entity in your codebase.</p>
+      </div>
+
       <h3 class="sub" id="sql-audit"><span class="n">05</span>Auditing &amp; optimistic locking</h3>
       <div class="table-wrap">
         <table>
@@ -324,6 +417,45 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
             <tr><td><code>@EntityListeners(AuditingEntityListener.class)</code></td><td>The piece that actually wires the four annotations above into the entity's lifecycle callbacks.</td><td>Placed directly on the entity — easy to forget, and auditing silently does nothing without it.</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — audited, optimistically-locked entity</span></div>
+        <pre><code><span class="ann">@Configuration</span>
+<span class="ann">@EnableJpaAuditing</span>(auditorAwareRef = <span class="str">"auditorProvider"</span>) <span class="cmt">// turns auditing ON app-wide; without this the annotations below do nothing</span>
+<span class="kw">public class</span> <span class="cls">JpaAuditingConfig</span> {
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> AuditorAware&lt;String&gt; <span class="fn">auditorProvider</span>() {
+        <span class="cmt">// tells Spring HOW to figure out "who is the current user" for @CreatedBy/@LastModifiedBy</span>
+        <span class="kw">return</span> () -&gt; Optional.of(SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+}
+
+<span class="ann">@Entity</span>
+<span class="ann">@EntityListeners</span>(AuditingEntityListener.class) <span class="cmt">// hooks the fields below into save/update lifecycle events — easy to forget!</span>
+<span class="kw">public class</span> <span class="cls">Order</span> {
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>
+    <span class="kw">private</span> Long id;
+
+<span class="hl hl-sql">    <span class="ann">@Version</span></span>
+    <span class="kw">private</span> Long version;           <span class="cmt">// starts at 0; Hibernate checks + increments this on every UPDATE.</span>
+                                     <span class="cmt">// if another transaction changed it first, you get OptimisticLockException</span>
+
+<span class="hl hl-sql">    <span class="ann">@CreatedDate</span></span>
+    <span class="kw">private</span> Instant createdAt;     <span class="cmt">// set ONCE automatically, the moment this row is first inserted</span>
+
+<span class="hl hl-sql">    <span class="ann">@LastModifiedDate</span></span>
+    <span class="kw">private</span> Instant updatedAt;     <span class="cmt">// re-set automatically on every single update after that</span>
+
+<span class="hl hl-sql">    <span class="ann">@CreatedBy</span></span>
+    <span class="kw">private</span> String createdBy;      <span class="cmt">// filled in from the AuditorAware bean above, once, on insert</span>
+
+<span class="hl hl-sql">    <span class="ann">@LastModifiedBy</span></span>
+    <span class="kw">private</span> String lastModifiedBy; <span class="cmt">// filled in from the same bean on every update</span>
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> <code>@Version</code> stops two people from silently overwriting each other's changes — if you loaded an order at <code>version=3</code> and someone else already saved it as <code>version=4</code>, your save fails loudly instead of quietly clobbering theirs. The four "auditing" annotations just auto-fill bookkeeping fields you'd otherwise set by hand in every service method: when a row was created, when it last changed, and who did each. None of that happens for free, though — you need <code>@EnableJpaAuditing</code> on a config class (to turn the feature on) and <code>@EntityListeners(AuditingEntityListener.class)</code> on each entity (to actually apply it there); miss either one and the fields just stay null with no error.</p>
       </div>
 
       <h3 class="sub" id="sql-types"><span class="n">06</span>Type mapping extras</h3>
@@ -338,6 +470,35 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
             <tr><td><code>@OrderColumn</code></td><td>Persists list order into a dedicated index column instead of sorting on read.</td><td><code>name</code> — needed when the collection is a <code>List</code> whose position is meaningful and mutable.</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — type mapping extras</span></div>
+        <pre><code><span class="ann">@Entity</span>
+<span class="kw">public class</span> <span class="cls">Order</span> {
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>
+    <span class="kw">private</span> Long id;
+
+<span class="hl hl-sql">    <span class="ann">@Enumerated</span>(EnumType.STRING)</span>
+    <span class="kw">private</span> <span class="cls">OrderStatus</span> status;         <span class="cmt">// stores the word "SHIPPED", not the number 2 — safe if you reorder the enum later</span>
+
+<span class="hl hl-sql">    <span class="ann">@Lob</span></span>
+    <span class="kw">private</span> String internalNotes;      <span class="cmt">// maps to a CLOB — for text too long for a normal VARCHAR column</span>
+
+<span class="hl hl-sql">    <span class="ann">@Temporal</span>(TemporalType.TIMESTAMP)</span>
+    <span class="kw">private</span> Date legacyPlacedAt;      <span class="cmt">// only needed for old java.util.Date fields — tells JPA to keep date+time, not just date</span>
+
+    <span class="kw">private</span> Instant placedAt;          <span class="cmt">// modern java.time type — needs NO @Temporal, JPA 2.2+ handles it natively</span>
+
+<span class="hl hl-sql">    <span class="ann">@OrderBy</span>(<span class="str">"createdAt DESC"</span>)</span>
+    <span class="kw">private</span> List&lt;<span class="cls">OrderNote</span>&gt; notes;    <span class="cmt">// DB re-sorts this list newest-first on every read — no ORDER BY column stored</span>
+
+<span class="hl hl-sql">    <span class="ann">@OrderColumn</span>(name = <span class="str">"item_position"</span>)</span>
+    <span class="kw">private</span> List&lt;<span class="cls">OrderItem</span>&gt; items;    <span class="cmt">// order is instead PERSISTED into an item_position column — needed if you can reorder/insert mid-list</span>
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> these annotations control how "unusual" Java types get stored, not the everyday `String`/`Long` case. <code>@Enumerated(STRING)</code> stores enum values as readable text instead of a fragile numeric position. <code>@Lob</code> is for oversized text/binary content that wouldn't fit a normal column. <code>@Temporal</code> only matters for the old <code>java.util.Date</code>/<code>Calendar</code> API — modern <code>Instant</code>/<code>LocalDate</code> fields don't need it at all. The two ordering annotations solve different problems: <code>@OrderBy</code> just asks the database to sort results at read time (cheap, but the "order" isn't a real stored fact), while <code>@OrderColumn</code> actually writes a position number into the table, which you need when items can be reordered or inserted in the middle of a list.</p>
       </div>
 
       <h3 class="sub" id="sql-repo"><span class="n">07</span>Repository &amp; query annotations</h3>
@@ -357,51 +518,65 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
       <div class="code-wrap">
         <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — repository</span></div>
         <pre><code><span class="kw">public interface</span> <span class="cls">OrderRepository</span> <span class="kw">extends</span> JpaRepository&lt;<span class="cls">Order</span>, Long&gt; {
+    <span class="cmt">// extending JpaRepository already gives you save(), findById(), findAll(), delete() for free</span>
 
     <span class="ann">@Query</span>(<span class="str">"select o from Order o where o.customer.id = :customerId and o.status = :status"</span>)
+    <span class="cmt">// ^ JPQL — queries the ENTITY graph ("o.customer.id"), not raw table/column names</span>
     List&lt;<span class="cls">Order</span>&gt; <span class="fn">findByCustomerAndStatus</span>(<span class="ann">@Param</span>(<span class="str">"customerId"</span>) Long customerId, <span class="ann">@Param</span>(<span class="str">"status"</span>) <span class="cls">OrderStatus</span> status);
+    <span class="cmt">// ^ @Param binds each :placeholder above to the matching method argument by name</span>
 
-    <span class="ann">@Modifying</span>
+    <span class="ann">@Modifying</span> <span class="cmt">// required whenever the query is UPDATE/DELETE instead of SELECT</span>
     <span class="ann">@Query</span>(<span class="str">"update Order o set o.status = :status where o.id = :id"</span>)
     <span class="kw">int</span> <span class="fn">updateStatus</span>(<span class="ann">@Param</span>(<span class="str">"id"</span>) Long id, <span class="ann">@Param</span>(<span class="str">"status"</span>) <span class="cls">OrderStatus</span> status);
+    <span class="cmt">// returns the number of rows updated; caller's service method needs @Transactional</span>
 
     <span class="ann">@EntityGraph</span>(attributePaths = {<span class="str">"items"</span>, <span class="str">"customer"</span>})
+    <span class="cmt">// ^ for THIS query only, eagerly fetch items + customer in one go instead of lazily, one query each</span>
     Optional&lt;<span class="cls">Order</span>&gt; <span class="fn">findWithItemsById</span>(Long id);
 }</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> just extending <code>JpaRepository&lt;Order, Long&gt;</code> already gives you basic CRUD for free — these annotations are for the queries that basic CRUD can't express. <code>@Query</code> lets you write the exact JPQL (or raw SQL, with <code>nativeQuery = true</code>) you want instead of relying on Spring to guess it from a method name; <code>@Param</code> just wires your method arguments into that query's <code>:placeholders</code>. <code>@Modifying</code> is mandatory the moment your <code>@Query</code> changes data instead of reading it — without it Spring assumes every query returns results and errors out. <code>@EntityGraph</code> solves the N+1 problem from §03 at the query level: instead of globally marking a relationship <code>EAGER</code> (which slows down every other query too), you say "just for this one method, also fetch these associations in the same round trip."</p>
       </div>
 
       <h3 class="sub" id="sql-full"><span class="n">08</span>Full example, put together</h3>
       <div class="code-wrap">
         <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — Customer / Order model</span></div>
-        <pre><code><span class="ann">@Entity</span>
+        <pre><code><span class="ann">@Entity</span>                                                     <span class="cmt">// this class is JPA-managed and backed by a table</span>
 <span class="ann">@Table</span>(name = <span class="str">"customers"</span>, indexes = <span class="ann">@Index</span>(name = <span class="str">"idx_customer_email"</span>, columnList = <span class="str">"email"</span>, unique = <span class="kw">true</span>))
-<span class="ann">@EntityListeners</span>(AuditingEntityListener.class)
+<span class="cmt">// ^ table is "customers"; a unique index on email enforces "no two customers share an email" at the DB level</span>
+<span class="ann">@EntityListeners</span>(AuditingEntityListener.class)                <span class="cmt">// required for @CreatedDate below to actually fire</span>
 <span class="kw">public class</span> <span class="cls">Customer</span> {
 
-    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>(strategy = GenerationType.IDENTITY)
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>(strategy = GenerationType.IDENTITY) <span class="cmt">// PK, auto-assigned by the DB's own auto-increment</span>
     <span class="kw">private</span> Long id;
 
-    <span class="ann">@Column</span>(name = <span class="str">"full_name"</span>, nullable = <span class="kw">false</span>, length = <span class="num">120</span>)
+    <span class="ann">@Column</span>(name = <span class="str">"full_name"</span>, nullable = <span class="kw">false</span>, length = <span class="num">120</span>) <span class="cmt">// required field, capped at 120 chars</span>
     <span class="kw">private</span> String fullName;
 
-    <span class="kw">private</span> String email;
+    <span class="kw">private</span> String email;                                      <span class="cmt">// default column name "email" — uniqueness enforced by the @Table index above</span>
 
-    <span class="ann">@Embedded</span>
+    <span class="ann">@Embedded</span>                                                  <span class="cmt">// Address's fields (street/city/zipCode) flattened onto THIS table</span>
     <span class="kw">private</span> <span class="cls">Address</span> billingAddress;
 
-    <span class="ann">@Enumerated</span>(EnumType.STRING)
+    <span class="ann">@Enumerated</span>(EnumType.STRING)                               <span class="cmt">// stored as e.g. "ACTIVE", not an ordinal number</span>
     <span class="kw">private</span> <span class="cls">CustomerStatus</span> status;
 
     <span class="ann">@OneToMany</span>(mappedBy = <span class="str">"customer"</span>, cascade = CascadeType.ALL, orphanRemoval = <span class="kw">true</span>)
-    <span class="ann">@OrderBy</span>(<span class="str">"placedAt DESC"</span>)
-    <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders = <span class="kw">new</span> ArrayList&lt;&gt;();
+    <span class="ann">@OrderBy</span>(<span class="str">"placedAt DESC"</span>)                                  <span class="cmt">// newest order first, every time this list is loaded</span>
+    <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders = <span class="kw">new</span> ArrayList&lt;&gt;();          <span class="cmt">// inverse side — FK actually lives on Order.customer</span>
 
-    <span class="ann">@Version</span>
+    <span class="ann">@Version</span>                                                   <span class="cmt">// optimistic-lock column — prevents lost updates under concurrent writes</span>
     <span class="kw">private</span> Long version;
 
-    <span class="ann">@CreatedDate</span>
+    <span class="ann">@CreatedDate</span>                                               <span class="cmt">// auto-set once, at insert time, by the listener declared above</span>
     <span class="kw">private</span> Instant createdAt;
 }</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> this is every annotation from §01–§06 combined onto one realistic entity, so notice how they stack without conflicting. <code>@Entity</code>/<code>@Table</code> set up the basic table mapping and a uniqueness rule on email. <code>@Id</code>/<code>@GeneratedValue</code> handle the primary key. <code>@Embedded</code> pulls in the <code>Address</code> value object's columns directly (no separate table, no join). <code>@Enumerated(STRING)</code> makes the <code>status</code> column human-readable. <code>@OneToMany</code> + <code>@OrderBy</code> exposes this customer's orders, pre-sorted, with cascading deletes handled automatically. And <code>@Version</code> + <code>@CreatedDate</code> (backed by <code>@EntityListeners</code>) add safety and bookkeeping without any manual code in the service layer. Nothing here is new — it's the same annotations you've already seen, just all working together on one class the way they would in a real codebase.</p>
       </div>
     </section>
 
@@ -422,6 +597,30 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
           </tbody>
         </table>
       </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — Product document</span></div>
+        <pre><code><span class="ann">@Document</span>(collection = <span class="str">"products"</span>) <span class="cmt">// this class maps to the "products" collection in MongoDB</span>
+<span class="kw">public class</span> <span class="cls">Product</span> {
+
+    <span class="ann">@Id</span> <span class="cmt">// maps to Mongo's own "_id" field — note: org.springframework.data.annotation.Id, NOT JPA's @Id</span>
+    <span class="kw">private</span> String id;              <span class="cmt">// left null on save() -> Spring auto-generates an ObjectId hex string for you</span>
+
+    <span class="ann">@Field</span>(<span class="str">"display_name"</span>) <span class="cmt">// stored in the document as "display_name", not "name"</span>
+    <span class="kw">private</span> String name;
+
+    <span class="kw">private</span> BigDecimal price;      <span class="cmt">// no annotation needed — stored as a field literally called "price"</span>
+
+    <span class="ann">@Field</span>(targetType = FieldType.STRING) <span class="cmt">// force this enum to be stored as text, e.g. "IN_STOCK"</span>
+    <span class="kw">private</span> <span class="cls">StockStatus</span> stockStatus;    <span class="cmt">// (STRING is already Spring Data Mongo's default for enums)</span>
+
+    <span class="ann">@Transient</span> <span class="cmt">// never written to or read from the document at all</span>
+    <span class="kw">private</span> BigDecimal discountPreview; <span class="cmt">// e.g. computed in the service layer for a UI preview</span>
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> <code>@Document</code> is Mongo's equivalent of JPA's <code>@Entity</code> — it says "this class is a whole record stored in its own collection," here named <code>products</code>. There's no schema to define up front (Mongo is schemaless), so most fields need zero annotations — a plain <code>price</code> field just becomes a <code>price</code> key in the stored JSON document. You only reach for <code>@Field</code> when you want the stored name to differ from the Java field name, or to force a specific storage type. The trickiest gotcha here: Mongo's <code>@Id</code> comes from a completely different package than JPA's <code>@Id</code> — mixing up the import is the single most common copy-paste mistake between the SQL and Mongo sides of a codebase (see the gotcha box in the Compare section further down).</p>
+      </div>
 
       <h3 class="sub" id="mongo-index"><span class="n">02</span>Indexing</h3>
       <div class="table-wrap">
@@ -434,6 +633,33 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
             <tr><td><code>@Sharded</code></td><td>Marks the shard key for a sharded collection (Spring Data MongoDB 4.1+).</td><td><code>shardKey</code>.</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — indexed Order document</span></div>
+        <pre><code><span class="ann">@Document</span>(collection = <span class="str">"orders"</span>)
+<span class="ann">@CompoundIndex</span>(name = <span class="str">"customer_status_idx"</span>, def = <span class="str">"{'customerId': 1, 'status': 1}"</span>)
+<span class="cmt">// ^ ONE index across two fields together — speeds up queries that filter by BOTH customerId AND status</span>
+<span class="kw">public class</span> <span class="cls">Order</span> {
+
+    <span class="ann">@Id</span>
+    <span class="kw">private</span> String id;
+
+<span class="hl hl-mongo">    <span class="ann">@Indexed</span>(unique = <span class="kw">true</span>)</span>
+    <span class="kw">private</span> String orderNumber;      <span class="cmt">// single-field index + a uniqueness rule enforced by MongoDB itself</span>
+
+<span class="hl hl-mongo">    <span class="ann">@TextIndexed</span>(weight = <span class="num">2</span>)</span>
+    <span class="kw">private</span> String description;      <span class="cmt">// included in the collection's ONE allowed full-text search index</span>
+
+<span class="hl hl-mongo">    <span class="ann">@Indexed</span>(expireAfterSeconds = <span class="num">2592000</span>)</span>
+    <span class="kw">private</span> Instant placedAt;         <span class="cmt">// TTL index — MongoDB auto-deletes this document 30 days after placedAt</span>
+
+    <span class="kw">private</span> String customerId;        <span class="cmt">// no @Indexed here — only queried through the compound index above</span>
+    <span class="kw">private</span> <span class="cls">OrderStatus</span> status;
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> an index is just a lookup shortcut so MongoDB doesn't have to scan every document to answer a query. <code>@Indexed</code> builds one on a single field — add <code>unique = true</code> and Mongo will also reject duplicate values outright, like <code>orderNumber</code> above. <code>@CompoundIndex</code> is for queries that always filter on the <em>combination</em> of two or more fields together (customer + status) — a single-field index on each wouldn't be as efficient. <code>@TextIndexed</code> is specifically for free-text search (like a search box), and Mongo only allows one per collection, across however many fields you mark. <code>@Indexed(expireAfterSeconds=)</code> is the odd one out — it's not really about lookup speed at all, it's a TTL (time-to-live) index that has MongoDB silently delete the document once that many seconds have passed since the indexed timestamp.</p>
       </div>
       <div class="box gotcha">
         <div class="box-icon">⚠️</div>
@@ -455,19 +681,30 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
       </div>
       <div class="code-wrap">
         <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — three ways to model "customer has orders"</span></div>
-        <pre><code><span class="cmt">// (a) embed — orders live inside the customer document</span>
+        <pre><code><span class="cmt">// (a) embed — orders live INSIDE the customer document, as a nested array of JSON objects</span>
 <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders;
+<span class="cmt">// -> one read gets the customer AND all their orders in a single round trip</span>
+<span class="cmt">// -> but you can't query/update ONE order without loading the whole customer document</span>
 
-<span class="cmt">// (b) @DBRef — orders stay in their own collection, referenced lazily</span>
+<span class="cmt">// (b) @DBRef — orders stay in their OWN "orders" collection; this field stores a pointer to them</span>
 <span class="hl hl-mongo"><span class="ann">@DBRef</span>(lazy = <span class="kw">true</span>)</span>
 <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders;
+<span class="cmt">// -> lazy=true: don't resolve the referenced Order documents until this field is actually accessed</span>
+<span class="cmt">// -> each Order in the list = a separate query to resolve — an N+1 risk if you loop over many customers</span>
 
 <span class="cmt">// (c) @DocumentReference — the modern equivalent, more control over the lookup</span>
 <span class="hl hl-mongo"><span class="ann">@DocumentReference</span>(lazy = <span class="kw">true</span>)</span>
 <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders;
+<span class="cmt">// -> same idea as @DBRef, but can reference by any field (not just _id) and works with reactive repos</span>
 
 <span class="cmt">// (d) manual reference — just an id, resolved explicitly in the service</span>
-<span class="kw">private</span> List&lt;String&gt; orderIds;</code></pre>
+<span class="kw">private</span> List&lt;String&gt; orderIds;
+<span class="cmt">// -> Spring does nothing automatically here; YOU call orderRepository.findAllById(orderIds) when needed</span>
+<span class="cmt">// -> most explicit option — full control over when the second query actually happens</span></code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> Mongo has no foreign keys, so "how does a Customer relate to their Orders" is a design decision you make yourself, not something an annotation enforces. Option (a), embedding, is the Mongo-native default — no annotation at all, the order data is physically nested inside the customer's JSON document. That's fast to read but means the orders can't be queried on their own or shared with anything else. Options (b) and (c) keep orders in their own collection and just store a reference (like a foreign key) — <code>@DBRef</code> is the older, built-in way; <code>@DocumentReference</code> is the newer, more flexible replacement. Option (d) skips Spring's automatic resolution entirely and just stores plain ids you look up yourself — more code, but no hidden queries and no surprises about when data gets fetched.</p>
       </div>
       <div class="box tip">
         <div class="box-icon">💡</div>
@@ -484,6 +721,42 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
             <tr><td><code>@CreatedBy</code> / <code>@LastModifiedBy</code></td><td>Auto-populated current principal.</td><td>Requires an <code>AuditorAware</code> bean, same as JPA.</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — audited Mongo document</span></div>
+        <pre><code><span class="ann">@Configuration</span>
+<span class="ann">@EnableMongoAuditing</span> <span class="cmt">// turns auditing ON for every @Document — no per-class listener needed, unlike JPA</span>
+<span class="kw">public class</span> <span class="cls">MongoAuditingConfig</span> {
+    <span class="ann">@Bean</span>
+    <span class="kw">public</span> AuditorAware&lt;String&gt; <span class="fn">auditorProvider</span>() {
+        <span class="kw">return</span> () -&gt; Optional.of(SecurityContextHolder.getContext().getAuthentication().getName());
+    }
+}
+
+<span class="ann">@Document</span>(collection = <span class="str">"orders"</span>) <span class="cmt">// no @EntityListeners here — Mongo's mapping converter applies auditing automatically</span>
+<span class="kw">public class</span> <span class="cls">Order</span> {
+    <span class="ann">@Id</span>
+    <span class="kw">private</span> String id;
+
+<span class="hl hl-mongo">    <span class="ann">@Version</span></span>
+    <span class="kw">private</span> Long version;           <span class="cmt">// same idea as JPA's @Version — checked before overwriting the document</span>
+
+<span class="hl hl-mongo">    <span class="ann">@CreatedDate</span></span>
+    <span class="kw">private</span> Instant createdAt;     <span class="cmt">// set once, automatically, on first insert</span>
+
+<span class="hl hl-mongo">    <span class="ann">@LastModifiedDate</span></span>
+    <span class="kw">private</span> Instant updatedAt;     <span class="cmt">// re-set automatically on every save() after that</span>
+
+<span class="hl hl-mongo">    <span class="ann">@CreatedBy</span></span>
+    <span class="kw">private</span> String createdBy;      <span class="cmt">// from the SAME AuditorAware bean type used on the JPA side</span>
+
+<span class="hl hl-mongo">    <span class="ann">@LastModifiedBy</span></span>
+    <span class="kw">private</span> String lastModifiedBy;
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> this is functionally identical to the JPA auditing example — same four field annotations, same <code>AuditorAware</code> bean for "who is the current user." The one real difference is ceremony: JPA needs <code>@EntityListeners(AuditingEntityListener.class)</code> stamped on every single entity you want audited, or the fields silently stay null. Mongo doesn't — once <code>@EnableMongoAuditing</code> is set up globally, every <code>@Document</code> class gets audited automatically, no per-class annotation required.</p>
       </div>
       <div class="box tip">
         <div class="box-icon">💡</div>
@@ -505,61 +778,73 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
       <div class="code-wrap">
         <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — repository</span></div>
         <pre><code><span class="kw">public interface</span> <span class="cls">OrderRepository</span> <span class="kw">extends</span> MongoRepository&lt;<span class="cls">Order</span>, String&gt; {
+    <span class="cmt">// extending MongoRepository already gives you save(), findById(), findAll(), delete() for free</span>
 
     <span class="ann">@Query</span>(<span class="str">"{ 'customerId': ?0, 'status': ?1 }"</span>)
+    <span class="cmt">// ^ raw MongoDB JSON filter — ?0/?1 are positional placeholders for the method's arguments, in order</span>
     List&lt;<span class="cls">Order</span>&gt; <span class="fn">findByCustomerAndStatus</span>(String customerId, String status);
 
     <span class="ann">@Aggregation</span>(pipeline = {
-        <span class="str">"{ $match: { status: 'COMPLETED' } }"</span>,
-        <span class="str">"{ $group: { _id: '$customerId', total: { $sum: '$amount' } } }"</span>
+        <span class="str">"{ $match: { status: 'COMPLETED' } }"</span>,                              <span class="cmt">// stage 1: keep only completed orders</span>
+        <span class="str">"{ $group: { _id: '$customerId', total: { $sum: '$amount' } } }"</span>  <span class="cmt">// stage 2: sum amount per customer</span>
     })
+    <span class="cmt">// ^ a real MongoDB aggregation pipeline — for reporting/analytics queries a simple filter can't express</span>
     List&lt;<span class="cls">CustomerSpend</span>&gt; <span class="fn">totalSpendPerCustomer</span>();
 }</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> just like <code>JpaRepository</code>, extending <code>MongoRepository&lt;Order, String&gt;</code> gives you basic CRUD for free, and Spring can also auto-generate simple finders from method names alone (no annotation needed) — these two annotations are for when that's not enough. <code>@Query</code> here takes literal MongoDB JSON syntax instead of JPQL, since there's no SQL-like query language on the Mongo side; the <code>?0</code>/<code>?1</code> placeholders just mean "first argument," "second argument." <code>@Aggregation</code> is for genuinely different kinds of questions — not "find these documents" but "compute something across many of them," like totaling spend per customer, which is what MongoDB's aggregation pipeline (a sequence of `$match`/`$group`/etc. stages) is built for.</p>
       </div>
 
       <h3 class="sub" id="mongo-full"><span class="n">06</span>Full example, put together</h3>
       <div class="code-wrap">
         <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — Customer / Order model</span></div>
-        <pre><code><span class="ann">@Document</span>(collection = <span class="str">"customers"</span>)
+        <pre><code><span class="ann">@Document</span>(collection = <span class="str">"customers"</span>)                <span class="cmt">// this class -> the "customers" collection</span>
 <span class="kw">public class</span> <span class="cls">Customer</span> {
 
     <span class="ann">@Id</span>
-    <span class="kw">private</span> String id; <span class="cmt">// maps to _id</span>
+    <span class="kw">private</span> String id; <span class="cmt">// maps to _id; null on save() -> Spring generates an ObjectId hex string</span>
 
-    <span class="ann">@Field</span>(<span class="str">"full_name"</span>)
+    <span class="ann">@Field</span>(<span class="str">"full_name"</span>)                              <span class="cmt">// stored as "full_name" in the document, not "fullName"</span>
     <span class="kw">private</span> String fullName;
 
-    <span class="ann">@Indexed</span>(unique = <span class="kw">true</span>)
+    <span class="ann">@Indexed</span>(unique = <span class="kw">true</span>)                             <span class="cmt">// fast lookups by email + DB-enforced no-duplicates rule</span>
     <span class="kw">private</span> String email;
 
-    <span class="kw">private</span> <span class="cls">Address</span> billingAddress; <span class="cmt">// embedded automatically — plain POJO, no annotation</span>
+    <span class="kw">private</span> <span class="cls">Address</span> billingAddress; <span class="cmt">// embedded automatically — plain POJO, no annotation, nested right in this document</span>
 
-    <span class="ann">@Field</span>(targetType = FieldType.STRING)
+    <span class="ann">@Field</span>(targetType = FieldType.STRING)               <span class="cmt">// stored as e.g. "ACTIVE" rather than a number</span>
     <span class="kw">private</span> <span class="cls">CustomerStatus</span> status;
 
     <span class="ann">@DBRef</span>(lazy = <span class="kw">true</span>)
-    <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders; <span class="cmt">// referenced — lives in its own "orders" collection</span>
+    <span class="kw">private</span> List&lt;<span class="cls">Order</span>&gt; orders; <span class="cmt">// referenced — lives in its own "orders" collection, resolved on access</span>
 
-    <span class="ann">@Version</span>
+    <span class="ann">@Version</span>                                           <span class="cmt">// optimistic locking, same idea as JPA</span>
     <span class="kw">private</span> Long version;
 
-    <span class="ann">@CreatedDate</span>
+    <span class="ann">@CreatedDate</span>                                       <span class="cmt">// requires @EnableMongoAuditing — no listener annotation needed here</span>
     <span class="kw">private</span> Instant createdAt;
 }
 
 <span class="ann">@Document</span>(collection = <span class="str">"orders"</span>)
 <span class="ann">@CompoundIndex</span>(name = <span class="str">"customer_status_idx"</span>, def = <span class="str">"{'customerId': 1, 'status': 1}"</span>)
+<span class="cmt">// ^ speeds up queries filtering by BOTH customerId and status together (e.g. this customer's pending orders)</span>
 <span class="kw">public class</span> <span class="cls">Order</span> {
 
     <span class="ann">@Id</span>
     <span class="kw">private</span> String id;
 
-    <span class="kw">private</span> String customerId;
-    <span class="kw">private</span> List&lt;<span class="cls">OrderItem</span>&gt; items; <span class="cmt">// embedded — line items belong to this order alone</span>
+    <span class="kw">private</span> String customerId;             <span class="cmt">// plain field — no @Indexed, only queried via the compound index above</span>
+    <span class="kw">private</span> List&lt;<span class="cls">OrderItem</span>&gt; items; <span class="cmt">// embedded — line items belong to this order alone, never shared</span>
 
-    <span class="ann">@Indexed</span>(expireAfterSeconds = <span class="num">2592000</span>) <span class="cmt">// TTL index — auto-deleted after 30 days</span>
+    <span class="ann">@Indexed</span>(expireAfterSeconds = <span class="num">2592000</span>) <span class="cmt">// TTL index — this document is auto-deleted 30 days after placedAt</span>
     <span class="kw">private</span> Instant placedAt;
 }</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> same idea as the SQL full example — every Mongo annotation you've now seen, combined onto one realistic pair of documents. Notice the design choice baked in: <code>Customer.orders</code> is <em>referenced</em> via <code>@DBRef</code> (because a customer's order history grows without bound and shouldn't bloat every customer read), while <code>Order.items</code> is <em>embedded</em> as a plain list (because line items are only ever meaningful attached to their one order, and are read together with it). That's the embed-vs-reference rule of thumb from §03 applied in practice, sitting right next to indexing, auditing, and enum storage on the same two classes.</p>
       </div>
     </section>
 
@@ -613,6 +898,42 @@ footer { text-align:center; padding:40px 24px 60px; color:var(--muted2); font-si
             <tr><td><code>@Builder</code></td><td>Lombok</td><td>Fluent construction for entities/documents with many optional fields.</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="code-wrap">
+        <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — validation + Lombok, on top of persistence annotations</span></div>
+        <pre><code><span class="ann">@Entity</span>
+<span class="ann">@Data</span>                        <span class="cmt">// Lombok: generates getters, setters, equals/hashCode, toString at compile time</span>
+<span class="ann">@NoArgsConstructor</span>          <span class="cmt">// Lombok: empty constructor — JPA REQUIRES this to exist on every entity</span>
+<span class="ann">@AllArgsConstructor</span>         <span class="cmt">// Lombok: constructor taking every field, handy for tests/builders</span>
+<span class="ann">@Builder</span>                     <span class="cmt">// Lombok: enables Customer.builder().fullName("...").email("...").build()</span>
+<span class="kw">public class</span> <span class="cls">Customer</span> {
+
+    <span class="ann">@Id</span> <span class="ann">@GeneratedValue</span>
+    <span class="kw">private</span> Long id;
+
+<span class="hl hl-sql">    <span class="ann">@NotBlank</span>(message = <span class="str">"Full name is required"</span>)</span>
+    <span class="ann">@Size</span>(max = <span class="num">120</span>)     <span class="cmt">// enforced by @Valid at the controller/service boundary — NOT by the database</span>
+    <span class="kw">private</span> String fullName;
+
+<span class="hl hl-sql">    <span class="ann">@Email</span></span>                <span class="cmt">// checks it looks like a real email address BEFORE it ever reaches persistence code</span>
+<span class="hl hl-sql">    <span class="ann">@NotBlank</span></span>
+    <span class="kw">private</span> String email;
+
+<span class="hl hl-sql">    <span class="ann">@Min</span>(<span class="num">0</span>) <span class="ann">@Max</span>(<span class="num">100</span>)</span>  <span class="cmt">// keeps a percentage-style field inside a sane range</span>
+    <span class="kw">private</span> <span class="kw">int</span> loyaltyDiscountPercent;
+}
+
+<span class="cmt">// elsewhere, in a controller:</span>
+<span class="ann">@PostMapping</span>(<span class="str">"/customers"</span>)
+<span class="kw">public</span> <span class="cls">Customer</span> <span class="fn">create</span>(<span class="ann">@Valid</span> <span class="ann">@RequestBody</span> <span class="cls">Customer</span> customer) {
+    <span class="cmt">// @Valid triggers the @NotBlank/@Size/@Email/@Min/@Max checks above — invalid requests</span>
+    <span class="cmt">// never even reach this method body, Spring returns a 400 automatically</span>
+    <span class="kw">return</span> customerRepository.save(customer);
+}</code></pre>
+      </div>
+      <div class="box note-box">
+        <div class="box-icon">🔎</div>
+        <p><strong>In plain English:</strong> these two families sit right next to persistence annotations on the same class but do a completely different job. Bean Validation (<code>@NotBlank</code>, <code>@Size</code>, <code>@Email</code>, <code>@Min</code>/<code>@Max</code>) checks that incoming data is <em>sensible</em> before it's ever saved — it's enforced in application code when something calls <code>@Valid</code> (typically a REST controller), and a bad request never reaches the database at all. It's a different layer from a database constraint like <code>@Column(nullable=false)</code>, which only fires when Hibernate actually tries to write the row. Lombok, meanwhile, isn't about correctness at all — <code>@Data</code>/<code>@NoArgsConstructor</code>/<code>@AllArgsConstructor</code>/<code>@Builder</code> just generate boilerplate code (getters, setters, constructors) at compile time so you don't hand-write it. The one Lombok annotation that actually matters functionally for JPA is <code>@NoArgsConstructor</code> — Hibernate needs a no-args constructor to instantiate entities via reflection when loading rows from the database, and forgetting one is a classic runtime error.</p>
       </div>
     </section>
 
