@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Three-Hop Reply — Kafka A → B → C Request/Reply</title>
+<style>
+:root{
+  --bg:#f2f4f6;
+  --surface:#ffffff;
+  --surface-raised:#fbfcfd;
+  --ink:#161a21;
+  --muted:#5a6472;
+  --faint:#8891a0;
+  --line:#d8dce1;
+  --line-strong:#c1c7cf;
+  --amber:#b5620f;
+  --amber-ink:#8a4a0b;
+  --teal:#12666f;
+  --teal-ink:#0d4d54;
+  --good:#2e7d4f;
+  --bad:#b23b3b;
+  --code-bg:#eef1f4;
+  --code-ink:#252b34;
+  --shadow: 0 1px 2px rgba(20,24,30,.06), 0 8px 24px -12px rgba(20,24,30,.18);
+  --serif: "Iowan Old Style","Palatino Linotype","Book Antiqua",Georgia,serif;
+  --sans: "Segoe UI Semibold","Segoe UI",-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono: "Cascadia Code","Segoe UI Mono",Consolas,"Liberation Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0e1116;
+    --surface:#171b22;
+    --surface-raised:#1c212a;
+    --ink:#e7e9ee;
+    --muted:#9099a8;
+    --faint:#69707d;
+    --line:#2a3038;
+    --line-strong:#3a4149;
+    --amber:#e0922f;
+    --amber-ink:#f0ab52;
+    --teal:#49aeb5;
+    --teal-ink:#6fc3c9;
+    --good:#4fae76;
+    --bad:#e0685f;
+    --code-bg:#12151b;
+    --code-ink:#dde1e7;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -16px rgba(0,0,0,.6);
+  }
+}
+
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--serif);
+  font-size:17px;
+  line-height:1.65;
+}
+::selection{ background: color-mix(in srgb, var(--amber) 30%, transparent); }
+
+a{ color:var(--teal-ink); text-decoration-color: color-mix(in srgb, var(--teal-ink) 40%, transparent); text-underline-offset:2px; }
+a:hover{ text-decoration-color: var(--teal-ink); }
+a:focus-visible, button:focus-visible, summary:focus-visible{ outline:2px solid var(--teal-ink); outline-offset:2px; }
+
+h1,h2,h3,h4{ font-family:var(--sans); font-weight:600; color:var(--ink); text-wrap:balance; letter-spacing:-0.01em; }
+p{ text-wrap:pretty; }
+
+code, kbd{ font-family:var(--mono); font-size:.88em; }
+
+/* ---------- shell / masthead ---------- */
+.masthead{
+  border-bottom:1px solid var(--line);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--teal) 6%, transparent), transparent 70%),
+    var(--surface);
+  padding: 44px max(24px, calc(50% - 620px)) 34px;
+}
+.kicker{
+  font-family:var(--mono);
+  font-size:12.5px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--amber-ink);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:14px;
+}
+.kicker .dot{ width:6px; height:6px; border-radius:50%; background:var(--amber); box-shadow:0 0 0 3px color-mix(in srgb, var(--amber) 20%, transparent); }
+.masthead h1{
+  font-size:clamp(28px,4vw,40px);
+  line-height:1.12;
+  margin:0 0 12px;
+  max-width:16ch;
+}
+.masthead .sub{
+  font-family:var(--serif);
+  font-size:18px;
+  color:var(--muted);
+  max-width:62ch;
+  margin:0 0 20px;
+}
+.meta-row{
+  display:flex; flex-wrap:wrap; gap:8px 10px;
+  font-family:var(--mono); font-size:12.5px; color:var(--faint);
+}
+.meta-row span{
+  border:1px solid var(--line-strong); border-radius:100px;
+  padding:3px 10px;
+}
+
+/* ---------- layout ---------- */
+.wrap{
+  display:grid;
+  grid-template-columns: 220px minmax(0,760px);
+  gap:56px;
+  max-width:1080px;
+  margin:0 auto;
+  padding: 40px 24px 90px;
+  justify-content:center;
+}
+@media (max-width: 880px){
+  .wrap{ grid-template-columns: minmax(0,1fr); padding:28px 18px 70px; }
+  nav.toc{ position:static; margin-bottom:8px; }
+}
+
+nav.toc{
+  position:sticky; top:28px; align-self:start;
+  font-family:var(--sans); font-size:13px;
+}
+nav.toc .toc-label{
+  font-family:var(--mono); text-transform:uppercase; letter-spacing:.1em;
+  font-size:11px; color:var(--faint); margin-bottom:10px;
+}
+nav.toc ol{ list-style:none; margin:0; padding:0; border-left:1px solid var(--line); }
+nav.toc li{ margin:0; }
+nav.toc a{
+  display:block; padding:6px 0 6px 14px; color:var(--muted); text-decoration:none;
+  border-left:2px solid transparent; margin-left:-1px;
+  font-weight:600; line-height:1.35;
+}
+nav.toc a:hover{ color:var(--ink); border-left-color:var(--line-strong); }
+
+main{ min-width:0; }
+section{ margin-bottom:52px; scroll-margin-top:24px; }
+section > h2{
+  font-size:22px; margin:0 0 4px;
+  display:flex; align-items:baseline; gap:10px;
+}
+section > h2 .num{ font-family:var(--mono); font-size:14px; color:var(--faint); font-weight:500; }
+.section-dek{ color:var(--muted); font-size:15px; margin:0 0 22px; max-width:60ch; }
+h3{ font-size:17px; margin:28px 0 10px; }
+h4{ font-size:14.5px; margin:20px 0 8px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+
+p{ margin:0 0 14px; }
+ul,ol{ margin:0 0 14px; padding-left:22px; }
+li{ margin-bottom:6px; }
+strong{ color:var(--ink); }
+
+/* ---------- panels / callouts ---------- */
+.panel{
+  background:var(--surface); border:1px solid var(--line); border-radius:10px;
+  padding:20px 22px; margin:18px 0; box-shadow:var(--shadow);
+}
+.callout{
+  border-radius:10px; border:1px solid var(--line);
+  padding:16px 18px; margin:18px 0;
+  font-family:var(--sans); font-size:14.5px; line-height:1.55;
+  background:var(--surface-raised);
+}
+.callout.hard{ border-color: color-mix(in srgb, var(--amber) 45%, var(--line)); }
+.callout.hard .callout-tag{ color:var(--amber-ink); }
+.callout.good{ border-color: color-mix(in srgb, var(--teal) 45%, var(--line)); }
+.callout.good .callout-tag{ color:var(--teal-ink); }
+.callout-tag{
+  font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.1em;
+  display:block; margin-bottom:8px; font-weight:700;
+}
+
+.story{
+  background: linear-gradient(180deg, color-mix(in srgb, var(--amber) 8%, var(--surface)), var(--surface));
+  border:1px solid color-mix(in srgb, var(--amber) 35%, var(--line));
+  border-radius:12px; padding:24px 26px; margin:20px 0 8px;
+  box-shadow:var(--shadow);
+}
+.story h3{ margin-top:0; font-size:15px; text-transform:uppercase; letter-spacing:.08em; color:var(--amber-ink); font-family:var(--sans); }
+.story dl{ display:grid; grid-template-columns: 88px 1fr; gap:8px 16px; margin:14px 0 0; font-family:var(--sans); font-size:14.5px;}
+.story dt{ font-weight:700; color:var(--amber-ink); }
+.story dd{ margin:0; color:var(--ink); }
+
+/* ---------- code ---------- */
+.code-block{
+  background:var(--code-bg); border:1px solid var(--line); border-radius:8px;
+  overflow-x:auto; margin:14px 0 18px;
+}
+.code-block .file{
+  font-family:var(--mono); font-size:11.5px; color:var(--muted);
+  padding:8px 14px; border-bottom:1px solid var(--line); letter-spacing:.02em;
+  display:flex; justify-content:space-between; gap:12px;
+}
+.code-block pre{
+  margin:0; padding:14px 16px; font-family:var(--mono); font-size:13px;
+  line-height:1.6; color:var(--code-ink); white-space:pre;
+}
+.code-block code{ font-size:inherit; }
+.tok{ color:var(--teal-ink); }
+.kw{ color:var(--amber-ink); }
+.cmt{ color:var(--faint); font-style:italic; }
+.str{ color:var(--good); }
+
+/* ---------- tables ---------- */
+.table-wrap{ overflow-x:auto; margin:16px 0 22px; border:1px solid var(--line); border-radius:10px; }
+table{ border-collapse:collapse; width:100%; min-width:640px; font-size:14px; font-family:var(--sans); }
+caption{ text-align:left; font-family:var(--mono); font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--faint); padding:10px 14px; background:var(--surface-raised); border-bottom:1px solid var(--line); }
+th, td{ text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); vertical-align:top; }
+thead th{ background:var(--surface-raised); font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; }
+tbody tr:last-child td{ border-bottom:none; }
+tbody tr:hover{ background: color-mix(in srgb, var(--teal) 5%, transparent); }
+td code, th code{ font-size:12.5px; background:var(--code-bg); padding:1px 5px; border-radius:4px; white-space:nowrap; }
+td.num{ font-variant-numeric:tabular-nums; }
+
+/* ---------- diagram ---------- */
+.diagram-wrap{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:8px; margin:18px 0 22px; box-shadow:var(--shadow); overflow-x:auto; }
+.diagram-wrap svg{ display:block; min-width:640px; }
+.svglabel{ font-family:var(--sans); font-weight:600; }
+.svgmono{ font-family:var(--mono); }
+
+/* ---------- misc ---------- */
+.pill{
+  display:inline-block; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em;
+  padding:2px 9px; border-radius:100px; border:1px solid var(--line-strong); color:var(--muted); margin-right:6px;
+}
+.pill.amber{ color:var(--amber-ink); border-color:color-mix(in srgb, var(--amber) 50%, var(--line-strong)); }
+.pill.teal{ color:var(--teal-ink); border-color:color-mix(in srgb, var(--teal) 50%, var(--line-strong)); }
+
+hr.rule{ border:none; border-top:1px dashed var(--line-strong); margin:40px 0; }
+
+footer{
+  max-width:1080px; margin:0 auto; padding: 10px 24px 60px;
+  font-family:var(--sans); font-size:12.5px; color:var(--faint);
+  border-top:1px solid var(--line); padding-top:22px;
+}
+
+@media (prefers-reduced-motion: reduce){ *{ scroll-behavior:auto !important; } }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="kicker"><span class="dot"></span>Interview reference &middot; distributed messaging</div>
+  <h1>The Three-Hop Reply</h1>
+  <p class="sub">How a synchronous-feeling request/reply was built across three services on Kafka — A&nbsp;→&nbsp;B&nbsp;→&nbsp;C, with C answering A directly — at 200 TPS, with manual acknowledgment, tuned retries, circuit breakers on the enrichment calls, and dead-letter queues as the backstop against data loss.</p>
+  <div class="meta-row">
+    <span>ReplyingKafkaTemplate</span>
+    <span>Manual ACK</span>
+    <span>DefaultErrorHandler + Backoff</span>
+    <span>Resilience4j</span>
+    <span>DeadLetterPublishingRecoverer</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <nav class="toc" aria-label="Table of contents">
+    <div class="toc-label">Contents</div>
+    <ol>
+      <li><a href="#context">The problem</a></li>
+      <li><a href="#architecture">Architecture</a></li>
+      <li><a href="#hard-part">The hard part</a></li>
+      <li><a href="#acks">Manual acknowledgment</a></li>
+      <li><a href="#concurrency">Concurrency &amp; throughput</a></li>
+      <li><a href="#retries">Retries &amp; backoff</a></li>
+      <li><a href="#circuit-breaker">Circuit breakers</a></li>
+      <li><a href="#dlq">Dead letter queues</a></li>
+      <li><a href="#properties">Property reference</a></li>
+      <li><a href="#pitfalls">Pitfalls &amp; the pitch</a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <section id="context">
+      <h2><span class="num">01</span>The problem</h2>
+      <p class="section-dek">Three services, one logical transaction, no message broker feature that does this for you out of the box.</p>
+
+      <p>Three internal services — call them <strong>A</strong>, <strong>B</strong>, and <strong>C</strong> — needed to behave like a synchronous call chain while actually communicating over Kafka. <strong>A</strong> sent a unit of work to <strong>B</strong>. <strong>B</strong> transformed it and forwarded it to <strong>C</strong>. <strong>C</strong> did the final processing and sent the result <em>directly back to A</em>, not back through B. The caller of A was blocked (or held a callback) waiting on that final answer, at a sustained volume of roughly <strong>200 transactions per second</strong>.</p>
+
+      <p>Every public example of Kafka request/reply — Spring's own documentation included — covers exactly two participants: a requester and a replier, using the same topic pair for the whole exchange. Almost nothing describes what happens when the reply has to come from a service that never received the original request directly. That gap, plus the requirement that <strong>no in-flight message could ever silently disappear</strong>, is what made this a genuinely non-trivial design rather than a copy-paste of a tutorial.</p>
+
+      <div class="callout good">
+        <span class="callout-tag">Constraints going in</span>
+        Sustained 200 TPS · zero tolerance for silent data loss · a three-service hop where the reply originates from the last hop, not the first · internal "massaging" calls inside each service that were themselves unreliable enough to need their own protection.
+      </div>
+    </section>
+
+    <section id="architecture">
+      <h2><span class="num">02</span>Architecture</h2>
+      <p class="section-dek">A initiates and waits; B relays and transforms; C answers on A's behalf. Every arrow that can fail has a dead-letter exit.</p>
+
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 980 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of services A, B, C connected by Kafka topics, with A sending to B, B sending to C, and C replying directly to A. Dead letter topics hang off B and C, and each service has an internal enrichment call guarded by a circuit breaker.">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" style="fill:var(--muted)"></path>
+            </marker>
+            <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" style="fill:var(--teal-ink)"></path>
+            </marker>
+          </defs>
+
+          <g>
+            <rect x="40" y="60" width="150" height="72" rx="9" style="fill:var(--surface-raised);stroke:var(--line-strong)"></rect>
+            <text x="115" y="90" text-anchor="middle" class="svglabel" style="fill:var(--ink);font-size:18px">Service A</text>
+            <text x="115" y="110" text-anchor="middle" class="svgmono" style="fill:var(--muted);font-size:11px">initiator · waits on reply</text>
+          </g>
+
+          <g>
+            <rect x="415" y="60" width="150" height="72" rx="9" style="fill:var(--surface-raised);stroke:var(--line-strong)"></rect>
+            <text x="490" y="90" text-anchor="middle" class="svglabel" style="fill:var(--ink);font-size:18px">Service B</text>
+            <text x="490" y="110" text-anchor="middle" class="svgmono" style="fill:var(--muted);font-size:11px">relays · transforms</text>
+          </g>
+
+          <g>
+            <rect x="790" y="60" width="150" height="72" rx="9" style="fill:var(--surface-raised);stroke:var(--line-strong)"></rect>
+            <text x="865" y="90" text-anchor="middle" class="svglabel" style="fill:var(--ink);font-size:18px">Service C</text>
+            <text x="865" y="110" text-anchor="middle" class="svgmono" style="fill:var(--muted);font-size:11px">terminal · replies to A</text>
+          </g>
+
+          <path d="M190,96 L415,96" style="stroke:var(--muted);stroke-width:1.6;fill:none" marker-end="url(#arrow)"></path>
+          <text x="302" y="86" text-anchor="middle" class="svgmono" style="fill:var(--muted);font-size:11px">req.b.topic</text>
+          <text x="302" y="118" text-anchor="middle" class="svgmono" style="fill:var(--faint);font-size:9.5px">REPLY_TOPIC + CORRELATION_ID set</text>
+
+          <path d="M565,96 L790,96" style="stroke:var(--muted);stroke-width:1.6;fill:none" marker-end="url(#arrow)"></path>
+          <text x="677" y="86" text-anchor="middle" class="svgmono" style="fill:var(--muted);font-size:11px">req.c.topic</text>
+          <text x="677" y="118" text-anchor="middle" class="svgmono" style="fill:var(--faint);font-size:9.5px">headers copied forward, unchanged</text>
+
+          <path d="M865,132 C 865,300 115,300 115,132" style="stroke:var(--teal-ink);stroke-width:1.8;fill:none;stroke-dasharray:1,0" marker-end="url(#arrowTeal)"></path>
+          <text x="490" y="292" text-anchor="middle" class="svgmono" style="fill:var(--teal-ink);font-size:11.5px" font-weight="700">reply.a.topic</text>
+          <text x="490" y="310" text-anchor="middle" class="svgmono" style="fill:var(--faint);font-size:9.5px">C reads REPLY_TOPIC + CORRELATION_ID from the inbound record's headers</text>
+
+          <g>
+            <rect x="420" y="150" width="140" height="46" rx="7" style="fill:none;stroke:var(--amber);stroke-width:1.3;stroke-dasharray:4,3"></rect>
+            <text x="490" y="168" text-anchor="middle" class="svgmono" style="fill:var(--amber-ink);font-size:10.5px">enrichment call</text>
+            <text x="490" y="182" text-anchor="middle" class="svgmono" style="fill:var(--amber-ink);font-size:10.5px">circuit breaker</text>
+            <path d="M490,132 L490,150" style="stroke:var(--amber);stroke-width:1.3" marker-end="url(#arrow)"></path>
+          </g>
+          <g>
+            <rect x="795" y="150" width="140" height="46" rx="7" style="fill:none;stroke:var(--amber);stroke-width:1.3;stroke-dasharray:4,3"></rect>
+            <text x="865" y="168" text-anchor="middle" class="svgmono" style="fill:var(--amber-ink);font-size:10.5px">enrichment call</text>
+            <text x="865" y="182" text-anchor="middle" class="svgmono" style="fill:var(--amber-ink);font-size:10.5px">circuit breaker</text>
+            <path d="M865,132 L865,150" style="stroke:var(--amber);stroke-width:1.3" marker-end="url(#arrow)"></path>
+          </g>
+
+          <g>
+            <rect x="440" y="360" width="100" height="42" rx="7" style="fill:var(--surface);stroke:var(--bad);stroke-width:1.3"></rect>
+            <text x="490" y="385" text-anchor="middle" class="svgmono" style="fill:var(--bad);font-size:11px">req.b.topic.DLT</text>
+          </g>
+          <path d="M490,132 C 380,220 380,320 460,360" style="stroke:var(--bad);stroke-width:1.2;fill:none;stroke-dasharray:3,3" marker-end="url(#arrow)"></path>
+
+          <g>
+            <rect x="815" y="360" width="100" height="42" rx="7" style="fill:var(--surface);stroke:var(--bad);stroke-width:1.3"></rect>
+            <text x="865" y="385" text-anchor="middle" class="svgmono" style="fill:var(--bad);font-size:11px">req.c.topic.DLT</text>
+          </g>
+          <path d="M865,132 C 755,220 755,320 835,360" style="stroke:var(--bad);stroke-width:1.2;fill:none;stroke-dasharray:3,3" marker-end="url(#arrow)"></path>
+
+          <text x="20" y="415" class="svgmono" style="fill:var(--faint);font-size:10px">retries exhausted on any hop → DeadLetterPublishingRecoverer → manual-review team</text>
+        </svg>
+      </div>
+
+      <p>Two things make this different from the two-service tutorials: the reply on the dashed teal line originates at <strong>C</strong>, not at the service A actually called — and every solid arrow has a dashed red exit ramp, because at 200 TPS over a day, "retries exhausted" stops being a hypothetical.</p>
+    </section>
+
+    <section id="hard-part">
+      <h2><span class="num">03</span>The hard part: a reply from the wrong service</h2>
+      <p class="section-dek">ReplyingKafkaTemplate is built for a two-party exchange. Making C answer on A's behalf meant treating its correlation headers as a payload B had to carry, not consume.</p>
+
+      <p><code>ReplyingKafkaTemplate</code> works by attaching two headers to the outbound record when the request is sent: <code>KafkaHeaders.REPLY_TOPIC</code> (the topic the caller is listening on) and <code>KafkaHeaders.CORRELATION_ID</code> (a UUID, added by an internal <code>CorrelationIdPostProcessor</code> if you don't set one yourself). The template registers a <em>reply container</em> — its own <code>@KafkaListener</code>-style consumer on the reply topic — and keeps a map of correlation ID → pending <code>RequestReplyFuture</code>. When a record lands on the reply topic with a matching correlation ID, that future completes and whoever called <code>sendAndReceive()</code> gets their answer.</p>
+
+      <p>That mechanism assumes the same process that consumed the request is the one that produces the reply. Here it isn't — B consumes A's message but C produces the reply. So B's job on the way out is <strong>not</strong> to terminate those headers, but to copy them, byte for byte, onto the record it sends to C. C's job is to read them back off the record it receives from B and stamp them onto the reply it sends to A, rather than generating anything of its own.</p>
+
+      <div class="code-block">
+        <div class="file"><span>Service A — initiates the chain</span><span>ReplyingKafkaTemplate</span></div>
+        <pre><code>ProducerRecord&lt;String, OrderPayload&gt; record =
+    new ProducerRecord&lt;&gt;("req.b.topic", orderId, payload);
+
+<span class="cmt">// template.replyTopic + a correlation id are attached automatically</span>
+RequestReplyFuture&lt;String, OrderPayload, OrderResult&gt; future =
+    replyingKafkaTemplate.sendAndReceive(record, Duration.ofSeconds(8));
+
+<span class="kw">try</span> {
+    ConsumerRecord&lt;String, OrderResult&gt; reply = future.get(8, TimeUnit.SECONDS);
+    handle(reply.value());
+} <span class="kw">catch</span> (ExecutionException ex) {
+    <span class="cmt">// underlying cause is a KafkaReplyTimeoutException if C never answered</span>
+    handleNoReply(orderId, ex);
+}</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="file"><span>Service B — plain listener, forwards headers untouched</span><span>@KafkaListener</span></div>
+        <pre><code>@KafkaListener(topics = "req.b.topic", groupId = "svc-b", containerFactory = "manualAckFactory")
+<span class="kw">public void</span> onOrder(ConsumerRecord&lt;String, OrderPayload&gt; inbound, Acknowledgment ack) {
+
+    OrderPayload enriched = enrichmentClient.massage(inbound.value()); <span class="cmt">// circuit-breaker guarded</span>
+
+    ProducerRecord&lt;String, OrderPayload&gt; outbound =
+        new ProducerRecord&lt;&gt;("req.c.topic", inbound.key(), enriched);
+
+    <span class="cmt">// the two headers that make the 3-hop reply possible</span>
+    outbound.headers().add(inbound.headers().lastHeader(<span class="tok">KafkaHeaders.REPLY_TOPIC</span>));
+    outbound.headers().add(inbound.headers().lastHeader(<span class="tok">KafkaHeaders.CORRELATION_ID</span>));
+
+    kafkaTemplate.send(outbound).get(5, TimeUnit.SECONDS); <span class="cmt">// block for the producer ack</span>
+    ack.acknowledge(); <span class="cmt">// only now — see §04</span>
+}</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="file"><span>Service C — terminal hop, replies as A</span><span>plain KafkaTemplate, not Replying</span></div>
+        <pre><code>@KafkaListener(topics = "req.c.topic", groupId = "svc-c", containerFactory = "manualAckFactory")
+<span class="kw">public void</span> onEnrichedOrder(ConsumerRecord&lt;String, OrderPayload&gt; inbound, Acknowledgment ack) {
+
+    OrderResult result = finalize(inbound.value()); <span class="cmt">// circuit-breaker guarded</span>
+
+    byte[] replyTopic = inbound.headers().lastHeader(<span class="tok">KafkaHeaders.REPLY_TOPIC</span>).value();
+    byte[] correlationId = inbound.headers().lastHeader(<span class="tok">KafkaHeaders.CORRELATION_ID</span>).value();
+
+    ProducerRecord&lt;String, OrderResult&gt; reply =
+        new ProducerRecord&lt;&gt;(new String(replyTopic, UTF_8), inbound.key(), result);
+    reply.headers().add(<span class="tok">KafkaHeaders.CORRELATION_ID</span>, correlationId); <span class="cmt">// verbatim — never regenerate</span>
+
+    kafkaTemplate.send(reply).get(5, TimeUnit.SECONDS);
+    ack.acknowledge();
+}</code></pre>
+      </div>
+
+      <div class="callout hard">
+        <span class="callout-tag">Why this is the interview story, not the boilerplate</span>
+        Every off-the-shelf write-up assumes request and reply share a topic pair and a service. The actual design work here was recognizing that <code>REPLY_TOPIC</code> and <code>CORRELATION_ID</code> are just headers — ordinary bytes that survive a hop as long as something deliberately copies them — and that the entire three-service illusion of a synchronous call collapses to "propagate two headers, ack in the right order, and let the reply container do the rest."
+      </div>
+    </section>
+
+    <section id="acks">
+      <h2><span class="num">04</span>Manual acknowledgment</h2>
+      <p class="section-dek">Every hop only confirms the message it received once the side-effect of that message is durably on its way — never before.</p>
+
+      <p>By default, Spring Kafka commits offsets automatically in the background (<code>enable.auto.commit=true</code>), on a timer, regardless of whether your listener method actually finished successfully. That's fine for idempotent, disposable work. It is not fine here: if B crashed after acking A's message but before its own send to C reached the broker, that unit of work would vanish — read once, never produced downstream, gone. So auto-commit was switched off and every listener container was configured for manual acknowledgment.</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>Spring Kafka <code>AckMode</code> options actually considered</caption>
+          <thead><tr><th>AckMode</th><th>Behavior</th><th>Used where</th></tr></thead>
+          <tbody>
+            <tr><td><code>MANUAL_IMMEDIATE</code></td><td>Commits the offset synchronously the moment <code>acknowledge()</code> is called, on the consumer thread.</td><td>B and C — the hops where "acked" must mean "durably handed off," not "will be committed eventually."</td></tr>
+            <tr><td><code>MANUAL</code></td><td><code>acknowledge()</code> only marks the offset; the actual commit happens on the next poll, batched with others.</td><td>Considered and rejected — it reintroduces a small commit-lag window we didn't want on the critical path.</td></tr>
+            <tr><td><code>RECORD</code> / <code>BATCH</code></td><td>Framework commits automatically after each record / each poll batch, independent of listener outcome.</td><td>Not used — indistinguishable from auto-commit for our failure modes.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="code-block">
+        <div class="file"><span>Container factory — manual, immediate</span><span>ConcurrentKafkaListenerContainerFactory</span></div>
+        <pre><code>@Bean
+<span class="kw">public</span> ConcurrentKafkaListenerContainerFactory&lt;String, OrderPayload&gt; manualAckFactory(
+        ConsumerFactory&lt;String, OrderPayload&gt; cf) {
+
+    ConcurrentKafkaListenerContainerFactory&lt;String, OrderPayload&gt; factory =
+        <span class="kw">new</span> ConcurrentKafkaListenerContainerFactory&lt;&gt;();
+    factory.setConsumerFactory(cf);
+    factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.<span class="tok">MANUAL_IMMEDIATE</span>);
+    factory.setConcurrency(12); <span class="cmt">// see §05</span>
+    factory.setCommonErrorHandler(errorHandler()); <span class="cmt">// see §06</span>
+    <span class="kw">return</span> factory;
+}</code></pre>
+      </div>
+
+      <p>The ordering rule applied at every hop was the same: <strong>do the downstream work, confirm the downstream write, then acknowledge the inbound record</strong> — never the reverse. That single discipline, repeated at B and at C, is what turns three independently-acking Kafka consumers into something that behaves like an all-or-nothing chain. It's not a distributed transaction — a crash between the downstream send and the ack still causes a redelivery, which is why producer idempotency (<code>enable.idempotence=true</code>, <code>acks=all</code>) and consumer-side dedupe keys mattered as much as the ack mode itself; see the pitfalls in §10.</p>
+    </section>
+
+    <section id="concurrency">
+      <h2><span class="num">05</span>Concurrency &amp; throughput at 200 TPS</h2>
+      <p class="section-dek">Sustained throughput came from matching partition count to listener concurrency, then giving the consumer enough runway to survive a slow downstream hop without a false rebalance.</p>
+
+      <p>200 TPS end-to-end, across three hops with synchronous confirmation at each one, meant no single-threaded consumer could keep up. The lever for parallelism in Spring Kafka is <code>concurrency</code> on the listener container — it spins up that many consumer threads inside the same consumer group, and each one is only useful up to the number of partitions on the topic; a 12th thread against a 6-partition topic just sits idle.</p>
+
+      <div class="code-block">
+        <div class="file"><span>Per-hop sizing that held 200 TPS</span><span>application.yml</span></div>
+        <pre><code>req.b.topic:
+  partitions: 12
+spring.kafka.listener.concurrency: 12   <span class="cmt"># one consumer thread per partition, no idle threads</span>
+
+spring.kafka.consumer:
+  max-poll-records: 50        <span class="cmt"># bound how much unacked work one poll can hand out</span>
+  max-poll-interval-ms: 90000 <span class="cmt"># room for a full retry+circuit-breaker cycle before "you're dead, rebalance"</span>
+  session-timeout-ms: 30000
+  heartbeat-interval-ms: 10000
+  enable-auto-commit: false   <span class="cmt"># see §04</span>
+  auto-offset-reset: earliest
+
+spring.kafka.producer:
+  acks: all
+  properties.enable.idempotence: true
+  properties.delivery.timeout.ms: 30000
+  properties.linger.ms: 5      <span class="cmt"># tiny batching window — latency-sensitive per hop</span>
+  properties.compression.type: snappy</code></pre>
+      </div>
+
+      <p>The property that mattered most in practice was <code>max.poll.interval.ms</code>. Manual-ack processing that calls out to a downstream service — one that might itself be sitting in a circuit-breaker's <code>waitDurationInOpenState</code> — takes longer per record than a fire-and-forget consumer. If the whole cycle (call, retry backoff, produce downstream, wait for the producer ack) exceeded the poll interval, Kafka assumed the consumer was dead and triggered a rebalance mid-processing, which is its own source of duplicate work. Sizing that timeout to comfortably exceed the worst-case retry-plus-backoff budget — not just the happy-path latency — was what stopped rebalances from becoming a second, self-inflicted failure mode.</p>
+    </section>
+
+    <section id="retries">
+      <h2><span class="num">06</span>Retries &amp; backoff</h2>
+      <p class="section-dek">Not every exception deserves a retry, and not every retry deserves the same delay. Both were made explicit rather than left to defaults.</p>
+
+      <p>Spring Kafka's <code>DefaultErrorHandler</code> sits in front of the listener and decides, per exception, whether to retry the record (seeking the consumer back to it) or hand it to a <em>recoverer</em>. Two decisions had to be made deliberately: <strong>how long to back off between attempts</strong>, and <strong>which exceptions are even worth retrying</strong>. A deserialization failure or a validation error will fail identically on attempt six as it did on attempt one — retrying it just delays the inevitable DLT trip and wastes consumer-group time that could go to good records.</p>
+
+      <div class="code-block">
+        <div class="file"><span>Classified, backed-off error handler</span><span>DefaultErrorHandler</span></div>
+        <pre><code>@Bean
+<span class="kw">public</span> DefaultErrorHandler errorHandler(DeadLetterPublishingRecoverer recoverer) {
+
+    ExponentialBackOffWithMaxRetries backOff = <span class="kw">new</span> ExponentialBackOffWithMaxRetries(5);
+    backOff.setInitialInterval(500);   <span class="cmt">// 0.5s</span>
+    backOff.setMultiplier(2.0);
+    backOff.setMaxInterval(10_000);    <span class="cmt">// cap at 10s</span>
+
+    DefaultErrorHandler handler = <span class="kw">new</span> DefaultErrorHandler(recoverer, backOff);
+
+    <span class="cmt">// transient — worth retrying</span>
+    handler.addRetryableExceptions(
+        TimeoutException.class, ResourceAccessException.class, TransientDataAccessException.class);
+
+    <span class="cmt">// permanent — fail straight to the DLT, don't burn retry budget</span>
+    handler.addNotRetryableExceptions(
+        DeserializationException.class, IllegalArgumentException.class, ValidationException.class);
+
+    <span class="kw">return</span> handler;
+}</code></pre>
+      </div>
+
+      <p>Where a single blocking retry loop inside the listener would have stalled that partition — and, at 200 TPS, backed up behind it — the alternative Spring Kafka offers is <strong>non-blocking retries</strong> via <code>@RetryableTopic</code>, which republishes the failed record to a series of <code>-retry-0</code>, <code>-retry-1</code>… topics with their own backoff, freeing the main partition to keep moving while a failed record waits its turn on a side topic:</p>
+
+      <div class="code-block">
+        <div class="file"><span>Non-blocking alternative — used where in-order blocking retry was too costly</span><span>@RetryableTopic</span></div>
+        <pre><code>@RetryableTopic(
+    attempts = "5",
+    backoff = @Backoff(delay = 500, multiplier = 2.0, maxDelay = 10_000),
+    autoCreateTopics = "true",
+    dltStrategy = DltStrategy.<span class="tok">FAIL_ON_ERROR</span>)
+@KafkaListener(topics = "req.c.topic", groupId = "svc-c")
+<span class="kw">public void</span> onEnrichedOrder(ConsumerRecord&lt;String, OrderPayload&gt; inbound, Acknowledgment ack) { … }</code></pre>
+      </div>
+
+      <p>Both approaches route the same place on final failure: a <code>DeadLetterPublishingRecoverer</code>, covered in §08.</p>
+    </section>
+
+    <section id="circuit-breaker">
+      <h2><span class="num">07</span>Circuit breakers on the internal calls</h2>
+      <p class="section-dek">Kafka-level retries protect the pipeline. Something else had to protect the pipeline from a downstream service that was slow rather than simply down.</p>
+
+      <p>Inside B and C, the "massaging" step called other internal services to enrich or validate the payload. A dependency that's fully down fails fast and is easy to retry around. A dependency that's <em>slow</em> is worse: every thread that calls it gets tied up waiting, retries pile on top of an already-struggling service, and the backlog on the Kafka side grows because nothing is completing fast enough to keep up with 200 TPS coming in. That's what a circuit breaker is for — it isn't a retry mechanism, it's a mechanism for <em>giving up on a dependency early</em> once it's clearly unhealthy, instead of finding out the hard way on every single call.</p>
+
+      <p>Resilience4j's <code>CircuitBreaker</code> tracks outcomes over a sliding window and moves through three states: <strong>CLOSED</strong> (calls flow normally), <strong>OPEN</strong> (calls fail immediately with <code>CallNotPermittedException</code> — no network round trip at all), and <strong>HALF_OPEN</strong> (a small number of probe calls are allowed through to test recovery before deciding whether to close again or re-open).</p>
+
+      <div class="code-block">
+        <div class="file"><span>Circuit breaker + retry + timeout, composed</span><span>application.yml</span></div>
+        <pre><code>resilience4j.circuitbreaker.instances.enrichmentService:
+  sliding-window-type: COUNT_BASED
+  sliding-window-size: 50
+  minimum-number-of-calls: 20
+  failure-rate-threshold: 50        <span class="cmt"># open once >=50% of the last window failed</span>
+  slow-call-duration-threshold: 2s
+  slow-call-rate-threshold: 50      <span class="cmt"># "slow" counts as a failure too</span>
+  wait-duration-in-open-state: 15s
+  permitted-number-of-calls-in-half-open-state: 5
+  automatic-transition-from-open-to-half-open-enabled: true
+
+resilience4j.retry.instances.enrichmentService:
+  max-attempts: 3
+  wait-duration: 300ms
+  enable-exponential-backoff: true
+  exponential-backoff-multiplier: 2
+  retry-exceptions:
+    - java.io.IOException
+    - java.util.concurrent.TimeoutException
+  ignore-exceptions:
+    - io.github.resilience4j.circuitbreaker.CallNotPermittedException <span class="cmt"># don't retry an open breaker</span>
+
+resilience4j.timelimiter.instances.enrichmentService:
+  timeout-duration: 2s</code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="file"><span>Applied to the enrichment call</span><span>Resilience4j annotations</span></div>
+        <pre><code>@CircuitBreaker(name = "enrichmentService", fallbackMethod = "enrichmentFallback")
+@Retry(name = "enrichmentService")
+@TimeLimiter(name = "enrichmentService")
+<span class="kw">public</span> CompletableFuture&lt;EnrichedPayload&gt; massage(OrderPayload payload) {
+    <span class="kw">return</span> CompletableFuture.supplyAsync(() -&gt; enrichmentClient.call(payload));
+}
+
+<span class="kw">private</span> CompletableFuture&lt;EnrichedPayload&gt; enrichmentFallback(OrderPayload payload, Throwable t) {
+    <span class="cmt">// breaker open or all retries exhausted — surface as a retryable-by-Kafka failure,</span>
+    <span class="cmt">// which lets §06's error handler decide whether to retry the record or DLT it</span>
+    <span class="kw">throw new</span> EnrichmentUnavailableException(payload.getId(), t);
+}</code></pre>
+      </div>
+
+      <p>The composition order matters: <code>TimeLimiter</code> bounds how long any single call is allowed to hang, the <code>CircuitBreaker</code> decides whether to attempt the call at all, and <code>Retry</code> sits closest to the call itself. Retry is explicitly told to ignore <code>CallNotPermittedException</code> — retrying against an already-open breaker just wastes attempts and delays the fallback that lets the record fall through to Kafka's own retry/DLT handling.</p>
+    </section>
+
+    <section id="dlq">
+      <h2><span class="num">08</span>Dead letter queues — the non-negotiable backstop</h2>
+      <p class="section-dek">"No data loss" isn't a property of the happy path. It's a property of what happens when everything above has already failed.</p>
+
+      <p>Once retries were exhausted — Kafka-level backoff exhausted, or the circuit breaker's fallback threw a non-retryable exception — the record could not simply be dropped or, worse, silently acked-and-forgotten to unblock the partition. Spring Kafka's <code>DeadLetterPublishingRecoverer</code> is what the <code>DefaultErrorHandler</code> (§06) falls through to: it republishes the original record, untouched, to a dead-letter topic — by convention <code>&lt;original-topic&gt;.DLT</code> — and stamps it with headers recording the original topic, partition, offset, and the exception's class name and message, so a human downstream doesn't have to guess what happened.</p>
+
+      <div class="code-block">
+        <div class="file"><span>Recoverer wired into the error handler</span><span>DeadLetterPublishingRecoverer</span></div>
+        <pre><code>@Bean
+<span class="kw">public</span> DeadLetterPublishingRecoverer recoverer(KafkaTemplate&lt;Object, Object&gt; template) {
+    <span class="kw">return new</span> DeadLetterPublishingRecoverer(template,
+        (record, ex) -&gt; <span class="kw">new</span> TopicPartition(record.topic() + ".DLT", record.partition()));
+        <span class="cmt">// default resolver already does topic+".DLT"; shown explicitly for clarity</span>
+}</code></pre>
+      </div>
+
+      <p>Two DLT-shaped gaps had to be closed explicitly rather than assumed away:</p>
+      <ul>
+        <li><strong>Failure inside B or C.</strong> Handled directly by the recoverer above — the record lands on <code>req.b.topic.DLT</code> or <code>req.c.topic.DLT</code> with full failure context, and is manually acked on the <em>original</em> topic only after the DLT publish succeeds, so the failure record itself can't be lost either.</li>
+        <li><strong>A reply that never arrives.</strong> If C's message dies on <code>req.c.topic.DLT</code>, A is left holding a <code>RequestReplyFuture</code> that will never complete. That's not a Kafka-level loss — the request is safely parked on the DLT for the manual-review team — but it does mean A's <code>future.get(timeout)</code> call throws a <code>KafkaReplyTimeoutException</code>. A's timeout path logs the correlation ID and order ID against the same key the DLT record carries, so the on-call team can join the two: "A never heard back" and "here's exactly why, on the DLT" are answerable from the same identifier.</li>
+      </ul>
+
+      <div class="callout hard">
+        <span class="callout-tag">Why this closes the loop</span>
+        Retries and circuit breakers reduce how often a message needs to go to the DLT. They do not — and are not meant to — guarantee it never happens. The DLT, paired with a timeout path on the waiting side, is what turns "we tried our best" into "we can account for every message," which was the actual requirement.
+      </div>
+    </section>
+
+    <section id="properties">
+      <h2><span class="num">09</span>Property reference</h2>
+      <p class="section-dek">Every knob mentioned above, in one place, with what it actually controls.</p>
+
+      <div class="table-wrap">
+        <table>
+          <caption>Consumer / listener container</caption>
+          <thead><tr><th>Property</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>enable.auto.commit</code></td><td>Set <code>false</code> — hands offset commit control to the application via <code>Acknowledgment</code>.</td></tr>
+            <tr><td><code>ContainerProperties.AckMode</code></td><td><code>MANUAL_IMMEDIATE</code> — synchronous commit exactly when <code>acknowledge()</code> is called.</td></tr>
+            <tr><td><code>concurrency</code></td><td>Number of consumer threads per listener container; capped in usefulness by partition count.</td></tr>
+            <tr><td><code>max.poll.records</code></td><td>Caps how many unacked records one poll hands the listener — bounds in-flight work under manual ack.</td></tr>
+            <tr><td><code>max.poll.interval.ms</code></td><td>Deadline for processing one poll batch before the broker assumes the consumer is dead and rebalances. Must exceed worst-case retry+circuit-breaker time, not just happy-path latency.</td></tr>
+            <tr><td><code>session.timeout.ms</code> / <code>heartbeat.interval.ms</code></td><td>Liveness detection between the consumer and the group coordinator — tuned to tolerate brief GC/processing pauses without a false eviction.</td></tr>
+            <tr><td><code>auto.offset.reset</code></td><td><code>earliest</code> — a new/reset consumer group replays rather than skips, on the no-data-loss principle.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <caption>Producer</caption>
+          <thead><tr><th>Property</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>acks</code></td><td><code>all</code> — the write is only confirmed once every in-sync replica has it, not just the leader.</td></tr>
+            <tr><td><code>enable.idempotence</code></td><td><code>true</code> — the broker de-duplicates retried sends from the same producer session, preventing duplicate downstream messages from a producer-side retry.</td></tr>
+            <tr><td><code>delivery.timeout.ms</code></td><td>Overall budget for a send, including internal retries, before it's reported as failed to the caller.</td></tr>
+            <tr><td><code>max.in.flight.requests.per.connection</code></td><td>Left at the idempotence-safe default (≤5) — higher values with idempotence enabled still preserve ordering per partition.</td></tr>
+            <tr><td><code>linger.ms</code> / <code>compression.type</code></td><td>Small batching window and <code>snappy</code> compression — throughput help that doesn't meaningfully hurt per-hop latency at this volume.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <caption>Request / reply</caption>
+          <thead><tr><th>Property / API</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>KafkaHeaders.REPLY_TOPIC</code></td><td>Header naming where the eventual reply must be published — set by A, forwarded verbatim by B, read and reused by C.</td></tr>
+            <tr><td><code>KafkaHeaders.CORRELATION_ID</code></td><td>Header correlating a specific reply to a specific pending request in <code>ReplyingKafkaTemplate</code>'s internal futures map — never regenerated after A sets it.</td></tr>
+            <tr><td><code>replyTemplate.setDefaultReplyTimeout(...)</code></td><td>How long A waits for a correlated reply before failing the future with <code>KafkaReplyTimeoutException</code>.</td></tr>
+            <tr><td><code>sharedReplyTopic</code></td><td>Set when multiple template instances share one reply topic/consumer group, so replies route to the right waiting instance.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <caption>Error handling &amp; resilience</caption>
+          <thead><tr><th>Property / API</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>DefaultErrorHandler</code> + <code>BackOff</code></td><td>Central retry policy for listener exceptions; paired with a recoverer for the final-failure path.</td></tr>
+            <tr><td><code>addRetryableExceptions</code> / <code>addNotRetryableExceptions</code></td><td>Classifies failures so transient errors get retried and permanent ones go straight to the DLT.</td></tr>
+            <tr><td><code>@RetryableTopic</code> / <code>@Backoff</code></td><td>Non-blocking retry via side topics, freeing the main partition instead of stalling it.</td></tr>
+            <tr><td><code>failure-rate-threshold</code></td><td>Resilience4j — % of calls in the sliding window that must fail to trip the breaker to OPEN.</td></tr>
+            <tr><td><code>slow-call-duration-threshold</code> / <code>slow-call-rate-threshold</code></td><td>Treats calls slower than a threshold as failures too — catches degradation, not just outright errors.</td></tr>
+            <tr><td><code>wait-duration-in-open-state</code></td><td>How long the breaker stays OPEN, failing fast, before probing again via HALF_OPEN.</td></tr>
+            <tr><td><code>permitted-number-of-calls-in-half-open-state</code></td><td>How many probe calls decide whether the breaker re-closes or re-opens.</td></tr>
+            <tr><td><code>DeadLetterPublishingRecoverer</code></td><td>Terminal recoverer — republishes the exhausted record to <code>&lt;topic&gt;.DLT</code> with failure context headers, for manual handling.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="pitfalls">
+      <h2><span class="num">10</span>Pitfalls, and the way to tell the story</h2>
+      <p class="section-dek">What actually broke first, and the shape of the answer that holds up under a follow-up question.</p>
+
+      <ul>
+        <li><strong>Redelivery after a partial hop.</strong> Manual ack means a crash between "sent to C" and "acked from B" causes B to reprocess and send to C again on restart. Kafka's producer idempotence stops <em>duplicate low-level sends</em>, but a fresh application-level send after redelivery is a new message from the broker's point of view — so C also carried a dedupe check keyed on the order ID for the narrow window where exactly-once wasn't otherwise guaranteed.</li>
+        <li><strong>Rebalances caused by slow downstream calls, not slow consumers.</strong> The first version had <code>max.poll.interval.ms</code> at the framework default, which was shorter than a full retry-plus-open-circuit-breaker cycle at C. Under load, the group coordinator would rebalance C's partitions mid-processing, which look identical to a stuck consumer until you correlate the timing against circuit-breaker OPEN windows.</li>
+        <li><strong>Retrying an already-open circuit breaker.</strong> Without explicitly telling Resilience4j's <code>Retry</code> to ignore <code>CallNotPermittedException</code>, every retry attempt against an open breaker still counted as an "attempt," burning the retry budget instantly and reaching the DLT far more eagerly than the actual dependency health warranted.</li>
+      </ul>
+
+      <div class="story">
+        <h3>The 60-second version</h3>
+        <dl>
+          <dt>Situation</dt><dd>Three-service pipeline over Kafka, A → B → C, with C replying directly to A, at 200 TPS, with zero tolerance for silent message loss.</dd>
+          <dt>Task</dt><dd>Make the chain behave like a synchronous call without a two-service tutorial to follow, and without losing a message under any single failure.</dd>
+          <dt>Action</dt><dd>Propagated <code>REPLY_TOPIC</code>/<code>CORRELATION_ID</code> headers through the middle hop so C could reply as if it were A's original counterpart; used <code>MANUAL_IMMEDIATE</code> acks ordered strictly after each downstream confirmation; tuned concurrency, partitions, and <code>max.poll.interval.ms</code> for 200 TPS without false rebalances; classified retryable vs. terminal exceptions with backoff; wrapped the internal enrichment calls in Resilience4j circuit breakers so a slow dependency degraded gracefully instead of backing up the pipeline; routed every exhausted failure to a dead-letter topic with full context.</dd>
+          <dt>Result</dt><dd>Sustained throughput with a documented, provable answer for every message: delivered, retried-then-delivered, or sitting on a DLT with the exact reason attached — never simply gone.</dd>
+        </dl>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  Internal technical reference · Spring Kafka + Resilience4j · written for interview prep, not for production copy-paste — tune thresholds against your own traffic shape before reuse.
+</footer>
+
+</body>
+</html>
