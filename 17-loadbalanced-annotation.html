@@ -173,10 +173,10 @@ code { font-family:inherit; }
 <section class="hero">
   <div class="hero-eyebrow"><span></span> Spring Cloud LoadBalancer — Visual Guide</div>
   <h1>Master<br><em>@LoadBalanced</em><br>Visually</h1>
-  <p class="hero-sub">7 concepts. From zero to senior-interview-ready. Each one explained simply, with colour-coded code and a practice question.</p>
+  <p class="hero-sub">8 concepts. From zero to senior-interview-ready. Each one explained simply, with colour-coded code and a practice question.</p>
   <div class="hero-stats">
-    <div class="stat"><span class="stat-num">7</span><span class="stat-label">Concepts</span></div>
-    <div class="stat"><span class="stat-num">7</span><span class="stat-label">Practice Q&apos;s</span></div>
+    <div class="stat"><span class="stat-num">8</span><span class="stat-label">Concepts</span></div>
+    <div class="stat"><span class="stat-num">8</span><span class="stat-label">Practice Q&apos;s</span></div>
     <div class="stat"><span class="stat-num">3</span><span class="stat-label">Levels</span></div>
   </div>
 </section>
@@ -184,7 +184,7 @@ code { font-family:inherit; }
 <div class="progress-wrap">
   <span class="progress-label">Progress</span>
   <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
-  <span class="progress-count" id="progressCount">0 / 7</span>
+  <span class="progress-count" id="progressCount">0 / 8</span>
 </div>
 
 <div class="main">
@@ -260,6 +260,71 @@ code { font-family:inherit; }
       <div class="concept-card">
         <div class="card-header">
           <span class="card-tag tag-basic">Basic</span>
+          <span class="card-title">The Service Registry — Where inventory-service Actually Lives</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary"><code>inventory-service</code> is not a class, a package, or anything inside your codebase — it's the <code>spring.application.name</code> of a <strong>completely separate, independently running Spring Boot application</strong>, its own JVM process on its own port. For <code>@LoadBalanced</code> to turn that name into a real <code>host:port</code>, a <strong>fourth</strong> process has to exist and be running: a <strong>service registry</strong> (Eureka, Consul, etc.) that every other service explicitly points at. Nothing here is auto-discovered — each service is told the registry's address in plain config.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F4DE;</div><p><strong>Company front desk:</strong> when Priya joins Accounting, she calls the front desk — a fixed, known number everyone already has — and says "I'm Priya, extension 4471." Later, when you want to reach "Priya in Accounting," you don't know her extension either — you call the same front desk and ask. If Priya changes desks, she just re-registers; you never need to learn her new extension, because you never call it directly.</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java + YAML — the registry itself</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// THIS is a fourth, separate Spring Boot app — it IS the registry, nothing else</span>
+<span class="ann">@SpringBootApplication</span>
+<span class="hl"><span class="ann">@EnableEurekaServer</span></span>
+<span class="kw">public class</span> <span class="cl">RegistryServerApplication</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+    <span class="cl">SpringApplication</span>.<span class="fn">run</span>(RegistryServerApplication.<span class="kw">class</span>, args);
+  }
+}
+
+<span class="cm"># registry-server/src/main/resources/application.yml</span>
+server:
+  port: <span class="nm">8761</span>
+eureka:
+  client:
+    register-with-eureka: <span class="kw">false</span>   <span class="cm"># the registry doesn't register ITSELF with itself</span>
+    fetch-registry: <span class="kw">false</span></code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">YAML — inventory-service's own config</span><button class="copy-btn">Copy</button></div>
+            <pre><code>server:
+<span class="hl">  port: <span class="nm">8082</span>   <span class="cm"># the APP decides this — the registry has no say in it</span></span>
+
+spring:
+  application:
+<span class="hl">    name: inventory-service   <span class="cm"># the logical name THIS app registers itself under</span></span>
+
+eureka:
+  client:
+    service-url:
+<span class="hl">      defaultZone: http://localhost:8761/eureka/   <span class="cm"># the ONE hardcoded address in the whole system</span></span></code></pre>
+          </div>
+          <div class="analogy"><div class="analogy-icon">&#x260E;&#xFE0F;</div><p><strong>Doesn't the registry hand out the port?</strong> No — it's the reverse. <code>inventory-service</code> binds its own embedded server to <code>server.port: 8082</code> (or, if you set <code>server.port: 0</code>, the OS hands it a random free port instead — common when running several instances of the same service on one machine so they don't collide). Only <em>after</em> it's actually bound and knows its real port does the Eureka client read that port back and include it in the registration payload it <code>POST</code>s to the registry. The registry just stores whatever port it was told — it never assigns, reserves, or manages a port for anyone. Every app, including the registry itself, needs its own <code>server.port</code>; leaving it unset defaults to <code>8080</code> for all of them, which is exactly why running several services locally without distinct ports fails with "port already in use."</p></div>
+          <div class="output-wrap"><div class="output-label">What happens on startup (logs, conceptually)</div>
+            <div class="output-box"><span class="ok">inventory-service : binds embedded server to 8082 (from server.port, or a random free port if server.port=0)</span>
+<span class="ok">inventory-service : POST http://localhost:8761/eureka/apps/INVENTORY-SERVICE {host, port: 8082, ...} -&gt; registered</span>
+<span class="ok">inventory-service : PUT  http://localhost:8761/eureka/apps/INVENTORY-SERVICE/i1 -&gt; heartbeat (every 30s)</span>
+<span class="ok">order-service     : GET  http://localhost:8761/eureka/apps -&gt; pulls + caches the full registry locally (every 30s)</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>The registry's address (<code>defaultZone</code>) is the <strong>one</strong> hardcoded <code>host:port</code> in the entire architecture — it has to be fixed, because you can't use service discovery to find the service that does service discovery. Every other address — <code>inventory-service</code>'s real IP <em>and port</em>, <code>order-service</code>'s real IP <em>and port</em> — is decided by each app itself and merely <strong>reported to</strong>, never assigned by, that registry, which is exactly what <code>@LoadBalanced</code> reads back out on every call.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Four apps, one question</span></div>
+            <div class="practice-body">
+              <p class="practice-q">You have <code>order-service</code>, <code>inventory-service</code>, <code>payment-service</code>, and a Eureka registry, all starting up. List which app registers with which, then identify the <strong>one</strong> config value in the whole system that has to be hardcoded rather than resolved dynamically — and explain why it can't be resolved dynamically too.</p>
+              <div class="practice-hints"><span class="hint-chip">spring.application.name</span><span class="hint-chip">eureka.client.service-url.defaultZone</span><span class="hint-chip">the registry's own fixed address</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="concept" data-id="3">
+    <div class="concept-node">03</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
+          <span class="card-tag tag-basic">Basic</span>
           <span class="card-title">Wiring It Up</span>
           <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         </div>
@@ -305,7 +370,7 @@ eureka:
           </div>
           <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>@LoadBalanced</code> does nothing on its own — it needs a <code>DiscoveryClient</code> implementation on the classpath (Eureka, Consul, Zookeeper...) so there are actual service instances to balance across. No registry means no instances means every call fails.</p></div>
           <div class="practice">
-            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q2 — Fix the missing discovery client</span></div>
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Fix the missing discovery client</span></div>
             <div class="practice-body">
               <p class="practice-q">Given a service missing the Eureka client dependency, explain why a <code>@LoadBalanced RestTemplate</code> call fails at runtime with <strong>"No instances available"</strong>, then fix the build file.</p>
               <div class="practice-hints"><span class="hint-chip">missing discovery client</span><span class="hint-chip">"No instances available"</span><span class="hint-chip">add starter dependency</span></div>
@@ -316,9 +381,9 @@ eureka:
     </div>
   </div>
 
-  <!-- 3 -->
-  <div class="concept" data-id="3">
-    <div class="concept-node">03</div>
+  <!-- 4 -->
+  <div class="concept" data-id="4">
+    <div class="concept-node">04</div>
     <div class="concept-body">
       <div class="concept-card">
         <div class="card-header">
@@ -353,7 +418,7 @@ eureka:
           </div>
           <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>This is why <code>@LoadBalanced</code> is a marker/qualifier, not a class with load-balancing logic in it — the actual work happens in this auto-configured interceptor, invisible to your code.</p></div>
           <div class="practice">
-            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q3 — Trace the call chain</span></div>
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Trace the call chain</span></div>
             <div class="practice-body">
               <p class="practice-q">Trace, in comments, the exact call sequence from <code>restTemplate.getForObject()</code> down to the <code>ServiceInstance</code> being chosen — name every class involved.</p>
               <div class="practice-hints"><span class="hint-chip">LoadBalancerInterceptor</span><span class="hint-chip">LoadBalancerClient.choose()</span><span class="hint-chip">reconstructURI()</span></div>
@@ -364,9 +429,9 @@ eureka:
     </div>
   </div>
 
-  <!-- 4 -->
-  <div class="concept" data-id="4">
-    <div class="concept-node">04</div>
+  <!-- 5 -->
+  <div class="concept" data-id="5">
+    <div class="concept-node">05</div>
     <div class="concept-body">
       <div class="concept-card">
         <div class="card-header">
@@ -376,8 +441,20 @@ eureka:
         </div>
         <div class="card-content">
           <div class="card-summary">Spring Cloud LoadBalancer picks instances via a pluggable <code>ReactorLoadBalancer</code>: <code>RoundRobinLoadBalancer</code> is the default, <code>RandomLoadBalancer</code> is built in, and you can register your own (weighted, zone-aware) via a <code>@LoadBalancerClient</code>-scoped configuration class.</div>
+          <div class="analogy"><div class="analogy-icon">&#x1F504;</div><p><strong>Does Eureka hand back a different URL on every single call?</strong> No — that would mean a network round-trip to the registry per HTTP request, which would defeat the point. Instead, the caller's Eureka client polls the registry on a timer (every <strong>30s</strong> by default) and pulls the <strong>entire list</strong> of currently-registered instances for a service name in one shot, caching it locally in memory. Every actual call after that reads from this local cache — the <code>ReactorLoadBalancer</code> just advances an in-memory counter through it. Zero network calls to Eureka happen per request; that's exactly what makes client-side load balancing fast.</p></div>
+          <div class="output-wrap"><div class="output-label">10 order-service instances — cached once, round-robinned locally over 12 calls</div>
+            <div class="output-box"><span class="ok">// notification-service's local cache after one 30s sync (10 entries, one call to Eureka):</span>
+<span class="ok">[10.0.4.1:8081, 10.0.4.2:8081, 10.0.4.3:8081, ... , 10.0.4.10:8081]</span>
+
+<span class="ok">call  1 -&gt; 10.0.4.1:8081     call  7 -&gt; 10.0.4.7:8081</span>
+<span class="ok">call  2 -&gt; 10.0.4.2:8081     call  8 -&gt; 10.0.4.8:8081</span>
+<span class="ok">call  3 -&gt; 10.0.4.3:8081     call  9 -&gt; 10.0.4.9:8081</span>
+<span class="ok">call  4 -&gt; 10.0.4.4:8081     call 10 -&gt; 10.0.4.10:8081</span>
+<span class="ok">call  5 -&gt; 10.0.4.5:8081     call 11 -&gt; 10.0.4.1:8081   (wraps around)</span>
+<span class="ok">call  6 -&gt; 10.0.4.6:8081     call 12 -&gt; 10.0.4.2:8081</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><strong>The staleness gotcha:</strong> if instance <code>10.0.4.4:8081</code> crashes mid-window, it stays in the cached list until the <em>next</em> 30s refresh — round robin will still route a call to it in the meantime, and that call fails. The load balancer itself has no idea the instance is dead; catching that failure and retrying against a different instance is the job of a retry policy / circuit breaker sitting around the call, not the load balancer.</p></div>
           <div class="code-wrap">
-            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — customizing which strategy is used</span><button class="copy-btn">Copy</button></div>
             <pre><code><span class="ann">@Configuration</span>
 <span class="kw">public class</span> <span class="cl">RandomLoadBalancerConfig</span> {
 
@@ -405,66 +482,10 @@ eureka:
 <span class="ok">6 -> instance-C</span></div></div>
           <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Round robin is the sane default for stateless services. Reach for a custom strategy only when you have a specific traffic-shaping need — e.g. weighting a bigger instance, or keeping a client sticky to one zone.</p></div>
           <div class="practice">
-            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q4 — Scope a custom strategy</span></div>
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Scope a custom strategy</span></div>
             <div class="practice-body">
               <p class="practice-q">Configure <code>inventory-service</code> specifically to use <code>RandomLoadBalancer</code> while every other client keeps the default round robin behavior.</p>
               <div class="practice-hints"><span class="hint-chip">@LoadBalancerClient(name=...)</span><span class="hint-chip">RandomLoadBalancer bean</span><span class="hint-chip">scoped, not global</span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 5 -->
-  <div class="concept" data-id="5">
-    <div class="concept-node">05</div>
-    <div class="concept-body">
-      <div class="concept-card">
-        <div class="card-header">
-          <span class="card-tag tag-inter">Intermediate</span>
-          <span class="card-title">@LoadBalanced vs Feign Clients</span>
-          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        </div>
-        <div class="card-content">
-          <div class="card-summary">Declarative Spring Cloud OpenFeign gives you load balancing for free — a <code>@FeignClient(name = "...")</code> interface resolves the logical name and balances across instances automatically, using the exact same LoadBalancer machinery under the hood, with none of the RestTemplate boilerplate.</div>
-          <div class="code-wrap">
-            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
-            <pre><code><span class="cm">// Imperative — @LoadBalanced RestTemplate</span>
-<span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStockImperative</span>(String sku) {
-  <span class="kw">return</span> restTemplate.<span class="fn">getForObject</span>(
-      <span class="st">"http://inventory-service/api/stock/{sku}"</span>, Integer.<span class="kw">class</span>, sku);
-}
-
-<span class="cm">// Declarative — Feign, load-balanced automatically, no @LoadBalanced needed</span>
-<span class="hl"><span class="ann">@FeignClient</span>(name = <span class="st">"inventory-service"</span>)</span>
-<span class="kw">public interface</span> <span class="cl">InventoryClient</span> {
-
-  <span class="ann">@GetMapping</span>(<span class="st">"/api/stock/{sku}"</span>)
-  <span class="cl">Integer</span> <span class="fn">getStock</span>(<span class="ann">@PathVariable</span>(<span class="st">"sku"</span>) String sku);
-}
-
-<span class="cm">// usage — inject and call like any other bean</span>
-<span class="ann">@Service</span>
-<span class="kw">public class</span> <span class="cl">PricingService</span> {
-
-  <span class="kw">private final</span> <span class="cl">InventoryClient</span> inventoryClient;
-
-  <span class="kw">public</span> <span class="cl">PricingService</span>(<span class="cl">InventoryClient</span> inventoryClient) {
-    <span class="kw">this</span>.inventoryClient = inventoryClient;
-  }
-
-  <span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStock</span>(String sku) {
-    <span class="kw">return</span> inventoryClient.<span class="fn">getStock</span>(sku);
-  }
-}</code></pre>
-          </div>
-          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Feign is generally preferred for new code — less boilerplate, type-safe method signatures instead of string URLs. But RestTemplate/WebClient-based code is still common in existing codebases, and Feign uses the same <code>LoadBalancerClient</code> underneath — understanding <code>@LoadBalanced</code> explains both.</p></div>
-          <div class="practice">
-            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q5 — Convert to Feign</span></div>
-            <div class="practice-body">
-              <p class="practice-q">Convert the <code>getStockImperative()</code> RestTemplate call above into an equivalent <code>@FeignClient</code> interface method.</p>
-              <div class="practice-hints"><span class="hint-chip">@FeignClient(name=...)</span><span class="hint-chip">@GetMapping</span><span class="hint-chip">@PathVariable</span></div>
             </div>
           </div>
         </div>
@@ -478,12 +499,154 @@ eureka:
     <div class="concept-body">
       <div class="concept-card">
         <div class="card-header">
+          <span class="card-tag tag-inter">Intermediate</span>
+          <span class="card-title">@LoadBalanced vs Feign Clients</span>
+          <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+        <div class="card-content">
+          <div class="card-summary">Declarative Spring Cloud OpenFeign gives you load balancing for free — a <code>@FeignClient(name = "...")</code> interface resolves the logical name and balances across instances automatically, using the exact same LoadBalancer machinery under the hood, with none of the RestTemplate boilerplate.</div>
+          <div class="analogy"><div class="analogy-icon">&#x2753;</div><p><strong>"Is a discovery service not needed here?"</strong> It absolutely still is — nothing about Feign removes that requirement. <code>@FeignClient(name = "inventory-service")</code> resolves that name through the <strong>exact same</strong> <code>DiscoveryClient</code> / <code>LoadBalancerClient</code> machinery as a <code>@LoadBalanced RestTemplate</code> does. Feign only removes the boilerplate of building the request by hand — it changes nothing about needing a running registry, both apps registered with it, and the eureka-client dependency on both classpaths. Skip any of that and Feign fails the exact same way RestTemplate would (see the error trace near the bottom of this card).</p></div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java — the shape of it, imperative vs declarative</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// Imperative — @LoadBalanced RestTemplate</span>
+<span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStockImperative</span>(String sku) {
+  <span class="kw">return</span> restTemplate.<span class="fn">getForObject</span>(
+      <span class="st">"http://inventory-service/api/stock/{sku}"</span>, Integer.<span class="kw">class</span>, sku);
+}
+
+<span class="cm">// Declarative — Feign, load-balanced automatically, no @LoadBalanced needed</span>
+<span class="hl"><span class="ann">@FeignClient</span>(name = <span class="st">"inventory-service"</span>)</span>
+<span class="kw">public interface</span> <span class="cl">InventoryClient</span> {
+
+  <span class="ann">@GetMapping</span>(<span class="st">"/api/stock/{sku}"</span>)
+  <span class="cl">Integer</span> <span class="fn">getStock</span>(<span class="ann">@PathVariable</span>(<span class="st">"sku"</span>) String sku);
+}</code></pre>
+          </div>
+          <div class="card-summary">Now the full picture: two <strong>actually separate</strong> Spring Boot applications — <code>inventory-service</code>, deployed as <strong>3 running instances</strong>, and <code>order-service</code>, which calls it via Feign. Everything below is what would live in two different repos/JARs, not two classes in one app.</div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">App 1/2 — inventory-service (deployed 3×, the CALLEE)</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// pom.xml — needs the registry client so it can register itself; does NOT need Feign at all</span>
+<span class="sy">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-netflix-eureka-client&lt;/artifactId&gt;
+&lt;/dependency&gt;</span>
+
+<span class="ann">@SpringBootApplication</span>
+<span class="kw">public class</span> <span class="cl">InventoryServiceApplication</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+    <span class="cl">SpringApplication</span>.<span class="fn">run</span>(InventoryServiceApplication.<span class="kw">class</span>, args);
+  }
+}
+
+<span class="ann">@RestController</span>
+<span class="ann">@RequestMapping</span>(<span class="st">"/api/stock"</span>)
+<span class="kw">public class</span> <span class="cl">StockController</span> {
+  <span class="ann">@GetMapping</span>(<span class="st">"/{sku}"</span>)
+  <span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStock</span>(<span class="ann">@PathVariable</span> String sku) {
+    <span class="kw">return</span> stockRepository.<span class="fn">findQuantity</span>(sku); <span class="cm">// ordinary Spring MVC — knows nothing about being load-balanced</span>
+  }
+}
+
+<span class="cm"># application.yml — server.port comes from an env var so the SAME jar can run 3× with 3 ports</span>
+spring:
+  application:
+<span class="hl">    name: inventory-service   <span class="cm"># all 3 instances register under this SAME name</span></span>
+server:
+  port: ${SERVER_PORT:8082}
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+<span class="cm">// launched 3 times, same jar, only the port differs:</span>
+<span class="sy">java -jar inventory-service.jar --server.port=8082
+java -jar inventory-service.jar --server.port=8083
+java -jar inventory-service.jar --server.port=8084</span></code></pre>
+          </div>
+          <div class="code-wrap">
+            <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">App 2/2 — order-service (1 instance, the CALLER, uses Feign)</span><button class="copy-btn">Copy</button></div>
+            <pre><code><span class="cm">// pom.xml — needs BOTH: Feign for the declarative client, AND eureka-client to resolve names</span>
+<span class="sy">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-openfeign&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.cloud&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-cloud-starter-netflix-eureka-client&lt;/artifactId&gt;
+&lt;/dependency&gt;</span>
+
+<span class="ann">@SpringBootApplication</span>
+<span class="hl"><span class="ann">@EnableFeignClients</span> <span class="cm">// scans for @FeignClient interfaces and creates proxy beans for them at startup</span></span>
+<span class="kw">public class</span> <span class="cl">OrderServiceApplication</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(String[] args) {
+    <span class="cl">SpringApplication</span>.<span class="fn">run</span>(OrderServiceApplication.<span class="kw">class</span>, args);
+  }
+}
+
+<span class="ann">@FeignClient</span>(name = <span class="st">"inventory-service"</span>) <span class="cm">// the name the OTHER app registered itself under — must match exactly</span>
+<span class="kw">public interface</span> <span class="cl">InventoryClient</span> {
+  <span class="ann">@GetMapping</span>(<span class="st">"/api/stock/{sku}"</span>)
+  <span class="cl">Integer</span> <span class="fn">getStock</span>(<span class="ann">@PathVariable</span>(<span class="st">"sku"</span>) String sku);
+}
+
+<span class="ann">@Service</span>
+<span class="kw">public class</span> <span class="cl">PricingService</span> {
+  <span class="kw">private final</span> <span class="cl">InventoryClient</span> inventoryClient;
+  <span class="kw">public</span> <span class="cl">PricingService</span>(<span class="cl">InventoryClient</span> inventoryClient) { <span class="kw">this</span>.inventoryClient = inventoryClient; }
+  <span class="kw">public</span> <span class="cl">Integer</span> <span class="fn">getStock</span>(String sku) { <span class="kw">return</span> inventoryClient.<span class="fn">getStock</span>(sku); } <span class="cm">// looks like a local call — isn't one</span>
+}
+
+<span class="cm"># application.yml</span>
+spring:
+  application:
+    name: order-service
+server:
+  port: <span class="nm">8081</span>
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/</code></pre>
+          </div>
+          <div class="output-wrap"><div class="output-label">6 sequential calls to pricingService.getStock(sku) from inside order-service</div>
+            <div class="output-box"><span class="ok">// order-service's local cache for "inventory-service" (synced from Eureka every 30s):</span>
+<span class="ok">// [10.0.4.20:8082, 10.0.4.20:8083, 10.0.4.20:8084]  — 3 entries, one per running instance</span>
+
+<span class="ok">call 1  getStock("SKU-1") -&gt; Feign proxy -&gt; LoadBalancerClient.choose("inventory-service")</span>
+<span class="ok">        -&gt; GET http://10.0.4.20:8082/api/stock/SKU-1   (instance #1)</span>
+<span class="ok">call 2  getStock("SKU-2") -&gt; GET http://10.0.4.20:8083/api/stock/SKU-2   (instance #2)</span>
+<span class="ok">call 3  getStock("SKU-3") -&gt; GET http://10.0.4.20:8084/api/stock/SKU-3   (instance #3)</span>
+<span class="ok">call 4  getStock("SKU-4") -&gt; GET http://10.0.4.20:8082/api/stock/SKU-4   (wraps back to #1)</span>
+<span class="ok">call 5  getStock("SKU-5") -&gt; GET http://10.0.4.20:8083/api/stock/SKU-5   (instance #2)</span>
+<span class="ok">call 6  getStock("SKU-6") -&gt; GET http://10.0.4.20:8084/api/stock/SKU-6   (instance #3)</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Every call above <strong>reads the code identically</strong> — <code>inventoryClient.getStock(sku)</code>, a plain interface method call. The 3 different real IPs, the round-robin rotation, all of it happens invisibly inside the Feign proxy + <code>LoadBalancerClient</code>. <code>PricingService</code> has no idea it's calling a different physical machine on each of the 6 calls.</p></div>
+          <div class="output-wrap"><div class="output-label">If eureka-client were missing from order-service's classpath (or inventory-service never registered)</div>
+            <div class="output-box"><span class="er">FeignException$InternalServerError: [500] during [GET] to [http://inventory-service/api/stock/SKU-1]</span>
+<span class="er">Caused by: java.lang.IllegalStateException: No instances available for inventory-service</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Feign is generally preferred for new code — less boilerplate, type-safe method signatures instead of string URLs. But RestTemplate/WebClient-based code is still common in existing codebases, and Feign uses the same <code>LoadBalancerClient</code> underneath, on top of the same non-negotiable discovery-service requirement — understanding <code>@LoadBalanced</code> explains both.</p></div>
+          <div class="practice">
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Convert to Feign</span></div>
+            <div class="practice-body">
+              <p class="practice-q">Convert the <code>getStockImperative()</code> RestTemplate call above into an equivalent <code>@FeignClient</code> interface method.</p>
+              <div class="practice-hints"><span class="hint-chip">@FeignClient(name=...)</span><span class="hint-chip">@GetMapping</span><span class="hint-chip">@PathVariable</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 -->
+  <div class="concept" data-id="7">
+    <div class="concept-node">07</div>
+    <div class="concept-body">
+      <div class="concept-card">
+        <div class="card-header">
           <span class="card-tag tag-advanced">Advanced</span>
           <span class="card-title">Common Pitfalls</span>
           <div class="card-chevron"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
         </div>
         <div class="card-content">
-          <div class="card-summary">Three classics: forgetting <code>@LoadBalanced</code> (a confusing <code>UnknownHostException</code> in prod for what looks like a valid URL), pointing that same RestTemplate at a real external hostname (the interceptor tries to resolve it against the service registry too, and fails), and skipping retry/timeout config so one flaky instance cascades into failures for every caller.</div>
+          <div class="card-summary">Four classics: forgetting <code>@LoadBalanced</code> (a confusing <code>UnknownHostException</code> in prod for what looks like a valid URL), pointing that same RestTemplate at a real external hostname (the interceptor tries to resolve it against the service registry too, and fails), skipping retry/timeout config so one flaky instance cascades into failures for every caller, and — the sneaky one — two genuinely different services accidentally registering under the same <code>spring.application.name</code>.</div>
           <div class="code-wrap">
             <div class="code-header"><div class="code-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div><span class="code-lang">Java</span><button class="copy-btn">Copy</button></div>
             <pre><code><span class="ann">@Configuration</span>
@@ -523,8 +686,18 @@ eureka:
 }</code></pre>
           </div>
           <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p><code>@LoadBalanced</code> is an all-or-nothing switch per RestTemplate instance. Never mix service-discovery calls and raw external calls on the same bean — split them and disambiguate with <code>@Qualifier</code>.</p></div>
+          <div class="analogy"><div class="analogy-icon">&#x1F465;</div><p><strong>The fourth pitfall — name collisions:</strong> Eureka only ever sees the <em>string</em> in <code>spring.application.name</code>. It has no idea that "inventory-service" is supposed to mean one specific codebase. If a brand-new <code>shipping-service</code> is bootstrapped by copy-pasting <code>inventory-service</code>'s <code>application.yml</code> and someone forgets to change that one line, both apps register under <code>INVENTORY-SERVICE</code> and Eureka merges them into a single list, as if they were interchangeable peers.</p></div>
+          <div class="output-wrap"><div class="output-label">Registry entry for "INVENTORY-SERVICE" after the mistake</div>
+            <div class="output-box"><span class="ok">INVENTORY-SERVICE:</span>
+<span class="ok">  10.0.4.20:8082   <span class="sy">// real inventory-service — /api/stock/{sku}</span></span>
+<span class="ok">  10.0.4.21:8082   <span class="sy">// real inventory-service — /api/stock/{sku}</span></span>
+<span class="er">  10.0.5.30:8090   <span class="sy">// actually shipping-service, misconfigured — no /api/stock endpoint at all</span></span>
+
+<span class="er">// ~1 in 3 calls to http://inventory-service/api/stock/{sku} silently lands on shipping-service</span>
+<span class="er">// -> 404, or worse: a same-shaped endpoint on shipping-service returns the WRONG data, no error at all</span></div></div>
+          <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Eureka provides <strong>zero</strong> protection against this — no uniqueness check, no warning, no error. It's purely a naming-discipline problem, usually caught only by code review or a team convention, which is exactly why it's dangerous: the failure mode isn't a loud crash, it's silently-wrong data on a fraction of calls that's very hard to correlate back to "two services share a name."</p></div>
           <div class="practice">
-            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q6 — Split the misused bean</span></div>
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Split the misused bean</span></div>
             <div class="practice-body">
               <p class="practice-q">Given a service that buggily uses <strong>one</strong> <code>@LoadBalanced RestTemplate</code> for both Stripe API calls and internal <code>order-service</code> calls, refactor it into two properly qualified beans (as above), and explain which call would fail before the fix, and why.</p>
               <div class="practice-hints"><span class="hint-chip">split into 2 beans</span><span class="hint-chip">@Qualifier("external")</span><span class="hint-chip">Stripe call fails first</span></div>
@@ -535,9 +708,9 @@ eureka:
     </div>
   </div>
 
-  <!-- 7 -->
-  <div class="concept" data-id="7">
-    <div class="concept-node">07</div>
+  <!-- 8 -->
+  <div class="concept" data-id="8">
+    <div class="concept-node">08</div>
     <div class="concept-body">
       <div class="concept-card">
         <div class="card-header">
@@ -577,11 +750,19 @@ eureka:
 <span class="cm">// Q: "Why might a team choose Feign over @LoadBalanced RestTemplate for new services?"</span>
 <span class="cm">// A: Feign gives you a type-safe interface instead of hand-built URL strings, less boilerplate</span>
 <span class="cm">//    per call, and load balancing "for free" with no annotation to remember — while using the</span>
-<span class="cm">//    exact same LoadBalancerClient machinery underneath.</span></code></pre>
+<span class="cm">//    exact same LoadBalancerClient machinery underneath.</span>
+
+<span class="cm">// Q: "How does inventory-service even know the registry exists — is that auto-discovered too?"</span>
+<span class="cm">// A: No — that's the one piece that ISN'T dynamic. The registry's address is set explicitly,</span>
+<span class="cm">//    as plain config (eureka.client.service-url.defaultZone), on every service including the</span>
+<span class="cm">//    registry's own clients. You can't discover the discovery service via discovery — something</span>
+<span class="cm">//    has to be the fixed starting point, and that's it. On startup the client POSTs a</span>
+<span class="cm">//    registration to that fixed address, then PUTs a heartbeat every ~30s to stay listed;</span>
+<span class="cm">//    miss enough heartbeats and the registry evicts the instance automatically.</span></code></pre>
           </div>
           <div class="takeaway"><div class="takeaway-icon">&#x1F4A1;</div><p>Interviewers aren't testing whether you memorized the annotation name — they're testing whether you understand client-side vs server-side load balancing, and whether you've been bitten by pointing a load-balanced client at the wrong kind of host.</p></div>
           <div class="practice">
-            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q7 — Final boss: design the bean layout</span></div>
+            <div class="practice-header"><span class="practice-badge">Practice</span><span class="practice-title">Q8 — Final boss: design the bean layout</span></div>
             <div class="practice-body">
               <p class="practice-q">Design the RestTemplate/WebClient bean layout — which beans exist, which qualifiers, which are <code>@LoadBalanced</code> — for a service that talks to 2 internal microservices (<code>order-service</code>, <code>inventory-service</code>) and 1 external payment API (Stripe). Write it as actual code.</p>
               <div class="practice-hints"><span class="hint-chip">1 @LoadBalanced bean for internal</span><span class="hint-chip">1 @Qualifier("external") bean</span><span class="hint-chip">no annotation confusion</span></div>
@@ -599,12 +780,13 @@ eureka:
     <p>From "what's a logical service name?" to designing multi-client bean layouts like a senior engineer.</p>
     <div class="concept-grid">
       <div class="grid-item"><span class="grid-num">01</span> What @LoadBalanced Does</div>
-      <div class="grid-item"><span class="grid-num">02</span> Wiring It Up</div>
-      <div class="grid-item"><span class="grid-num">03</span> Under the Hood</div>
-      <div class="grid-item"><span class="grid-num">04</span> Load Balancing Strategies</div>
-      <div class="grid-item"><span class="grid-num">05</span> vs Feign Clients</div>
-      <div class="grid-item"><span class="grid-num">06</span> Common Pitfalls</div>
-      <div class="grid-item"><span class="grid-num">07</span> Interview FAQ</div>
+      <div class="grid-item"><span class="grid-num">02</span> The Service Registry</div>
+      <div class="grid-item"><span class="grid-num">03</span> Wiring It Up</div>
+      <div class="grid-item"><span class="grid-num">04</span> Under the Hood</div>
+      <div class="grid-item"><span class="grid-num">05</span> Load Balancing Strategies</div>
+      <div class="grid-item"><span class="grid-num">06</span> vs Feign Clients</div>
+      <div class="grid-item"><span class="grid-num">07</span> Common Pitfalls</div>
+      <div class="grid-item"><span class="grid-num">08</span> Interview FAQ</div>
     </div>
   </div>
 </div>
@@ -629,9 +811,9 @@ function toggle(id) {
 }
 
 function updateProgress() {
-  var pct = (opened.size / 7) * 100;
+  var pct = (opened.size / 8) * 100;
   document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressCount').textContent = opened.size + ' / 7';
+  document.getElementById('progressCount').textContent = opened.size + ' / 8';
   document.getElementById('threadFill').style.height = pct + '%';
 }
 
